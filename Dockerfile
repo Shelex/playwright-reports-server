@@ -60,13 +60,13 @@ RUN mkdir -p ${RESULTS_DIR} && chown -R nextjs:nodejs ${RESULTS_DIR}
 RUN mkdir -p ${REPORTS_DIR} && chown -R nextjs:nodejs ${REPORTS_DIR}
 RUN mkdir -p ${TEMP_DIR} && chown -R nextjs:nodejs ${TEMP_DIR}
 
-USER nextjs
-
 EXPOSE 3000
 
 ENV PORT 3000
 
+USER root
 ENTRYPOINT ["/app/entrypoint.sh"]
+USER nextjs
 
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output
