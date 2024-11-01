@@ -48,6 +48,7 @@ RUN chown nextjs:nodejs .next
 # https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs --chmod=755 /app/entrypoint.sh ./
 
 # Create folders required for storing results and reports
 ARG DATA_DIR=/app/data
@@ -64,6 +65,8 @@ USER nextjs
 EXPOSE 3000
 
 ENV PORT 3000
+
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output
