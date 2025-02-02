@@ -1,3 +1,5 @@
+import { type Readable } from 'node:stream';
+
 import { withError } from '../withError';
 import { bytesToString, getUniqueProjectsList } from '../storage/format';
 
@@ -147,7 +149,7 @@ class Service {
   }
 
   public async saveResult(
-    file: Blob,
+    file: Readable,
     size: number,
     resultDetails: ResultDetails,
   ): Promise<{

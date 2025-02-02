@@ -27,7 +27,6 @@ import {
 } from './constants';
 import { handlePagination } from './pagination';
 import { getFileReportID } from './file';
-import { transformBlobToReadable } from './stream';
 
 import { parse } from '@/app/lib/parser';
 import { serveReportRoute } from '@/app/lib/constants';
@@ -506,7 +505,7 @@ export class S3 implements Storage {
     await withError(this.clear(...objects));
   }
 
-  async saveResult(file: Blob, size: number, resultDetails: ResultDetails) {
+  async saveResult(file: Readable, size: number, resultDetails: ResultDetails) {
     const resultID = randomUUID();
 
     const metaData = {
@@ -521,7 +520,7 @@ export class S3 implements Storage {
     await this.write(RESULTS_BUCKET, [
       {
         name: `${resultID}.zip`,
-        content: transformBlobToReadable(file),
+        content: file,
         size,
       },
       {

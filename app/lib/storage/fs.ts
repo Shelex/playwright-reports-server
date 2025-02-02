@@ -3,6 +3,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { createWriteStream, type Dirent, type Stats } from 'node:fs';
 import { pipeline } from 'node:stream/promises';
+import { type Readable } from 'node:stream';
 
 import getFolderSize from 'get-folder-size';
 
@@ -17,7 +18,7 @@ import {
 } from './constants';
 import { processBatch } from './batch';
 import { handlePagination } from './pagination';
-import { defaultStreamingOptions, transformBlobToReadable } from './stream';
+import { defaultStreamingOptions } from './stream';
 import { createDirectory } from './folders';
 
 import { parse } from '@/app/lib/parser';
@@ -252,12 +253,11 @@ export async function deleteReport(reportId: string) {
   await fs.rm(reportPath, { recursive: true, force: true });
 }
 
-export async function saveResult(file: Blob, size: number, resultDetails: ResultDetails) {
+export async function saveResult(readable: Readable, size: number, resultDetails: ResultDetails) {
   await createDirectoriesIfMissing();
   const resultID = randomUUID();
   const resultPath = path.join(RESULTS_FOLDER, `${resultID}.zip`);
 
-  const readable = transformBlobToReadable(file);
   const writeable = createWriteStream(resultPath, defaultStreamingOptions);
 
   /**
