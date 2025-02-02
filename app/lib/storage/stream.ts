@@ -7,6 +7,7 @@ import busboy from 'busboy';
 import { type ResultDetails } from './types';
 
 import { service } from '@/app/lib/service';
+import { withError } from '@/app/lib/withError';
 
 export const defaultStreamingOptions: ReadableOptions = {
   encoding: 'binary',
@@ -21,6 +22,7 @@ export const handleResultFileStream = async (request: Request) =>
         ...(request.headers as unknown as IncomingHttpHeaders),
         'content-type': request.headers.get('content-type') ?? 'application/zip',
       },
+      highWaterMark: defaultStreamingOptions.highWaterMark,
       limits: {
         files: 1,
       },
@@ -48,13 +50,13 @@ export const handleResultFileStream = async (request: Request) =>
 
       const size = parseInt(request.headers.get('content-length') ?? '', 10);
 
-      try {
-        const result = await service.saveResult(stream, size, resultDetails);
+      const { result, error } = await withError(service.saveResult(stream, size, resultDetails));
 
-        resolve(result);
-      } catch (error) {
+      if (error) {
         reject(new Error(`Failed to save result: ${error instanceof Error ? error.message : error}`));
       }
+
+      resolve(result);
     });
 
     bb.on('error', (error) => {
