@@ -1,5 +1,3 @@
-import { type Readable } from 'node:stream';
-
 import { withError } from '../withError';
 import { bytesToString, getUniqueProjectsList } from '../storage/format';
 
@@ -11,7 +9,7 @@ import {
   ReadResultsOutput,
   ReportHistory,
   ReportMetadata,
-  ResultDetails,
+  Result,
   ServerDataInfo,
   isReportHistory,
   storage,
@@ -148,18 +146,12 @@ class Service {
     resultCache.onDeleted(resultIDs);
   }
 
-  public async saveResult(
-    file: Readable,
-    size: number,
-    resultDetails: ResultDetails,
-  ): Promise<{
+  public async onSave(result: Result): Promise<{
     resultID: UUID;
     createdAt: string;
     size: string;
     sizeBytes: number;
   }> {
-    const result = await storage.saveResult(file, size, resultDetails);
-
     resultCache.onCreated(result);
 
     return result;

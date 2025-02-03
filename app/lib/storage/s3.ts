@@ -1,7 +1,7 @@
 import { randomUUID, type UUID } from 'crypto';
 import fs from 'fs/promises';
 import path from 'node:path';
-import { Readable } from 'node:stream';
+import { PassThrough, Readable } from 'node:stream';
 
 import { type BucketItem, Client } from 'minio';
 
@@ -505,24 +505,39 @@ export class S3 implements Storage {
     await withError(this.clear(...objects));
   }
 
-  async saveResult(file: Readable, size: number, resultDetails: ResultDetails) {
+  async getResultFileWriteStream(sizeBytes: number) {
+    await this.ensureBucketExist();
+
     const resultID = randomUUID();
 
+    const passThrough = new PassThrough();
+
+    const upload = this.write(RESULTS_BUCKET, [
+      {
+        name: `${resultID}.zip`,
+        content: passThrough,
+        size: sizeBytes,
+      },
+    ]);
+
+    return {
+      upload,
+      resultID,
+      stream: passThrough,
+    };
+  }
+
+  async saveResultFileMetadata(resultID: string, sizeBytes: number, resultDetails: ResultDetails) {
     const metaData = {
       resultID,
       createdAt: new Date().toISOString(),
       project: resultDetails?.project ?? '',
       ...resultDetails,
-      size: bytesToString(size),
-      sizeBytes: size,
+      size: bytesToString(sizeBytes),
+      sizeBytes,
     };
 
     await this.write(RESULTS_BUCKET, [
-      {
-        name: `${resultID}.zip`,
-        content: file,
-        size,
-      },
       {
         name: `${resultID}.json`,
         content: JSON.stringify(metaData),

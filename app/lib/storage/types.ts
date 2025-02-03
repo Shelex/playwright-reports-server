@@ -1,4 +1,5 @@
-import { Readable } from 'node:stream';
+import { type PassThrough } from 'node:stream';
+import { type WriteStream } from 'node:fs';
 
 import { type Pagination } from './pagination';
 
@@ -12,7 +13,12 @@ export interface Storage {
   readReports: (input?: ReadReportsInput) => Promise<ReadReportsOutput>;
   deleteResults: (resultIDs: string[]) => Promise<void>;
   deleteReports: (reportIDs: string[]) => Promise<void>;
-  saveResult: (file: Readable, size: number, resultDetails: ResultDetails) => Promise<Result>;
+  getResultFileWriteStream: (sizeBytes: number) => Promise<{
+    upload?: Promise<void>;
+    resultID: UUID;
+    stream: WriteStream | PassThrough;
+  }>;
+  saveResultFileMetadata: (resultID: string, sizeBytes: number, resultDetails: ResultDetails) => Promise<Result>;
   generateReport: (resultsIds: string[], metadata?: ReportMetadata) => Promise<UUID>;
   moveReport: (oldPath: string, newPath: string) => Promise<void>;
 }

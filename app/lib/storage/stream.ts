@@ -6,6 +6,7 @@ import busboy from 'busboy';
 
 import { type ResultDetails } from './types';
 
+import { storage } from '@/app/lib/storage';
 import { service } from '@/app/lib/service';
 import { withError } from '@/app/lib/withError';
 
@@ -23,6 +24,7 @@ export const handleResultFileStream = async (request: Request) =>
         'content-type': request.headers.get('content-type') ?? 'application/zip',
       },
       highWaterMark: defaultStreamingOptions.highWaterMark,
+      fileHwm: defaultStreamingOptions.highWaterMark,
       limits: {
         files: 1,
       },
@@ -37,24 +39,56 @@ export const handleResultFileStream = async (request: Request) =>
       resultDetails[fieldname] = value.toString();
     });
 
-    bb.on('file', async (name: string, stream: Readable) => {
+    bb.on('file', async (name: string, fileStream: Readable) => {
       if (name !== 'file') {
-        stream.resume(); // drain unwanted streams
+        fileStream.resume(); // drain unwanted streams
 
         return;
       }
 
-      stream.on('error', (error) => {
+      fileStream.on('error', (error) => {
         reject(new Error(`Error processing file stream: ${error.message}`));
       });
 
       const size = parseInt(request.headers.get('content-length') ?? '', 10);
 
-      const { result, error } = await withError(service.saveResult(stream, size, resultDetails));
+      const { upload, resultID, stream } = await storage.getResultFileWriteStream(size);
+
+      /**
+       * additional backpressure handling
+       * https://nodejs.org/en/learn/modules/backpressuring-in-streams
+       */
+      fileStream
+        .on('data', (chunk) => {
+          if (!stream.write(chunk)) {
+            fileStream.pause();
+          }
+        })
+        .on('error', (error) => {
+          console.log(`readable stream error: ${error.message}`);
+        });
+
+      stream
+        .on('drain', () => {
+          fileStream.resume();
+        })
+        .on('error', (error) => {
+          console.log(`writeable stream error: ${error.message}`);
+        })
+        .on('close', () => {
+          fileStream.destroy();
+        });
+
+      fileStream.pipe(stream);
+      upload && (await upload);
+
+      const { result, error } = await withError(storage.saveResultFileMetadata(resultID, size, resultDetails));
 
       if (error) {
         reject(new Error(`Failed to save result: ${error instanceof Error ? error.message : error}`));
       }
+
+      await service.onSave(result!);
 
       resolve(result);
     });

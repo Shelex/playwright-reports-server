@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { createWriteStream, type Dirent, type Stats } from 'node:fs';
+import { createWriteStream, WriteStream, type Dirent, type Stats } from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 import { type Readable } from 'node:stream';
 
@@ -36,6 +36,7 @@ import {
   ReportMetadata,
   ReportHistory,
 } from '@/app/lib/storage';
+import { UUID } from '@/app/types';
 
 async function createDirectoriesIfMissing() {
   await createDirectory(RESULTS_FOLDER);
@@ -253,51 +254,32 @@ export async function deleteReport(reportId: string) {
   await fs.rm(reportPath, { recursive: true, force: true });
 }
 
-export async function saveResult(readable: Readable, size: number, resultDetails: ResultDetails) {
+export async function getResultFileWriteStream(): Promise<{
+  stream: WriteStream;
+  resultID: UUID;
+}> {
   await createDirectoriesIfMissing();
   const resultID = randomUUID();
   const resultPath = path.join(RESULTS_FOLDER, `${resultID}.zip`);
 
   const writeable = createWriteStream(resultPath, defaultStreamingOptions);
 
-  /**
-   * additional backpressure handling
-   * https://nodejs.org/en/learn/modules/backpressuring-in-streams
-   */
-  readable
-    .on('data', (chunk) => {
-      if (!writeable.write(chunk)) {
-        readable.pause();
-      }
-    })
-    .on('error', (error) => {
-      console.log(`readable stream error: ${error.message}`);
-    });
+  return {
+    stream: writeable,
+    resultID,
+  };
+}
 
-  writeable
-    .on('drain', () => {
-      readable.resume();
-    })
-    .on('error', (error) => {
-      console.log(`writeable stream error: ${error.message}`);
-    });
-
-  const { error: writeStreamError } = await withError(pipeline(readable, writeable));
-
-  if (writeStreamError) {
-    throw new Error(`failed stream pipeline: ${writeStreamError.message}`);
-  }
-
-  // ensure writable stream is closed
-  writeable.end();
+export async function saveResultFileMetadata(resultID: string, sizeBytes: number, resultDetails: ResultDetails) {
+  await createDirectoriesIfMissing();
 
   const metaData = {
     resultID,
     createdAt: new Date().toISOString(),
     project: resultDetails?.project ?? '',
     ...resultDetails,
-    size: bytesToString(size),
-    sizeBytes: size,
+    size: bytesToString(sizeBytes),
+    sizeBytes,
   };
 
   const { error: writeJsonError } = await withError(
@@ -397,7 +379,8 @@ export const FS: Storage = {
   readReports,
   deleteResults,
   deleteReports,
-  saveResult,
+  getResultFileWriteStream,
+  saveResultFileMetadata,
   generateReport,
   moveReport,
 };
