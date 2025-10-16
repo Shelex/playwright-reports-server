@@ -19,6 +19,7 @@ import { keepPreviousData } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import TablePaginationOptions from './table-pagination-options';
+import InlineStatsCircle from './inline-stats-circle';
 
 import { withQueryParams } from '@/app/lib/network';
 import { defaultProjectName } from '@/app/lib/constants';
@@ -31,6 +32,7 @@ import { ReadReportsHistory, ReportHistory } from '@/app/lib/storage';
 const columns = [
   { name: 'Title', uid: 'title' },
   { name: 'Project', uid: 'project' },
+  { name: 'Pass Rate', uid: 'passRate' },
   { name: 'Created at', uid: 'createdAt' },
   { name: 'Size', uid: 'size' },
   { name: '', uid: 'actions' },
@@ -193,7 +195,7 @@ export default function ReportsTable({ onChange }: Readonly<ReportsTableProps>) 
         >
           {(item) => (
             <TableRow key={item.reportID}>
-              <TableCell className="w-1/2">
+              <TableCell className="w-1/3">
                 <div className="flex flex-col">
                   {/* Main title and link */}
                   <Link href={`/report/${item.reportID}`} prefetch={false}>
@@ -222,12 +224,13 @@ export default function ReportsTable({ onChange }: Readonly<ReportsTableProps>) 
                   </div>
                 </div>
               </TableCell>
-              <TableCell className="w-1/4">{item.project}</TableCell>
-              <TableCell className="w-1/4">
+              <TableCell className="w-1/6">{item.project}</TableCell>
+              <TableCell className="w-1/12">{<InlineStatsCircle stats={item.stats} />}</TableCell>
+              <TableCell className="w-1/6">
                 <FormattedDate date={item.createdAt} />
               </TableCell>
-              <TableCell className="w-1/4">{item.size}</TableCell>
-              <TableCell className="w-1/4">
+              <TableCell className="w-1/12">{item.size}</TableCell>
+              <TableCell className="w-1/6">
                 <div className="flex gap-4 justify-end">
                   <Link href={item.reportUrl} prefetch={false} target="_blank">
                     <Button color="primary" size="md">
