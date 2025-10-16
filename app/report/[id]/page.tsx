@@ -37,7 +37,11 @@ function ReportDetail({ params }: Readonly<ReportDetailProps>) {
     return <Spinner className="w-full" label="Loading auth..." />;
   }
 
-  if ((!report && isReportLoading) || isFetchingJiraConfig || isPendingJiraConfig) {
+  if (isFetchingJiraConfig || isPendingJiraConfig) {
+    return <Spinner className="w-full" label="Loading configuration..." />;
+  }
+
+  if (!report && isReportLoading) {
     return <Spinner className="w-full" label="Loading report..." />;
   }
 
