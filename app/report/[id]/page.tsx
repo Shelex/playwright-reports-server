@@ -11,6 +11,7 @@ import useQuery from '@/app/hooks/useQuery';
 import { type ReportHistory } from '@/app/lib/storage';
 import { subtitle, title } from '@/app/components/primitives';
 import FormattedDate from '@/app/components/date-format';
+import { JiraConfig } from '@/app/types';
 
 interface ReportDetailProps {
   params: { id: string };
@@ -18,6 +19,13 @@ interface ReportDetailProps {
 
 function ReportDetail({ params }: Readonly<ReportDetailProps>) {
   const session = useSession();
+
+  const {
+    data: jiraConfig,
+    error: jiraConfigError,
+    isFetching: isFetchingJiraConfig,
+    isPending: isPendingJiraConfig,
+  } = useQuery<JiraConfig>('/api/jira/config', { dependencies: [] });
 
   const {
     data: report,
@@ -29,11 +37,12 @@ function ReportDetail({ params }: Readonly<ReportDetailProps>) {
     return <Spinner className="w-full" label="Loading auth..." />;
   }
 
-  if (!report && isReportLoading) {
+  if ((!report && isReportLoading) || isFetchingJiraConfig || isPendingJiraConfig) {
     return <Spinner className="w-full" label="Loading report..." />;
   }
 
   reportError && toast.error(reportError.message);
+  jiraConfigError && toast.error(jiraConfigError.message);
 
   return (
     <>
@@ -52,7 +61,11 @@ function ReportDetail({ params }: Readonly<ReportDetailProps>) {
             <Button color="primary">Open report</Button>
           </Link>
         </div>
-        <div className="md:w-3/4 max-w-full">{report && <FileList report={report} />}</div>
+        <div className="md:w-3/4 max-w-full">
+          {report && (
+            <FileList jiraIntegrationEnabled={!!jiraConfig?.baseUrl && !!jiraConfig.apiToken} report={report} />
+          )}
+        </div>
       </div>
     </>
   );

@@ -16,9 +16,10 @@ import { pluralize } from '@/app/lib/transformers';
 
 interface FileListProps {
   report?: ReportHistory | null;
+  jiraIntegrationEnabled?: boolean;
 }
 
-const FileList: FC<FileListProps> = ({ report }) => {
+const FileList: FC<FileListProps> = ({ report, jiraIntegrationEnabled }) => {
   const {
     data: history,
     isLoading: isHistoryLoading,
@@ -69,7 +70,12 @@ const FileList: FC<FileListProps> = ({ report }) => {
                 <StatChart stats={file.stats} />
                 <div className="file-tests">
                   <h4 className={subtitle()}>Tests</h4>
-                  <FileSuitesTree file={file} history={history ?? []} reportId={report?.reportID} />
+                  <FileSuitesTree
+                    file={file}
+                    history={history ?? []}
+                    jiraIntegrationEnabled={jiraIntegrationEnabled}
+                    reportId={report?.reportID}
+                  />
                 </div>
               </div>
             </AccordionItem>

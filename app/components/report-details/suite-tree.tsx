@@ -62,16 +62,27 @@ function buildTestTree(rootName: string, tests: ReportTest[]): SuiteNode {
 interface SuiteNodeComponentProps {
   suite: SuiteNode;
   history: ReportHistory[];
+  jiraIntegrationEnabled?: boolean;
   onCreateJiraTicket: (test: ReportTest) => void;
 }
 
-const SuiteNodeComponent = ({ suite, history, onCreateJiraTicket }: SuiteNodeComponentProps) => {
+const SuiteNodeComponent = ({
+  suite,
+  history,
+  jiraIntegrationEnabled,
+  onCreateJiraTicket,
+}: SuiteNodeComponentProps) => {
   return (
     <Accordion key={suite.name} aria-label={suite.name} selectionMode="multiple" title={suite.name}>
       {[
         ...suite.children.map((child) => (
           <AccordionItem key={child.name} aria-label={child.name} className="p-2" title={`${child.name}`}>
-            <SuiteNodeComponent history={history} suite={child} onCreateJiraTicket={onCreateJiraTicket} />
+            <SuiteNodeComponent
+              history={history}
+              jiraIntegrationEnabled={jiraIntegrationEnabled}
+              suite={child}
+              onCreateJiraTicket={onCreateJiraTicket}
+            />
           </AccordionItem>
         )),
         ...suite.tests.map((test) => {
@@ -91,16 +102,18 @@ const SuiteNodeComponent = ({ suite, history, onCreateJiraTicket }: SuiteNodeCom
                   <Chip color="default" size="sm">
                     {test.projectName}
                   </Chip>
-                  <Button
-                    className="ml-auto"
-                    color="primary"
-                    size="sm"
-                    title="Create Jira ticket for this failed test"
-                    variant="flat"
-                    onPress={() => onCreateJiraTicket(test)}
-                  >
-                    Create Jira Ticket
-                  </Button>
+                  {jiraIntegrationEnabled ? (
+                    <Button
+                      className="ml-auto"
+                      color="primary"
+                      size="sm"
+                      title="Create Jira ticket for this failed test"
+                      variant="flat"
+                      onPress={() => onCreateJiraTicket(test)}
+                    >
+                      Create Jira Ticket
+                    </Button>
+                  ) : null}
                 </span>
               }
             >
@@ -117,9 +130,10 @@ interface FileSuitesTreeProps {
   file: ReportFile;
   history: ReportHistory[];
   reportId?: string;
+  jiraIntegrationEnabled?: boolean;
 }
 
-const FileSuitesTree = ({ file, history, reportId }: FileSuitesTreeProps) => {
+const FileSuitesTree = ({ file, history, reportId, jiraIntegrationEnabled }: FileSuitesTreeProps) => {
   const [selectedTest, setSelectedTest] = useState<ReportTest | null>(null);
   const [isJiraModalOpen, setIsJiraModalOpen] = useState(false);
 
@@ -132,7 +146,12 @@ const FileSuitesTree = ({ file, history, reportId }: FileSuitesTreeProps) => {
 
   return (
     <>
-      <SuiteNodeComponent history={history} suite={suiteTree} onCreateJiraTicket={handleCreateJiraTicket} />
+      <SuiteNodeComponent
+        history={history}
+        jiraIntegrationEnabled={jiraIntegrationEnabled}
+        suite={suiteTree}
+        onCreateJiraTicket={handleCreateJiraTicket}
+      />
 
       <JiraTicketModal
         isOpen={isJiraModalOpen}
