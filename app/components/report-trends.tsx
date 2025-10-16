@@ -38,7 +38,7 @@ export default function ReportTrends() {
   return (
     <>
       <div className="flex flex-row justify-between">
-        <h1 className={title()}>Trends</h1>
+        <h1 className={title()}>Trend Chart</h1>
         {(isFetching || isPending) && <Spinner />}
         <div className="min-w-[30%]">
           <ProjectSelect entity="report" onSelect={onProjectChange} />
