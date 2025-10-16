@@ -5,7 +5,7 @@ import NextLink from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 
-import { ReportIcon, ResultIcon, SettingsIcon } from '@/app/components/icons';
+import { ReportIcon, ResultIcon, SettingsIcon, TrendIcon } from '@/app/components/icons';
 import { siteConfig } from '@/app/config/site';
 import useQuery from '@/app/hooks/useQuery';
 
@@ -17,6 +17,7 @@ interface ServerInfo {
 const iconst = [
   { href: '/reports', icon: ReportIcon },
   { href: '/results', icon: ResultIcon },
+  { href: '/trends', icon: TrendIcon },
   { href: '/settings', icon: SettingsIcon },
 ];
 
@@ -30,6 +31,12 @@ export const Aside: React.FC = () => {
 
   const isAuthenticated = session.status === 'authenticated';
 
+  const countByHref = {
+    '/reports': serverInfo?.numOfReports,
+    '/results': serverInfo?.numOfResults,
+    default: 0,
+  } as const;
+
   return (
     <Card className="w-16 h-full rounded-none border-r border-gray-200 dark:border-gray-800 dark:bg-black shadow-none">
       <CardBody className="px-2 py-4">
@@ -37,12 +44,7 @@ export const Aside: React.FC = () => {
           {siteConfig.navItems.map((item) => {
             const isActive = pathname === item.href;
             const Icon = iconst.find((icon) => icon.href === item.href)?.icon;
-            const count =
-              item.href === '/reports'
-                ? serverInfo?.numOfReports
-                : item.href === '/results'
-                  ? serverInfo?.numOfResults
-                  : 0;
+            const count = countByHref[item.href as keyof typeof countByHref] ?? countByHref.default;
 
             return (
               <Link
