@@ -16,6 +16,7 @@ const InlineStatsCircle: FC<ReportFiltersProps> = ({ stats }) => {
 
   return (
     <CircularProgress
+      aria-label="Passed Percentage"
       classNames={{
         value: 'text-[12px]',
       }}

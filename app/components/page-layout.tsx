@@ -16,8 +16,16 @@ interface PageLayoutProps {
 export default function PageLayout({ render }: PageLayoutProps) {
   const { data: session, status } = useSession();
   const authIsLoading = status === 'loading';
+  const isAuthenticated = status === 'authenticated';
 
-  const { data: info, error, refetch, isLoading: isInfoLoading } = useQuery<ServerDataInfo>('/api/info');
+  const {
+    data: info,
+    error,
+    refetch,
+    isLoading: isInfoLoading,
+  } = useQuery<ServerDataInfo>('/api/info', {
+    enabled: isAuthenticated,
+  });
   const [refreshId, setRefreshId] = useState<string>(uuidv4());
 
   useEffect(() => {
@@ -27,11 +35,11 @@ export default function PageLayout({ render }: PageLayoutProps) {
   }, [authIsLoading, session]);
 
   useLayoutEffect(() => {
-    if (authIsLoading || !session) {
+    if (!isAuthenticated) {
       return;
     }
-    refetch();
-  }, [refreshId, session]);
+    refetch({ cancelRefetch: true });
+  }, [refreshId]);
 
   if (authIsLoading || isInfoLoading) {
     return <Spinner className="flex justify-center items-center" />;

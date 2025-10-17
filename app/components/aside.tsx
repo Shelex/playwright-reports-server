@@ -24,12 +24,12 @@ const iconst = [
 export const Aside: React.FC = () => {
   const pathname = usePathname();
   const session = useSession();
+  const isAuthenticated = session.status === 'authenticated';
 
   const { data: serverInfo } = useQuery<ServerInfo>('/api/info', {
     dependencies: [],
+    enabled: isAuthenticated,
   });
-
-  const isAuthenticated = session.status === 'authenticated';
 
   const countByHref = {
     '/reports': serverInfo?.numOfReports,
