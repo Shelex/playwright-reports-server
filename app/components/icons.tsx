@@ -184,7 +184,7 @@ export const ResultIcon: FC<IconSvgProps> = ({ size = 40, width, height, ...prop
 
 export const TrendIcon: FC<IconSvgProps> = () => {
   return (
-    <svg className="fill-black dark:fill-white" height={42} id="Capa_1" viewBox="0 0 30.462 30.461" width={42}>
+    <svg className="fill-black dark:fill-white p-0.5" height={42} id="Capa_1" viewBox="0 0 30.462 30.461" width={42}>
       <g>
         <path
           d="M16.109,13.997l-4.312-4.479L1.426,20.058L0,18.656L11.812,6.651l4.354,4.522l7.49-7.172l-2.146-2.145h5.603v5.601
