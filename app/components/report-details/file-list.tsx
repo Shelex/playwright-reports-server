@@ -14,6 +14,7 @@ import ReportFilters from './tests-filters';
 import { type ReportHistory } from '@/app/lib/storage';
 import useQuery from '@/app/hooks/useQuery';
 import { pluralize } from '@/app/lib/transformers';
+import { parseMilliseconds } from '@/app/lib/time';
 
 interface FileListProps {
   report?: ReportHistory | null;
@@ -54,34 +55,39 @@ const FileList: FC<FileListProps> = ({ report, jiraIntegrationEnabled }) => {
         <Alert color="warning" title={`No files found`} />
       ) : (
         <Accordion isCompact={true} variant="bordered">
-          {(filteredTests?.files ?? []).map((file) => (
-            <AccordionItem
-              key={file.fileId}
-              aria-label={file.fileName}
-              startContent={<InlineStatsCircle stats={file.stats} />}
-              title={
-                <p className="flex flex-row gap-5">
-                  {file.fileName}
-                  <span className="text-gray-500">
-                    {file.tests.length} {pluralize(file.tests.length, 'test', 'tests')}
-                  </span>
-                </p>
-              }
-            >
-              <div className="file-details">
-                <StatChart stats={file.stats} />
-                <div className="file-tests">
-                  <h4 className={subtitle()}>Tests</h4>
-                  <FileSuitesTree
-                    file={file}
-                    history={history ?? []}
-                    jiraIntegrationEnabled={jiraIntegrationEnabled}
-                    reportId={report?.reportID}
-                  />
+          {(filteredTests?.files ?? []).map((file) => {
+            const fileDurationMs = file.tests.reduce((total, test) => total + (test.duration || 0), 0);
+            const fileDurationText = parseMilliseconds(fileDurationMs);
+
+            return (
+              <AccordionItem
+                key={file.fileId}
+                aria-label={file.fileName}
+                startContent={<InlineStatsCircle stats={file.stats} />}
+                title={
+                  <p className="flex flex-row gap-5">
+                    {file.fileName}
+                    <span className="text-gray-500">
+                      {file.tests.length} {pluralize(file.tests.length, 'test', 'tests')} | {fileDurationText}
+                    </span>
+                  </p>
+                }
+              >
+                <div className="file-details">
+                  <StatChart stats={file.stats} />
+                  <div className="file-tests">
+                    <h4 className={subtitle()}>Tests</h4>
+                    <FileSuitesTree
+                      file={file}
+                      history={history ?? []}
+                      jiraIntegrationEnabled={jiraIntegrationEnabled}
+                      reportId={report?.reportID}
+                    />
+                  </div>
                 </div>
-              </div>
-            </AccordionItem>
-          ))}
+              </AccordionItem>
+            );
+          })}
         </Accordion>
       )}
     </div>
