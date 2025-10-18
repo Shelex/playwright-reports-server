@@ -27,7 +27,6 @@ export const Aside: React.FC = () => {
   const isAuthenticated = session.status === 'authenticated';
 
   const { data: serverInfo } = useQuery<ServerInfo>('/api/info', {
-    dependencies: [],
     enabled: isAuthenticated,
   });
 

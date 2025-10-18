@@ -38,7 +38,7 @@ export default function PageLayout({ render }: PageLayoutProps) {
     if (!isAuthenticated) {
       return;
     }
-    refetch({ cancelRefetch: true });
+    refetch({ cancelRefetch: false });
   }, [refreshId]);
 
   if (authIsLoading || isInfoLoading) {

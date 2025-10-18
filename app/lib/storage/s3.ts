@@ -1,5 +1,5 @@
-import { randomUUID, type UUID } from 'crypto';
-import fs from 'fs/promises';
+import { randomUUID, type UUID } from 'node:crypto';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import { PassThrough, Readable } from 'node:stream';
 
@@ -42,6 +42,7 @@ import { withError } from '@/app/lib/withError';
 import { env } from '@/app/config/env';
 import { SiteWhiteLabelConfig } from '@/app/types';
 import { defaultConfig, isConfigValid } from '@/app/lib/config';
+import { getTimestamp } from '@/app/lib/time';
 
 const createClient = () => {
   const endPoint = env.S3_ENDPOINT;
@@ -170,20 +171,24 @@ export class S3 implements Storage {
     };
   }
 
-  async clear(...path: string[]) {
-    console.log(`[s3] clearing ${path}`);
+  async clear(...paths: string[]) {
+    console.log(`[s3] clearing ${paths}`);
     // avoid using "removeObjects" as it is not supported by every S3-compatible provider
     // for example, Google Cloud Storage.
-    await processBatch<string, void>(this, path, this.batchSize, async (object) => {
-      await this.client.removeObject(this.bucket, object);
-    });
+    if (env.S3_ENDPOINT?.includes('google')) {
+      await processBatch<string, void>(this, paths, this.batchSize, async (object) => {
+        await this.client.removeObject(this.bucket, object);
+      });
+    }
+
+    await this.client.removeObjects(this.bucket, paths);
   }
 
   async getFolderSize(folderPath: string): Promise<{ size: number; resultCount: number; indexCount: number }> {
     let resultCount = 0;
     let indexCount = 0;
     let totalSize = 0;
-    const stream = this.client.listObjects(this.bucket, folderPath, true);
+    const stream = this.client.listObjectsV2(this.bucket, folderPath, true);
 
     return new Promise((resolve, reject) => {
       stream.on('data', (obj) => {
@@ -287,14 +292,6 @@ export class S3 implements Storage {
         total: 0,
       };
     }
-
-    const getTimestamp = (date?: Date | string) => {
-      if (!date) return 0;
-      if (typeof date === 'string') return new Date(date).getTime();
-
-      return date.getTime();
-    };
-
     jsonFiles.sort((a, b) => getTimestamp(b.lastModified) - getTimestamp(a.lastModified));
 
     // check if we can apply pagination early
@@ -423,13 +420,6 @@ export class S3 implements Storage {
       });
 
       reportsStream.on('end', async () => {
-        const getTimestamp = (date?: Date | string) => {
-          if (!date) return 0;
-          if (typeof date === 'string') return new Date(date).getTime();
-
-          return date.getTime();
-        };
-
         reports.sort((a, b) => getTimestamp(b.createdAt) - getTimestamp(a.createdAt));
 
         const currentReports = handlePagination<Report>(reports, input?.pagination);
@@ -693,7 +683,7 @@ export class S3 implements Storage {
       console.error(`[s3] failed to create temporary folder: ${mkdirTempError.message}`);
     }
 
-    const resultsStream = this.client.listObjects(this.bucket, RESULTS_BUCKET, true);
+    const resultsStream = this.client.listObjectsV2(this.bucket, RESULTS_BUCKET, true);
 
     console.log(`[s3] start processing...`);
     for await (const result of resultsStream) {
