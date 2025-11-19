@@ -71,12 +71,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           reject(error);
         });
 
-      pipeline(
-        fileStream.on('data', (chunk: Buffer) => {
-          fileSize += chunk.length;
-        }),
-        filePassThrough,
-      ).catch((e) => {
+      fileStream.on('data', (chunk: Buffer) => {
+        fileSize += chunk.length;
+
+        if (!filePassThrough.write(chunk)) {
+          fileStream.pause();
+
+          filePassThrough.once('drain', () => {
+            fileStream.resume();
+          });
+        }
+      });
+
+      fileStream.on('end', () => filePassThrough.end());
+      fileStream.on('error', (e) => {
         filePassThrough.destroy(e);
         reject(e);
       });

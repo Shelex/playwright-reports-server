@@ -714,6 +714,7 @@ export class S3 implements Storage {
             }),
           );
 
+          console.log(`[s3] uploaded part ${partNumber}, resume reading`);
           stream.resume();
 
           if (!uploadPartResult.ETag) {
