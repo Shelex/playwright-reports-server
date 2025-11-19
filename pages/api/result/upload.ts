@@ -12,6 +12,35 @@ import { withError } from '@/app/lib/withError';
 
 export const config = { api: { bodyParser: false } };
 
+async function waitForBufferDrain(stream: PassThrough, maxWaitMs = 10000): Promise<void> {
+  const startTime = Date.now();
+
+  return new Promise((resolve, reject) => {
+    const checkBuffer = () => {
+      const buffered = stream.readableLength || 0;
+
+      if (buffered === 0) {
+        console.log('[upload] buffer is empty');
+        resolve();
+
+        return;
+      }
+
+      if (Date.now() - startTime > maxWaitMs) {
+        reject(new Error(`Timeout waiting for buffer to drain (${buffered} bytes remaining)`));
+
+        return;
+      }
+
+      console.log(`[upload] waiting for buffer to drain (${buffered} bytes remaining)`);
+
+      setTimeout(checkBuffer, 100);
+    };
+
+    checkBuffer();
+  });
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'PUT') {
     res.setHeader('Allow', 'PUT');
@@ -64,6 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     bb.on('file', (_, fileStream) => {
       fileReceived = true;
+      let isPaused = false;
 
       saveResultPromise = service
         .saveResult(fileName, filePassThrough, presignedUrl, contentLength)
@@ -74,12 +104,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       fileStream.on('data', (chunk: Buffer) => {
         fileSize += chunk.length;
 
-        if (!filePassThrough.write(chunk)) {
-          fileStream.pause();
+        const canContinue = filePassThrough.write(chunk);
 
-          filePassThrough.once('drain', () => {
-            fileStream.resume();
-          });
+        if (!canContinue && !isPaused) {
+          isPaused = true;
+          fileStream.pause();
+          req.pause();
+          console.log('[upload] PAUSED - buffer full');
+          console.log(`  - fileStream buffered: ${fileStream.readableLength} bytes`);
+          console.log(`  - PassThrough buffered: ${filePassThrough.readableLength} bytes`);
+          console.log(`  - PassThrough writable buffer: ${filePassThrough.writableLength} bytes`);
+        }
+      });
+
+      filePassThrough.on('drain', async () => {
+        if (isPaused) {
+          const fileStreamBuffered = fileStream.readableLength || 0;
+          const passThroughBuffered = filePassThrough.readableLength || 0;
+
+          console.log('[upload] Drain event received');
+          console.log(`  - fileStream buffered: ${fileStreamBuffered} bytes`);
+          console.log(`  - PassThrough buffered: ${passThroughBuffered} bytes`);
+          await waitForBufferDrain(filePassThrough);
+          isPaused = false;
+          fileStream.resume();
+          req.resume();
+
+          console.log('[upload] RESUMED - buffer drained');
         }
       });
 
