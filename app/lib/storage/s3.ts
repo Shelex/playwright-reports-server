@@ -702,6 +702,8 @@ export class S3 implements Storage {
             `[s3] uploading part ${partNumber} (${(partData.length / (1024 * 1024)).toFixed(2)}MB) for ${filename}`,
           );
 
+          stream.pause();
+
           const uploadPartResult = await this.client.send(
             new UploadPartCommand({
               Bucket: this.bucket,
@@ -711,6 +713,8 @@ export class S3 implements Storage {
               Body: partData,
             }),
           );
+
+          stream.resume();
 
           if (!uploadPartResult.ETag) {
             throw new Error(`[s3] failed to upload part ${partNumber}: no ETag received`);
