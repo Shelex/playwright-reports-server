@@ -12,7 +12,7 @@ import { withError } from '@/app/lib/withError';
 
 export const config = { api: { bodyParser: false } };
 
-async function waitForBufferDrain(stream: PassThrough, maxWaitMs = 10000): Promise<void> {
+async function waitForBufferDrain(stream: PassThrough, maxWaitMs = 30 * 1000): Promise<void> {
   const startTime = Date.now();
 
   return new Promise((resolve, reject) => {
@@ -34,7 +34,7 @@ async function waitForBufferDrain(stream: PassThrough, maxWaitMs = 10000): Promi
 
       console.log(`[upload] waiting for buffer to drain (${buffered} bytes remaining)`);
 
-      setTimeout(checkBuffer, 100);
+      setTimeout(checkBuffer, 250);
     };
 
     checkBuffer();
