@@ -687,20 +687,42 @@ export class S3 implements Storage {
 
     const uploadedParts: { PartNumber: number; ETag: string }[] = [];
     let partNumber = 1;
-    let buffer = Buffer.alloc(0);
+    const chunks: Buffer[] = [];
+    let currentSize = 0;
 
     try {
       for await (const chunk of stream) {
-        buffer = Buffer.concat([buffer, chunk]);
+        console.log(`[s3] received chunk of size ${(chunk.length / (1024 * 1024)).toFixed(2)}MB for ${filename}`);
 
-        while (buffer.length >= chunkSize) {
-          const partData = buffer.subarray(0, chunkSize);
+        chunks.push(chunk);
+        currentSize += chunk.length;
 
-          buffer = buffer.subarray(chunkSize);
+        while (currentSize >= chunkSize) {
+          const partData = Buffer.allocUnsafe(chunkSize);
+          let copied = 0;
+
+          while (copied < chunkSize && chunks.length > 0) {
+            const currentChunk = chunks[0];
+            const needed = chunkSize - copied;
+            const available = currentChunk.length;
+
+            if (available <= needed) {
+              currentChunk.copy(partData, copied);
+              copied += available;
+              chunks.shift();
+            } else {
+              currentChunk.copy(partData, copied, 0, needed);
+              copied += needed;
+              chunks[0] = currentChunk.subarray(needed);
+            }
+          }
+
+          currentSize -= chunkSize;
 
           console.log(
             `[s3] uploading part ${partNumber} (${(partData.length / (1024 * 1024)).toFixed(2)}MB) for ${filename}`,
           );
+          console.log(`[s3] buffer state: ${chunks.length} chunks, ${(currentSize / (1024 * 1024)).toFixed(2)}MB remaining`);
 
           stream.pause();
 
@@ -713,6 +735,9 @@ export class S3 implements Storage {
               Body: partData,
             }),
           );
+
+          // explicitly clear the part data to help GC
+          partData.fill(0);
 
           console.log(`[s3] uploaded part ${partNumber}, resume reading`);
           stream.resume();
@@ -730,8 +755,16 @@ export class S3 implements Storage {
         }
       }
 
-      if (buffer.length > 0) {
-        console.log(`[s3] uploading final part ${partNumber} [${bytesToString(buffer.length)}] for ${filename}`);
+      if (currentSize > 0) {
+        console.log(`[s3] uploading final part ${partNumber} [${bytesToString(currentSize)}] for ${filename}`);
+
+        const finalPart = Buffer.allocUnsafe(currentSize);
+        let offset = 0;
+
+        for (const chunk of chunks) {
+          chunk.copy(finalPart, offset);
+          offset += chunk.length;
+        }
 
         const uploadPartResult = await this.client.send(
           new UploadPartCommand({
@@ -739,9 +772,13 @@ export class S3 implements Storage {
             Key: remotePath,
             UploadId: uploadID,
             PartNumber: partNumber,
-            Body: buffer,
+            Body: finalPart,
           }),
         );
+
+        // explicitly clear buffer references
+        chunks.length = 0;
+        finalPart.fill(0);
 
         if (!uploadPartResult.ETag) {
           throw new Error(`[s3] failed to upload final part ${partNumber}: no ETag received`);

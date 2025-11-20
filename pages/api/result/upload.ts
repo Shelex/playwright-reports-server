@@ -81,11 +81,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const uploadPromise = new Promise<void>((resolve, reject) => {
     let fileReceived = false;
+    let cleanupDone = false;
+
+    const cleanup = () => {
+      if (cleanupDone) return;
+      cleanupDone = true;
+
+      console.log('[upload] cleaning up streams');
+
+      // remove all listeners to prevent memory leaks
+      req.removeAllListeners('aborted');
+      req.removeAllListeners('close');
+
+      // explicitly destroy streams
+      if (!filePassThrough.destroyed) {
+        filePassThrough.destroy();
+      }
+    };
 
     const onAborted = () => {
-      if (!filePassThrough.destroyed) {
-        filePassThrough.destroy(new Error('Client aborted connection'));
-      }
+      console.log('[upload] request aborted or closed');
+      cleanup();
+      reject(new Error('Client aborted connection'));
     };
 
     req.on('aborted', onAborted);
@@ -98,6 +115,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       saveResultPromise = service
         .saveResult(fileName, filePassThrough, presignedUrl, contentLength)
         .catch((error: Error) => {
+          cleanup();
           reject(error);
         });
 
@@ -134,9 +152,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       });
 
-      fileStream.on('end', () => filePassThrough.end());
+      fileStream.on('end', () => {
+        console.log('[upload] fileStream ended');
+        filePassThrough.end();
+      });
+
       fileStream.on('error', (e) => {
-        filePassThrough.destroy(e);
+        console.error('[upload] fileStream error:', e);
+        cleanup();
         reject(e);
       });
     });
@@ -146,11 +169,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     bb.on('error', (error: Error) => {
+      console.error('[upload] busboy error:', error);
+      cleanup();
       reject(error);
     });
 
     bb.on('finish', async () => {
       if (!fileReceived) {
+        cleanup();
         reject(new Error('No file received'));
 
         return;
@@ -160,19 +186,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { error } = await withError(saveResultPromise);
 
         if (error) {
+          cleanup();
           reject(error);
+
+          return;
         }
 
         if (contentLength) {
           const expected = parseInt(contentLength, 10);
 
           if (Number.isFinite(expected) && expected > 0 && fileSize !== expected) {
+            cleanup();
             reject(new Error(`Size mismatch: received ${fileSize} bytes, expected ${expected} bytes`));
 
             return;
           }
         }
 
+        cleanup();
         resolve();
       }
     });
