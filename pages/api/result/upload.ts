@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import { pipeline } from 'node:stream/promises';
 import { PassThrough } from 'node:stream';
 import { randomUUID } from 'node:crypto';
 
@@ -89,6 +88,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       console.log('[upload] cleaning up streams');
 
+      // stop reading from req
+      req.unpipe(bb);
+
       // remove all listeners to prevent memory leaks
       req.removeAllListeners('aborted');
       req.removeAllListeners('close');
@@ -127,8 +129,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!canContinue && !isPaused) {
           isPaused = true;
           fileStream.pause();
-          req.pause();
-          console.log('[upload] PAUSED - buffer full');
+          req.unpipe(bb);
+          console.log('[upload] PAUSED - buffer full, stop reading req');
           console.log(`  - fileStream buffered: ${fileStream.readableLength} bytes`);
           console.log(`  - PassThrough buffered: ${filePassThrough.readableLength} bytes`);
           console.log(`  - PassThrough writable buffer: ${filePassThrough.writableLength} bytes`);
@@ -145,10 +147,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           console.log(`  - PassThrough buffered: ${passThroughBuffered} bytes`);
           await waitForBufferDrain(filePassThrough);
           isPaused = false;
+          req.pipe(bb);
           fileStream.resume();
-          req.resume();
 
-          console.log('[upload] RESUMED - buffer drained');
+          console.log('[upload] RESUMED - buffer drained, continue reading req');
         }
       });
 
@@ -209,13 +211,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   });
 
-  const { error: streamPipelineError } = await withError(pipeline(req, bb));
-
-  if (streamPipelineError) {
-    console.error('Error processing request:', streamPipelineError);
-
-    return;
-  }
+  req.pipe(bb);
 
   const { error: uploadError } = await withError(uploadPromise);
 
