@@ -592,14 +592,6 @@ export class S3 implements Storage {
 
     const uploadQueue = new MultipartUploadQueue(env.S3_CONCURRENT_PARTS || 3);
     const abortController = new AbortController();
-
-    const handleStreamClose = () => {
-      abortController.abort();
-      uploadQueue.cancel();
-    };
-
-    stream.once('close', handleStreamClose);
-
     const bufferPool = new BufferPool({
       bufferSize: chunkSize,
       maxPoolSize: 5,
@@ -611,21 +603,17 @@ export class S3 implements Storage {
     let currentSize = 0;
     const MAX_BUFFER_SIZE = 200 * 1024 * 1024; // 200MB safety limit
 
-    try {
-      for await (const chunk of stream) {
-        if (abortController.signal.aborted) {
-          throw new Error('Upload cancelled by client');
-        }
+    return new Promise<void>((resolve, reject) => {
+      const handleStreamClose = () => {
+        abortController.abort();
+        uploadQueue.cancel();
+        reject(new Error('Stream closed unexpectedly'));
+      };
 
-        console.log(`[s3] received chunk of size ${(chunk.length / (1024 * 1024)).toFixed(2)}MB for ${filename}`);
+      stream.once('close', handleStreamClose);
 
-        chunks.push(chunk);
-        currentSize += chunk.length;
-
-        while (currentSize >= chunkSize) {
-          if (abortController.signal.aborted) {
-            throw new Error('Upload cancelled by client');
-          }
+      const processChunks = async () => {
+        while (currentSize >= chunkSize && !abortController.signal.aborted) {
           const partData = bufferPool.acquire();
           let copied = 0;
 
@@ -652,108 +640,155 @@ export class S3 implements Storage {
 
           console.log(
             `[s3] queuing part ${currentPartNumber} (${(chunkSize / (1024 * 1024)).toFixed(2)}MB) ` +
-              `[queue: ${uploadQueue.getStats().queued}, active: ${uploadQueue.getStats().active}]`,
+              `[buffer: ${(currentSize / (1024 * 1024)).toFixed(2)}MB, ` +
+              `queue: ${uploadQueue.getStats().queued}, active: ${uploadQueue.getStats().active}]`,
           );
 
           uploadQueue
             .add(async () => {
-              const uploadPartResult = await this.uploadPartWithRetry(
-                remotePath,
-                uploadID,
-                currentPartNumber,
-                partSlice,
-              );
-
-              return uploadPartResult;
+              return await this.uploadPartWithRetry(remotePath, uploadID, currentPartNumber, partSlice);
             })
             .then((result) => {
               uploadedParts.push(result);
               bufferPool.release(partData);
-              console.log(`[s3] part ${currentPartNumber} completed`);
+              console.log(`[s3] part ${currentPartNumber} completed successfully`);
             })
             .catch((error) => {
               bufferPool.release(partData);
-              throw error;
+              console.error(`[s3] part ${currentPartNumber} failed:`, error);
+              stream.destroy(error);
+              reject(error);
             });
-
-          // If buffer is getting too large, pause and wait
-          if (currentSize > MAX_BUFFER_SIZE) {
-            console.log('[s3] buffer size exceeded limit, pausing stream');
-            stream.pause();
-            await uploadQueue.waitForAll();
-            stream.resume();
-            console.log('[s3] stream resumed');
-          }
-        }
-      }
-
-      if (abortController.signal.aborted) {
-        throw new Error('Upload cancelled by client');
-      }
-
-      if (currentSize > 0) {
-        console.log(`[s3] uploading final part ${partNumber} [${bytesToString(currentSize)}] for ${filename}`);
-
-        const finalPart = bufferPool.acquire();
-        let offset = 0;
-
-        for (const chunk of chunks) {
-          chunk.copy(finalPart, offset);
-          offset += chunk.length;
         }
 
-        const uploadPartResult = await this.uploadPartWithRetry(remotePath, uploadID, partNumber, finalPart);
+        // If buffer is getting too large, apply backpressure
+        if (currentSize >= MAX_BUFFER_SIZE) {
+          console.log(`[s3] buffer limit reached (${(currentSize / (1024 * 1024)).toFixed(2)}MB), pausing stream`);
+          stream.pause();
+          await uploadQueue.waitForAll();
+          stream.resume();
+          console.log('[s3] stream resumed');
+        }
+      };
 
-        uploadedParts.push(uploadPartResult);
-        bufferPool.release(finalPart);
+      stream.on('data', async (chunk: Buffer) => {
+        if (abortController.signal.aborted) {
+          return;
+        }
 
-        chunks.length = 0;
-      }
+        chunks.push(chunk);
+        currentSize += chunk.length;
 
-      console.log('[s3] waiting for all parts to complete');
-      await uploadQueue.waitForAll();
-
-      console.log(`[s3] completing multipart upload with ${uploadedParts.length} parts`);
-      console.log(`[s3] upload stats: ${JSON.stringify(uploadQueue.getStats())}`);
-      console.log(`[s3] buffer pool stats: ${JSON.stringify(bufferPool.getStats())}`);
-
-      await this.client.send(
-        new CompleteMultipartUploadCommand({
-          Bucket: this.bucket,
-          Key: remotePath,
-          UploadId: uploadID,
-          MultipartUpload: {
-            Parts: uploadedParts,
-          },
-        }),
-      );
-
-      console.log(`[s3] multipart upload completed successfully for ${filename}`);
-    } catch (error) {
-      console.error(`[s3] multipart upload failed, aborting: ${(error as Error).message}`);
-
-      uploadQueue.cancel();
-      console.log('[s3] waiting for active uploads before aborting multipart upload');
-      await uploadQueue.waitForActiveUploads();
-
-      try {
-        await this.client.send(
-          new AbortMultipartUploadCommand({
-            Bucket: this.bucket,
-            Key: remotePath,
-            UploadId: uploadID,
-          }),
+        console.log(
+          `[s3] received chunk ${(chunk.length / (1024 * 1024)).toFixed(2)}MB, ` +
+            `total buffered: ${(currentSize / (1024 * 1024)).toFixed(2)}MB`,
         );
-        console.log('[s3] multipart upload aborted');
-      } catch (abortError) {
-        console.error(`[s3] failed to abort multipart upload: ${(abortError as Error).message}`);
-      }
 
-      throw error;
-    } finally {
-      stream.off('close', handleStreamClose);
-      bufferPool.clear();
-    }
+        await processChunks();
+      });
+
+      stream.on('end', async () => {
+        console.log('[s3] stream ended, processing final chunks...');
+
+        try {
+          if (abortController.signal.aborted) {
+            throw new Error('Upload cancelled');
+          }
+
+          if (currentSize > 0) {
+            console.log(`[s3] uploading final part ${partNumber} [${bytesToString(currentSize)}]`);
+
+            const finalPart = bufferPool.acquire();
+            let offset = 0;
+
+            for (const chunk of chunks) {
+              chunk.copy(finalPart, offset);
+              offset += chunk.length;
+            }
+
+            const finalPartSlice = finalPart.subarray(0, currentSize);
+            const uploadPartResult = await this.uploadPartWithRetry(remotePath, uploadID, partNumber, finalPartSlice);
+
+            uploadedParts.push(uploadPartResult);
+            bufferPool.release(finalPart);
+
+            chunks.length = 0;
+            currentSize = 0;
+          }
+
+          console.log('[s3] waiting for all parts to complete');
+          await uploadQueue.waitForAll();
+          uploadedParts.sort((a, b) => a.PartNumber - b.PartNumber);
+
+          console.log(`[s3] completing multipart upload with ${uploadedParts.length} parts`);
+          console.log(`[s3] upload stats: ${JSON.stringify(uploadQueue.getStats())}`);
+          console.log(`[s3] buffer pool stats: ${JSON.stringify(bufferPool.getStats())}`);
+
+          await this.client.send(
+            new CompleteMultipartUploadCommand({
+              Bucket: this.bucket,
+              Key: remotePath,
+              UploadId: uploadID,
+              MultipartUpload: {
+                Parts: uploadedParts,
+              },
+            }),
+          );
+
+          console.log(`[s3] multipart upload completed successfully for ${filename}`);
+          stream.off('close', handleStreamClose);
+          bufferPool.clear();
+          resolve();
+        } catch (error) {
+          console.error(`[s3] error in final upload: ${(error as Error).message}`);
+
+          uploadQueue.cancel();
+          await uploadQueue.waitForActiveUploads();
+
+          try {
+            await this.client.send(
+              new AbortMultipartUploadCommand({
+                Bucket: this.bucket,
+                Key: remotePath,
+                UploadId: uploadID,
+              }),
+            );
+            console.log('[s3] multipart upload aborted');
+          } catch (abortError) {
+            console.error(`[s3] failed to abort multipart upload: ${(abortError as Error).message}`);
+          }
+
+          stream.off('close', handleStreamClose);
+          bufferPool.clear();
+
+          reject(error);
+        }
+      });
+
+      stream.on('error', async (error: Error) => {
+        console.error(`[s3] stream error: ${error.message}`);
+
+        uploadQueue.cancel();
+        await uploadQueue.waitForActiveUploads();
+
+        try {
+          await this.client.send(
+            new AbortMultipartUploadCommand({
+              Bucket: this.bucket,
+              Key: remotePath,
+              UploadId: uploadID,
+            }),
+          );
+        } catch (abortError) {
+          console.error(`[s3] failed to abort: ${(abortError as Error).message}`);
+        }
+
+        stream.off('close', handleStreamClose);
+        bufferPool.clear();
+
+        reject(error);
+      });
+    });
   }
 
   private async uploadPartWithRetry(
