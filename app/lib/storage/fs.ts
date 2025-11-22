@@ -19,7 +19,6 @@ import {
   TMP_FOLDER,
 } from './constants';
 import { processBatch } from './batch';
-import { handlePagination } from './pagination';
 import { createDirectory } from './folders';
 
 import { defaultConfig, isConfigValid, noConfigErr } from '@/app/lib/config';
@@ -33,10 +32,9 @@ import {
   type ServerDataInfo,
   type ResultDetails,
   ReadReportsOutput,
-  ReadReportsInput,
-  ReadResultsInput,
   ReportMetadata,
   ReportHistory,
+  ReportPath,
 } from '@/app/lib/storage';
 import { SiteWhiteLabelConfig } from '@/app/types';
 
@@ -82,7 +80,7 @@ async function getResultsCount() {
   return zipFilesCount.length;
 }
 
-export async function readResults(input?: ReadResultsInput) {
+export async function readResults() {
   await createDirectoriesIfMissing();
   const files = await fs.readdir(RESULTS_FOLDER);
 
@@ -103,61 +101,26 @@ export async function readResults(input?: ReadResultsInput) {
     },
   );
 
-  const jsonFiles = stats.sort((a, b) => b.birthtimeMs - a.birthtimeMs);
+  const results = await processBatch<
+    Stats & {
+      filePath: string;
+      size: string;
+      sizeBytes: number;
+    },
+    Result
+  >({}, stats, 10, async (entry) => {
+    const content = await fs.readFile(entry.filePath, 'utf-8');
 
-  const fileContents: Result[] = await Promise.all(
-    jsonFiles.map(async (entry) => {
-      const content = await fs.readFile(entry.filePath, 'utf-8');
-
-      return {
-        size: entry.size,
-        sizeBytes: entry.sizeBytes,
-        ...JSON.parse(content),
-      };
-    }),
-  );
-
-  let filteredResults = fileContents.filter((result) => (input?.project ? result.project === input.project : result));
-
-  // Filter by tags if provided
-  if (input?.tags && input.tags.length > 0) {
-    const notMetadataKeys = ['resultID', 'title', 'createdAt', 'size', 'sizeBytes', 'project'];
-
-    filteredResults = filteredResults.filter((result) => {
-      const resultTags = Object.entries(result)
-        .filter(([key]) => !notMetadataKeys.includes(key))
-        .map(([key, value]) => `${key}: ${value}`);
-
-      return input.tags!.some((selectedTag) => resultTags.includes(selectedTag));
-    });
-  }
-
-  // Filter by search if provided
-  if (input?.search?.trim()) {
-    const searchTerm = input.search.toLowerCase().trim();
-
-    filteredResults = filteredResults.filter((result) => {
-      // Search in title, resultID, project, and all metadata fields
-      const searchableFields = [
-        result.title,
-        result.resultID,
-        result.project,
-        ...Object.entries(result)
-          .filter(([key]) => !['resultID', 'title', 'createdAt', 'size', 'sizeBytes', 'project'].includes(key))
-          .map(([key, value]) => `${key}: ${value}`),
-      ].filter(Boolean);
-
-      return searchableFields.some((field) => field?.toLowerCase().includes(searchTerm));
-    });
-  }
-
-  const paginatedResults = handlePagination(filteredResults, input?.pagination);
+    return {
+      size: entry.size,
+      sizeBytes: entry.sizeBytes,
+      ...JSON.parse(content),
+    };
+  });
 
   return {
-    results: paginatedResults.map((result) => ({
-      ...result,
-    })),
-    total: filteredResults.length,
+    results,
+    total: results.length,
   };
 }
 
@@ -197,14 +160,13 @@ async function readOrParseReportMetadata(id: string, projectName: string): Promi
   return metadata;
 }
 
-export async function readReports(input?: ReadReportsInput): Promise<ReadReportsOutput> {
+export async function readReports(): Promise<ReadReportsOutput> {
   await createDirectoriesIfMissing();
   const entries = await fs.readdir(REPORTS_FOLDER, { withFileTypes: true, recursive: true });
 
-  const reportEntries = entries
-    .filter((entry) => !entry.isDirectory() && entry.name === 'index.html' && !(entry as any).path.endsWith('trace'))
-    .filter((entry) => (input?.ids ? input.ids.some((id) => (entry as any).path.includes(id)) : entry))
-    .filter((entry) => (input?.project ? (entry as any).path.includes(input.project) : entry));
+  const reportEntries = entries.filter(
+    (entry) => !entry.isDirectory() && entry.name === 'index.html' && !(entry as any).path.endsWith('trace'),
+  );
 
   const stats = await processBatch<Dirent, Stats & { filePath: string; createdAt: Date }>(
     {},
@@ -217,21 +179,11 @@ export async function readReports(input?: ReadReportsInput): Promise<ReadReports
     },
   );
 
-  const reportFiles = stats.sort((a, b) => b.birthtimeMs - a.birthtimeMs);
-
-  const reportsWithProject = reportFiles
-    .map((file) => {
-      const id = path.basename(file.filePath);
-      const parentDir = path.basename(path.dirname(file.filePath));
-
-      const projectName = parentDir === REPORTS_PATH ? '' : parentDir;
-
-      return Object.assign(file, { id, project: projectName });
-    })
-    .filter((report) => (input?.project ? input.project === report.project : report));
-
-  const allReports = await Promise.all(
-    reportsWithProject.map(async (file) => {
+  const reports = await processBatch<Stats & { filePath: string; createdAt: Date }, ReportHistory>(
+    {},
+    stats,
+    10,
+    async (file) => {
       const id = path.basename(file.filePath);
       const reportPath = path.dirname(file.filePath);
       const parentDir = path.basename(reportPath);
@@ -250,37 +202,11 @@ export async function readReports(input?: ReadReportsInput): Promise<ReadReports
         sizeBytes,
         reportUrl: `${serveReportRoute}/${projectName ? encodeURIComponent(projectName) : ''}/${id}/index.html`,
         ...metadata,
-      };
-    }),
+      } as ReportHistory;
+    },
   );
 
-  let filteredReports = allReports as ReportHistory[];
-
-  // Filter by search if provided
-  if (input?.search && input.search.trim()) {
-    const searchTerm = input.search.toLowerCase().trim();
-
-    filteredReports = filteredReports.filter((report) => {
-      // Search in title, reportID, project, and all metadata fields
-      const searchableFields = [
-        report.title,
-        report.reportID,
-        report.project,
-        ...Object.entries(report)
-          .filter(
-            ([key]) =>
-              !['reportID', 'title', 'createdAt', 'size', 'sizeBytes', 'project', 'reportUrl', 'stats'].includes(key),
-          )
-          .map(([key, value]) => `${key}: ${value}`),
-      ].filter(Boolean);
-
-      return searchableFields.some((field) => field?.toLowerCase().includes(searchTerm));
-    });
-  }
-
-  const paginatedReports = handlePagination(filteredReports, input?.pagination);
-
-  return { reports: paginatedReports as ReportHistory[], total: filteredReports.length };
+  return { reports: reports, total: reports.length };
 }
 
 export async function deleteResults(resultsIds: string[]) {
@@ -293,15 +219,12 @@ export async function deleteResult(resultId: string) {
   await Promise.allSettled([fs.unlink(`${resultPath}.json`), fs.unlink(`${resultPath}.zip`)]);
 }
 
-export async function deleteReports(reportsIds: string[]) {
-  const { reports } = await readReports({ ids: reportsIds });
+export async function deleteReports(reports: ReportPath[]) {
+  const paths = reports.map((report) => (report.project ? `${report.project}/${report.reportID}` : report.reportID));
 
-  const paths = reportsIds
-    .map((id) => reports.find((report) => report.reportID === id))
-    .filter(Boolean)
-    .map((report) => (report?.project ? `${report.project}/${report.reportID}` : report?.reportID));
-
-  await Promise.allSettled(paths.map((path) => deleteReport(path!)));
+  await processBatch<string, void>(undefined, paths, 10, async (path) => {
+    await deleteReport(path);
+  });
 }
 
 export async function deleteReport(reportId: string) {

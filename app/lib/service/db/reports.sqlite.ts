@@ -5,13 +5,12 @@ import { withError } from '../../withError';
 import { getDatabase } from './db';
 
 import { storage } from '@/app/lib/storage';
-import { type ReportHistory } from '@/app/lib/storage/types';
-import { env } from '@/app/config/env';
+import { type ReportHistory, type ReadReportsInput, type ReadReportsOutput } from '@/app/lib/storage/types';
 
 const initiatedReportsDb = Symbol.for('playwright.reports.db.reports');
-const instance = globalThis as typeof globalThis & { [initiatedReportsDb]?: ReportCache };
+const instance = globalThis as typeof globalThis & { [initiatedReportsDb]?: ReportDatabase };
 
-export class ReportCache {
+export class ReportDatabase {
   public initialized = false;
   private readonly db = getDatabase();
 
@@ -54,14 +53,14 @@ export class ReportCache {
     `);
   }
 
-  public static getInstance() {
-    instance[initiatedReportsDb] ??= new ReportCache();
+  public static getInstance(): ReportDatabase {
+    instance[initiatedReportsDb] ??= new ReportDatabase();
 
     return instance[initiatedReportsDb];
   }
 
   public async init() {
-    if (this.initialized || !env.USE_SERVER_CACHE) {
+    if (this.initialized) {
       return;
     }
 
@@ -112,10 +111,6 @@ export class ReportCache {
   }
 
   public onDeleted(reportIds: string[]) {
-    if (!env.USE_SERVER_CACHE) {
-      return;
-    }
-
     console.log(`[report db] deleting ${reportIds.length} reports`);
 
     const deleteMany = this.db.transaction((ids: string[]) => {
@@ -128,19 +123,11 @@ export class ReportCache {
   }
 
   public onCreated(report: ReportHistory) {
-    if (!env.USE_SERVER_CACHE) {
-      return;
-    }
-
     console.log(`[report db] adding report ${report.reportID}`);
     this.insertReport(report);
   }
 
   public onUpdated(report: ReportHistory) {
-    if (!env.USE_SERVER_CACHE) {
-      return;
-    }
-
     console.log(`[report db] updating report ${report.reportID}`);
     const { reportID, project, title, reportUrl, size, sizeBytes, stats, ...metadata } = report;
 
@@ -234,6 +221,63 @@ export class ReportCache {
     this.db.prepare('DELETE FROM reports').run();
   }
 
+  public query(input?: ReadReportsInput): ReadReportsOutput {
+    let query = 'SELECT * FROM reports';
+    const params: string[] = [];
+    const conditions: string[] = [];
+
+    if (input?.ids && input.ids.length > 0) {
+      conditions.push(`reportID IN (${input.ids.map(() => '?').join(', ')})`);
+      params.push(...input.ids);
+    }
+
+    if (input?.project) {
+      conditions.push('project = ?');
+      params.push(input.project);
+    }
+
+    if (input?.search?.trim()) {
+      const searchTerm = `%${input.search.toLowerCase().trim()}%`;
+
+      conditions.push(
+        '(LOWER(title) LIKE ? OR LOWER(reportID) LIKE ? OR LOWER(project) LIKE ? OR LOWER(metadata) LIKE ?)',
+      );
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    query += ' ORDER BY createdAt DESC';
+
+    const countQuery = query.replace('SELECT *', 'SELECT COUNT(*) as count');
+    const countResult = this.db.prepare(countQuery).get(...params) as { count: number };
+    const total = countResult.count;
+
+    if (input?.pagination) {
+      query += ' LIMIT ? OFFSET ?';
+      params.push(input.pagination.limit.toString(), input.pagination.offset.toString());
+    }
+
+    const rows = this.db.prepare(query).all(...params) as Array<{
+      reportID: string;
+      project: string;
+      title: string | null;
+      createdAt: string;
+      reportUrl: string;
+      size: string | null;
+      sizeBytes: number;
+      stats: string | null;
+      metadata: string;
+    }>;
+
+    return {
+      reports: rows.map((row) => this.rowToReport(row)),
+      total,
+    };
+  }
+
   private rowToReport(row: {
     reportID: string;
     project: string;
@@ -262,4 +306,4 @@ export class ReportCache {
   }
 }
 
-export const reportDb = ReportCache.getInstance();
+export const reportDb = ReportDatabase.getInstance();

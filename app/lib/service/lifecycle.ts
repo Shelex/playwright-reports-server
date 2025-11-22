@@ -1,7 +1,6 @@
 import { configCache } from '@/app/lib/service/cache/config';
 import { reportDb, resultDb } from '@/app/lib/service/db';
 import { cronService } from '@/app/lib/service/cron';
-import { env } from '@/app/config/env';
 import { isBuildStage } from '@/app/config/runtime';
 
 const createdLifecycle = Symbol.for('playwright.reports.lifecycle');
@@ -29,10 +28,8 @@ export class Lifecycle {
     console.log('[lifecycle] Starting application initialization');
 
     try {
-      if (env.USE_SERVER_CACHE) {
-        await Promise.all([configCache.init(), reportDb.init(), resultDb.init()]);
-        console.log('[lifecycle] Databases initialized successfully');
-      }
+      await Promise.all([configCache.init(), reportDb.init(), resultDb.init()]);
+      console.log('[lifecycle] Databases initialized successfully');
 
       if (!cronService.initialized && !isBuildStage) {
         await cronService.init();

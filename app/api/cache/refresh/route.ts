@@ -2,14 +2,14 @@ import { revalidatePath } from 'next/cache';
 
 import { withError } from '@/app/lib/withError';
 import { forceInitDatabase } from '@/app/lib/service/db';
-import { env } from '@/app/config/env';
 import { configCache } from '@/app/lib/service/cache/config';
+import { lifecycle } from '@/app/lib/service/lifecycle';
 
 export const dynamic = 'force-dynamic'; // defaults to auto
 
 export async function POST(_: Request) {
-  if (!env.USE_SERVER_CACHE) {
-    return Response.json({ error: 'USE_SERVER_CACHE is disabled' }, { status: 403 });
+  if (!lifecycle.isInitialized()) {
+    return Response.json({ error: 'service is not initialized' }, { status: 500 });
   }
 
   configCache.initialized = false;

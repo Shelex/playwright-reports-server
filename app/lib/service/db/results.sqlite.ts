@@ -5,13 +5,12 @@ import { withError } from '../../withError';
 import { getDatabase } from './db';
 
 import { storage } from '@/app/lib/storage';
-import { type Result } from '@/app/lib/storage/types';
-import { env } from '@/app/config/env';
+import { type Result, type ReadResultsInput, type ReadResultsOutput } from '@/app/lib/storage/types';
 
 const initiatedResultsDb = Symbol.for('playwright.reports.db.results');
-const instance = globalThis as typeof globalThis & { [initiatedResultsDb]?: ResultCache };
+const instance = globalThis as typeof globalThis & { [initiatedResultsDb]?: ResultDatabase };
 
-export class ResultCache {
+export class ResultDatabase {
   public initialized = false;
   private readonly db = getDatabase();
 
@@ -52,14 +51,14 @@ export class ResultCache {
     `);
   }
 
-  public static getInstance() {
-    instance[initiatedResultsDb] ??= new ResultCache();
+  public static getInstance(): ResultDatabase {
+    instance[initiatedResultsDb] ??= new ResultDatabase();
 
     return instance[initiatedResultsDb];
   }
 
   public async init() {
-    if (this.initialized || !env.USE_SERVER_CACHE) {
+    if (this.initialized) {
       return;
     }
 
@@ -108,10 +107,6 @@ export class ResultCache {
   }
 
   public onDeleted(resultIds: string[]) {
-    if (!env.USE_SERVER_CACHE) {
-      return;
-    }
-
     console.log(`[result db] deleting ${resultIds.length} results`);
 
     const deleteMany = this.db.transaction((ids: string[]) => {
@@ -124,19 +119,11 @@ export class ResultCache {
   }
 
   public onCreated(result: Result) {
-    if (!env.USE_SERVER_CACHE) {
-      return;
-    }
-
     console.log(`[result db] adding result ${result.resultID}`);
     this.insertResult(result);
   }
 
   public onUpdated(result: Result) {
-    if (!env.USE_SERVER_CACHE) {
-      return;
-    }
-
     console.log(`[result db] updating result ${result.resultID}`);
     const { resultID, project, title, size, sizeBytes, ...metadata } = result;
 
@@ -213,6 +200,72 @@ export class ResultCache {
     this.db.prepare('DELETE FROM results').run();
   }
 
+  public query(input?: ReadResultsInput): ReadResultsOutput {
+    let query = 'SELECT * FROM results';
+    const params: string[] = [];
+    const conditions: string[] = [];
+
+    if (input?.project) {
+      conditions.push('project = ?');
+      params.push(input.project);
+    }
+
+    if (input?.testRun) {
+      conditions.push('metadata LIKE ?');
+      params.push(`%"testRun":"${input.testRun}"%`);
+    }
+
+    if (input?.tags && input.tags.length > 0) {
+      console.log('Filtering by tags:', input.tags);
+
+      for (const tag of input.tags) {
+        const [key, value] = tag.split(':').map((part) => part.trim());
+
+        conditions.push('metadata LIKE ?');
+        params.push(`%"${key}":"${value}"%`);
+      }
+    }
+
+    if (input?.search?.trim()) {
+      const searchTerm = `%${input.search.toLowerCase().trim()}%`;
+
+      conditions.push(
+        '(LOWER(title) LIKE ? OR LOWER(resultID) LIKE ? OR LOWER(project) LIKE ? OR LOWER(metadata) LIKE ?)',
+      );
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+    }
+
+    if (conditions.length > 0) {
+      query += ` WHERE ${conditions.join(' AND ')}`;
+    }
+
+    query += ' ORDER BY createdAt DESC';
+
+    const countQuery = query.replace('SELECT *', 'SELECT COUNT(*) as count');
+    const countResult = this.db.prepare(countQuery).get(...params) as { count: number };
+    const total = countResult.count;
+
+    if (input?.pagination) {
+      query += ' LIMIT ? OFFSET ?';
+      params.push(input.pagination.limit.toString(), input.pagination.offset.toString());
+    }
+
+    const rows = this.db.prepare(query).all(...params) as Array<{
+      resultID: string;
+      project: string;
+      title: string | null;
+      createdAt: string;
+      size: string | null;
+      sizeBytes: number;
+      metadata: string;
+    }>;
+
+    return {
+      results: rows.map((row) => this.rowToResult(row)),
+      total,
+    };
+  }
+
   private rowToResult(row: {
     resultID: string;
     project: string;
@@ -236,4 +289,4 @@ export class ResultCache {
   }
 }
 
-export const resultDb = ResultCache.getInstance();
+export const resultDb = ResultDatabase.getInstance();

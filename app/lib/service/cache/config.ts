@@ -1,5 +1,4 @@
 import { storage } from '@/app/lib/storage';
-import { env } from '@/app/config/env';
 import { SiteWhiteLabelConfig } from '@/app/types';
 import { defaultConfig } from '@/app/lib/config';
 
@@ -19,7 +18,7 @@ export class ConfigCache {
   }
 
   public async init(): Promise<void> {
-    if (this.initialized || !env.USE_SERVER_CACHE) {
+    if (this.initialized) {
       return;
     }
 
@@ -42,10 +41,6 @@ export class ConfigCache {
   }
 
   public onChanged(config: SiteWhiteLabelConfig) {
-    if (!env.USE_SERVER_CACHE) {
-      return;
-    }
-
     this.config = config;
   }
 }

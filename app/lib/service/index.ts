@@ -12,20 +12,17 @@ import {
   type ReadReportsInput,
   ReadResultsInput,
   ReadResultsOutput,
-  ReportHistory,
   ReportMetadata,
+  ReportPath,
   ResultDetails,
   ServerDataInfo,
-  isReportHistory,
   storage,
 } from '@/app/lib/storage';
-import { handlePagination } from '@/app/lib/storage/pagination';
 import { SiteWhiteLabelConfig } from '@/app/types';
 import { defaultConfig } from '@/app/lib/config';
 import { env } from '@/app/config/env';
 import { type S3 } from '@/app/lib/storage/s3';
 import { isValidPlaywrightVersion } from '@/app/lib/pw';
-import { getTimestamp } from '@/app/lib/time';
 
 const runningService = Symbol.for('playwright.reports.service');
 const instance = globalThis as typeof globalThis & { [runningService]?: Service };
@@ -38,83 +35,18 @@ class Service {
     return instance[runningService];
   }
 
-  private shouldUseServerCache(): boolean {
-    return env.USE_SERVER_CACHE && lifecycle.isInitialized();
-  }
-
   public async getReports(input?: ReadReportsInput) {
     console.log(`[service] getReports`);
-    const cached = this.shouldUseServerCache() && reportDb.initialized ? reportDb.getAll() : [];
 
-    const shouldUseCache = !input?.ids;
-
-    if (cached.length && shouldUseCache) {
-      console.log(`[service] using cached reports`);
-      const noFilters = !input?.project && !input?.ids;
-      const shouldFilterByProject = (report: ReportHistory) => input?.project && report.project === input.project;
-      const shouldFilterByID = (report: ReportHistory) => input?.ids?.includes(report.reportID);
-
-      let reports = cached.filter((report) => noFilters || shouldFilterByProject(report) || shouldFilterByID(report));
-
-      // Filter by search if provided
-      if (input?.search?.trim()) {
-        const searchTerm = input.search.toLowerCase().trim();
-
-        reports = reports.filter((report) => {
-          // Search in title, reportID, project, and all metadata fields
-          const searchableFields = [
-            report.title,
-            report.reportID,
-            report.project,
-            ...Object.entries(report)
-              .filter(
-                ([key]) =>
-                  !['reportID', 'title', 'createdAt', 'size', 'sizeBytes', 'project', 'reportUrl', 'stats'].includes(
-                    key,
-                  ),
-              )
-              .map(([key, value]) => `${key}: ${value}`),
-          ].filter(Boolean);
-
-          return searchableFields.some((field) => field?.toLowerCase().includes(searchTerm));
-        });
-      }
-
-      reports.sort((a, b) => getTimestamp(b.createdAt) - getTimestamp(a.createdAt));
-      const currentReports = handlePagination<ReportHistory>(reports, input?.pagination);
-
-      return {
-        reports: currentReports,
-        total: reports.length,
-      };
-    }
-
-    console.log(`[service] using external reports`);
-
-    return await storage.readReports(input);
+    return reportDb.query(input);
   }
 
-  public async getReport(id: string): Promise<ReportHistory> {
+  public async getReport(id: string) {
     console.log(`[service] getReport ${id}`);
-    const cached = this.shouldUseServerCache() && reportDb.initialized ? reportDb.getByID(id) : undefined;
 
-    if (isReportHistory(cached)) {
-      console.log(`[service] using cached report`);
+    const report = reportDb.getByID(id);
 
-      return cached;
-    }
-
-    console.log(`[service] fetching report`);
-
-    const { reports } = await this.getReports({ ids: [id] });
-
-    const report = reports.find((report) => report.reportID === id);
-
-    if (!report) {
-      throw new Error(`report with id ${id} not found`);
-    }
-
-    return report;
+    return report!;
   }
 
   private async findLatestPlaywrightVersionFromResults(resultIds: string[]) {
@@ -185,7 +117,15 @@ class Service {
   }
 
   public async deleteReports(reportIDs: string[]) {
-    const { error } = await withError(storage.deleteReports(reportIDs));
+    const entries: ReportPath[] = [];
+
+    for (const id of reportIDs) {
+      const report = await this.getReport(id);
+
+      entries.push({ reportID: id, project: report.project });
+    }
+
+    const { error } = await withError(storage.deleteReports(entries));
 
     if (error) {
       throw error;
@@ -203,60 +143,8 @@ class Service {
 
   public async getResults(input?: ReadResultsInput): Promise<ReadResultsOutput> {
     console.log(`[results service] getResults`);
-    const cached = this.shouldUseServerCache() && resultDb.initialized ? resultDb.getAll() : [];
 
-    if (!cached.length) {
-      return await storage.readResults(input);
-    }
-
-    cached.sort((a, b) => getTimestamp(b.createdAt) - getTimestamp(a.createdAt));
-
-    let filtered = input?.project
-      ? cached.filter((file) => (input?.project ? file.project === input.project : file))
-      : cached;
-
-    if (input?.testRun) {
-      filtered = filtered.filter((file) => file.testRun === input.testRun);
-    }
-
-    // Filter by tags if provided
-    if (input?.tags && input.tags.length > 0) {
-      const notMetadataKeys = ['resultID', 'title', 'createdAt', 'size', 'sizeBytes', 'project'];
-
-      filtered = filtered.filter((result) => {
-        const resultTags = Object.entries(result)
-          .filter(([key]) => !notMetadataKeys.includes(key))
-          .map(([key, value]) => `${key}: ${value}`);
-
-        return input.tags!.some((selectedTag) => resultTags.includes(selectedTag));
-      });
-    }
-
-    // Filter by search if provided
-    if (input?.search?.trim()) {
-      const searchTerm = input.search.toLowerCase().trim();
-
-      filtered = filtered.filter((result) => {
-        // Search in title, resultID, project, and all metadata fields
-        const searchableFields = [
-          result.title,
-          result.resultID,
-          result.project,
-          ...Object.entries(result)
-            .filter(([key]) => !['resultID', 'title', 'createdAt', 'size', 'sizeBytes', 'project'].includes(key))
-            .map(([key, value]) => `${key}: ${value}`),
-        ].filter(Boolean);
-
-        return searchableFields.some((field) => field?.toLowerCase().includes(searchTerm));
-      });
-    }
-
-    const results = !input?.pagination ? filtered : handlePagination(filtered, input?.pagination);
-
-    return {
-      results,
-      total: filtered.length,
-    };
+    return resultDb.query(input);
   }
 
   public async deleteResults(resultIDs: string[]): Promise<void> {
@@ -358,7 +246,7 @@ class Service {
 
   public async getServerInfo(): Promise<ServerDataInfo> {
     console.log(`[service] getServerInfo`);
-    const canCalculateFromCache = this.shouldUseServerCache() && reportDb.initialized && resultDb.initialized;
+    const canCalculateFromCache = lifecycle.isInitialized() && reportDb.initialized && resultDb.initialized;
 
     if (!canCalculateFromCache) {
       return await storage.getServerDataInfo();
@@ -384,12 +272,14 @@ class Service {
   }
 
   public async getConfig() {
-    const cached = this.shouldUseServerCache() && configCache.initialized ? configCache.config : undefined;
+    if (lifecycle.isInitialized() && configCache.initialized) {
+      const cached = configCache.config;
 
-    if (cached) {
-      console.log(`[service] using cached config`);
+      if (cached) {
+        console.log(`[service] using cached config`);
 
-      return cached;
+        return cached;
+      }
     }
 
     const { result, error } = await storage.readConfigFile();

@@ -8,10 +8,10 @@ import { type ReportInfo, type ReportTest } from '@/app/lib/parser/types';
 export interface Storage {
   getServerDataInfo: () => Promise<ServerDataInfo>;
   readFile: (targetPath: string, contentType: string | null) => Promise<string | Buffer>;
-  readResults: (input?: ReadResultsInput) => Promise<ReadResultsOutput>;
-  readReports: (input?: ReadReportsInput) => Promise<ReadReportsOutput>;
+  readResults: () => Promise<ReadResultsOutput>;
+  readReports: () => Promise<ReadReportsOutput>;
   deleteResults: (resultIDs: string[]) => Promise<void>;
-  deleteReports: (reportIDs: string[]) => Promise<void>;
+  deleteReports: (reports: ReportPath[]) => Promise<void>;
   saveResult: (filename: string, stream: PassThrough) => Promise<void>;
   saveResultDetails: (resultID: string, resultDetails: ResultDetails, size: number) => Promise<Result>;
   generateReport: (resultsIds: string[], metadata?: ReportMetadata) => Promise<UUID>;
@@ -19,6 +19,11 @@ export interface Storage {
   saveConfigFile: (
     config: Partial<SiteWhiteLabelConfig>,
   ) => Promise<{ result: SiteWhiteLabelConfig; error: Error | null }>;
+}
+
+export interface ReportPath {
+  reportID: string;
+  project: string;
 }
 
 export interface ReadResultsInput {

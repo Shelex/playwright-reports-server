@@ -28,13 +28,12 @@ import {
   ResultDetails,
   ServerDataInfo,
   isReportHistory,
-  ReadReportsInput,
   ReadReportsOutput,
-  ReadResultsInput,
   ReadResultsOutput,
   ReportHistory,
   ReportMetadata,
   Storage,
+  ReportPath,
 } from './types';
 import { bytesToString } from './format';
 import {
@@ -48,7 +47,6 @@ import {
   DATA_PATH,
   DATA_FOLDER,
 } from './constants';
-import { handlePagination } from './pagination';
 import { getFileReportID } from './file';
 
 import { parse } from '@/app/lib/parser';
@@ -58,7 +56,6 @@ import { withError } from '@/app/lib/withError';
 import { env } from '@/app/config/env';
 import { SiteWhiteLabelConfig } from '@/app/types';
 import { defaultConfig, isConfigValid } from '@/app/lib/config';
-import { getTimestamp } from '@/app/lib/time';
 
 const createClient = () => {
   const endPoint = env.S3_ENDPOINT;
@@ -292,7 +289,7 @@ export class S3 implements Storage {
     return result!;
   }
 
-  async readResults(input?: ReadResultsInput): Promise<ReadResultsOutput> {
+  async readResults(): Promise<ReadResultsOutput> {
     await this.ensureBucketExist();
 
     console.log('[s3] reading results');
@@ -330,7 +327,7 @@ export class S3 implements Storage {
       continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
     } while (continuationToken);
 
-    console.log(`[s3] found ${(jsonFiles ?? [])?.length} json files`);
+    console.log(`[s3] found ${jsonFiles.length} json files`);
 
     if (!jsonFiles) {
       return {
@@ -339,21 +336,7 @@ export class S3 implements Storage {
       };
     }
 
-    const getTimestamp = (date?: Date | string) => {
-      if (!date) return 0;
-      if (typeof date === 'string') return new Date(date).getTime();
-
-      return date.getTime();
-    };
-
-    jsonFiles.sort((a, b) => getTimestamp(b.LastModified) - getTimestamp(a.LastModified));
-
-    // check if we can apply pagination early
-    const noFilters = !input?.project && !input?.pagination;
-
-    const resultFiles = noFilters ? handlePagination(jsonFiles, input?.pagination) : jsonFiles;
-
-    const results = await processBatch<_Object, Result>(this, resultFiles, this.batchSize, async (file) => {
+    const results = await processBatch<_Object, Result>(this, jsonFiles, this.batchSize, async (file) => {
       console.log(`[s3.batch] reading result: ${JSON.stringify(file)}`);
       const response = await this.client.send(
         new GetObjectCommand({
@@ -374,44 +357,8 @@ export class S3 implements Storage {
       return parsed;
     });
 
-    let filteredResults = results.filter((file) => (input?.project ? file.project === input.project : file));
-
-    // Filter by tags if provided
-    if (input?.tags && input.tags.length > 0) {
-      const notMetadataKeys = new Set(['resultID', 'title', 'createdAt', 'size', 'sizeBytes', 'project']);
-
-      filteredResults = filteredResults.filter((result) => {
-        const resultTags = Object.entries(result)
-          .filter(([key]) => !notMetadataKeys.has(key))
-          .map(([key, value]) => `${key}: ${value}`);
-
-        return input.tags!.some((selectedTag) => resultTags.includes(selectedTag));
-      });
-    }
-
-    // Filter by search if provided
-    if (input?.search?.trim()) {
-      const searchTerm = input.search.toLowerCase().trim();
-
-      filteredResults = filteredResults.filter((result) => {
-        // Search in title, resultID, project, and all metadata fields
-        const searchableFields = [
-          result.title,
-          result.resultID,
-          result.project,
-          ...Object.entries(result)
-            .filter(([key]) => !['resultID', 'title', 'createdAt', 'size', 'sizeBytes', 'project'].includes(key))
-            .map(([key, value]) => `${key}: ${value}`),
-        ].filter(Boolean);
-
-        return searchableFields.some((field) => field?.toLowerCase().includes(searchTerm));
-      });
-    }
-
-    const currentFiles = noFilters ? results : handlePagination(filteredResults, input?.pagination);
-
     return {
-      results: currentFiles.map((result) => {
+      results: results.map((result) => {
         const sizeBytes = resultSizes.get(result.resultID) ?? 0;
 
         return {
@@ -420,11 +367,11 @@ export class S3 implements Storage {
           size: result.size ?? bytesToString(sizeBytes),
         };
       }) as Result[],
-      total: noFilters ? jsonFiles.length : filteredResults.length,
+      total: results.length,
     };
   }
 
-  async readReports(input?: ReadReportsInput): Promise<ReadReportsOutput> {
+  async readReports(): Promise<ReadReportsOutput> {
     await this.ensureBucketExist();
 
     console.log(`[s3] reading reports from external storage`);
@@ -464,12 +411,6 @@ export class S3 implements Storage {
 
         const projectName = parentDir === REPORTS_PATH ? '' : parentDir;
 
-        const noFilters = !input?.project && !input?.ids;
-
-        const shouldFilterByProject = input?.project && projectName === input.project;
-
-        const shouldFilterByID = input?.ids?.includes(id);
-
         const report = {
           reportID: id,
           project: projectName,
@@ -479,55 +420,16 @@ export class S3 implements Storage {
           sizeBytes: 0,
         };
 
-        if (noFilters || shouldFilterByProject || shouldFilterByID) {
-          reports.push(report);
-        }
+        reports.push(report);
       }
 
       continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
     } while (continuationToken);
 
-    const getTimestamp = (date?: Date | string) => {
-      if (!date) return 0;
-      if (typeof date === 'string') return new Date(date).getTime();
-
-      return date.getTime();
-    };
-
-    reports.sort((a, b) => getTimestamp(b.createdAt) - getTimestamp(a.createdAt));
-
-    const currentReports = handlePagination<Report>(reports, input?.pagination);
-
-    const withMetadata = await this.getReportsMetadata(currentReports as ReportHistory[]);
-
-    let filteredReports = withMetadata;
-
-    // Filter by search if provided
-    if (input?.search && input.search.trim()) {
-      const searchTerm = input.search.toLowerCase().trim();
-
-      filteredReports = filteredReports.filter((report) => {
-        // Search in title, reportID, project, and all metadata fields
-        const searchableFields = [
-          report.title,
-          report.reportID,
-          report.project,
-          ...Object.entries(report)
-            .filter(
-              ([key]) =>
-                !['reportID', 'title', 'createdAt', 'size', 'sizeBytes', 'project', 'reportUrl', 'stats'].includes(key),
-            )
-            .map(([key, value]) => `${key}: ${value}`),
-        ].filter(Boolean);
-
-        return searchableFields.some((field) => field?.toLowerCase().includes(searchTerm));
-      });
-    }
-
-    const finalReports = handlePagination(filteredReports, input?.pagination);
+    const withMetadata = await this.getReportsMetadata(reports as ReportHistory[]);
 
     return {
-      reports: finalReports.map((report) => {
+      reports: withMetadata.map((report) => {
         const sizeBytes = reportSizes.get(report.reportID) ?? 0;
 
         return {
@@ -536,7 +438,7 @@ export class S3 implements Storage {
           size: bytesToString(sizeBytes),
         };
       }),
-      total: filteredReports.length,
+      total: withMetadata.length,
     };
   }
 
@@ -645,8 +547,9 @@ export class S3 implements Storage {
     return files;
   }
 
-  async deleteReports(reportIDs: string[]): Promise<void> {
-    const objects = await this.getReportObjects(reportIDs);
+  async deleteReports(reports: ReportPath[]): Promise<void> {
+    const ids = reports.map((r) => r.reportID);
+    const objects = await this.getReportObjects(ids);
 
     await withError(this.clear(...objects));
   }
@@ -722,7 +625,9 @@ export class S3 implements Storage {
           console.log(
             `[s3] uploading part ${partNumber} (${(partData.length / (1024 * 1024)).toFixed(2)}MB) for ${filename}`,
           );
-          console.log(`[s3] buffer state: ${chunks.length} chunks, ${(currentSize / (1024 * 1024)).toFixed(2)}MB remaining`);
+          console.log(
+            `[s3] buffer state: ${chunks.length} chunks, ${(currentSize / (1024 * 1024)).toFixed(2)}MB remaining`,
+          );
 
           stream.pause();
 
