@@ -127,9 +127,9 @@ export function closeDatabase(): void {
 }
 
 export function getDatabaseStats(): {
-  resultsCount: number;
-  reportsCount: number;
-  dbSizeOnDisk: string;
+  results: number;
+  reports: number;
+  sizeOnDisk: string;
   estimatedRAM: string;
 } {
   const db = getDatabase();
@@ -147,10 +147,10 @@ export function getDatabaseStats(): {
   const cacheSizeBytes = Math.abs(stats.cacheSize) * (stats.cacheSize < 0 ? 1024 : stats.pageSize);
 
   return {
-    resultsCount: resultsCount.count,
-    reportsCount: reportsCount.count,
-    dbSizeOnDisk: `${(dbSizeBytes / 1024 / 1024).toFixed(2)} MB`,
-    estimatedRAM: `${(cacheSizeBytes / 1024 / 1024).toFixed(2)} MB`,
+    results: resultsCount.count,
+    reports: reportsCount.count,
+    sizeOnDisk: `${(dbSizeBytes / 1024 / 1024).toFixed(2)} MB`,
+    estimatedRAM: `~${(cacheSizeBytes / 1024 / 1024).toFixed(2)} MB`,
   };
 }
 

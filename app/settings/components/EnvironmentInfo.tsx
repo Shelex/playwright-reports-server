@@ -2,7 +2,7 @@
 
 import { Card, CardBody, CardHeader, Skeleton } from '@heroui/react';
 
-import ServerCache from './ServerCache';
+import DatabaseInfo from './DatabaseInfo';
 
 import { useAuthConfig } from '@/app/hooks/useAuthConfig';
 
@@ -25,12 +25,8 @@ export default function EnvironmentInfo() {
             )}
           </div>
           <div>
-            <span className="block text-sm font-medium mb-1">Server Cache</span>
-            {isLoading ? (
-              <Skeleton className="h-5 w-20 rounded-lg" />
-            ) : (
-              <ServerCache isEnabled={envInfo?.serverCache} />
-            )}
+            <span className="block text-sm font-medium mb-1">Database</span>
+            {isLoading ? <Skeleton className="h-5 w-20 rounded-lg" /> : <DatabaseInfo stats={envInfo?.database} />}
           </div>
           <div>
             <span className="block text-sm font-medium mb-1">Data Storage</span>

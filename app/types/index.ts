@@ -22,7 +22,7 @@ export interface SiteWhiteLabelConfig {
   faviconPath: string;
   reporterPaths?: string[];
   authRequired?: boolean;
-  serverCache?: boolean;
+  database?: DatabaseStats;
   dataStorage?: string;
   s3Endpoint?: string;
   s3Bucket?: string;
@@ -35,9 +35,16 @@ export interface SiteWhiteLabelConfig {
   jira?: JiraConfig;
 }
 
+export interface DatabaseStats {
+  sizeOnDisk: string;
+  estimatedRAM: string;
+  reports: number;
+  results: number;
+}
+
 export interface EnvInfo {
   authRequired: boolean;
-  serverCache: boolean | undefined;
+  database: DatabaseStats;
   dataStorage: string | undefined;
   s3Endpoint: string | undefined;
   s3Bucket: string | undefined;

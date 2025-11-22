@@ -9,6 +9,7 @@ import { service } from '@/app/lib/service';
 import { JiraService } from '@/app/lib/service/jira';
 import { env } from '@/app/config/env';
 import { cronService } from '@/app/lib/service/cron';
+import { getDatabaseStats } from '@/app/lib/service/db';
 
 export const dynamic = 'force-dynamic'; // defaults to auto
 
@@ -177,7 +178,7 @@ export async function GET() {
   // Add environment info to config response
   const envInfo = {
     authRequired: !!env.API_TOKEN,
-    serverCache: env.USE_SERVER_CACHE,
+    database: getDatabaseStats(),
     dataStorage: env.DATA_STORAGE,
     s3Endpoint: env.S3_ENDPOINT,
     s3Bucket: env.S3_BUCKET,
