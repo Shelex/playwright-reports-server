@@ -48,6 +48,8 @@ import {
   DATA_FOLDER,
 } from './constants';
 import { getFileReportID } from './file';
+import { BufferPool } from './buffer-pool';
+import { MultipartUploadQueue } from './multipart-upload-queue';
 
 import { parse } from '@/app/lib/parser';
 import { serveReportRoute } from '@/app/lib/constants';
@@ -588,20 +590,43 @@ export class S3 implements Storage {
       throw new Error('[s3] failed to initiate multipart upload: no UploadId received');
     }
 
+    const uploadQueue = new MultipartUploadQueue(env.S3_CONCURRENT_PARTS || 3);
+    const abortController = new AbortController();
+
+    const handleStreamClose = () => {
+      abortController.abort();
+      uploadQueue.cancel();
+    };
+
+    stream.once('close', handleStreamClose);
+
+    const bufferPool = new BufferPool({
+      bufferSize: chunkSize,
+      maxPoolSize: 5,
+    });
+
     const uploadedParts: { PartNumber: number; ETag: string }[] = [];
     let partNumber = 1;
     const chunks: Buffer[] = [];
     let currentSize = 0;
+    const MAX_BUFFER_SIZE = 200 * 1024 * 1024; // 200MB safety limit
 
     try {
       for await (const chunk of stream) {
+        if (abortController.signal.aborted) {
+          throw new Error('Upload cancelled by client');
+        }
+
         console.log(`[s3] received chunk of size ${(chunk.length / (1024 * 1024)).toFixed(2)}MB for ${filename}`);
 
         chunks.push(chunk);
         currentSize += chunk.length;
 
         while (currentSize >= chunkSize) {
-          const partData = Buffer.allocUnsafe(chunkSize);
+          if (abortController.signal.aborted) {
+            throw new Error('Upload cancelled by client');
+          }
+          const partData = bufferPool.acquire();
           let copied = 0;
 
           while (copied < chunkSize && chunks.length > 0) {
@@ -622,48 +647,54 @@ export class S3 implements Storage {
 
           currentSize -= chunkSize;
 
+          const partSlice = partData.subarray(0, chunkSize);
+          const currentPartNumber = partNumber++;
+
           console.log(
-            `[s3] uploading part ${partNumber} (${(partData.length / (1024 * 1024)).toFixed(2)}MB) for ${filename}`,
-          );
-          console.log(
-            `[s3] buffer state: ${chunks.length} chunks, ${(currentSize / (1024 * 1024)).toFixed(2)}MB remaining`,
+            `[s3] queuing part ${currentPartNumber} (${(chunkSize / (1024 * 1024)).toFixed(2)}MB) ` +
+              `[queue: ${uploadQueue.getStats().queued}, active: ${uploadQueue.getStats().active}]`,
           );
 
-          stream.pause();
+          uploadQueue
+            .add(async () => {
+              const uploadPartResult = await this.uploadPartWithRetry(
+                remotePath,
+                uploadID,
+                currentPartNumber,
+                partSlice,
+              );
 
-          const uploadPartResult = await this.client.send(
-            new UploadPartCommand({
-              Bucket: this.bucket,
-              Key: remotePath,
-              UploadId: uploadID,
-              PartNumber: partNumber,
-              Body: partData,
-            }),
-          );
+              return uploadPartResult;
+            })
+            .then((result) => {
+              uploadedParts.push(result);
+              bufferPool.release(partData);
+              console.log(`[s3] part ${currentPartNumber} completed`);
+            })
+            .catch((error) => {
+              bufferPool.release(partData);
+              throw error;
+            });
 
-          // explicitly clear the part data to help GC
-          partData.fill(0);
-
-          console.log(`[s3] uploaded part ${partNumber}, resume reading`);
-          stream.resume();
-
-          if (!uploadPartResult.ETag) {
-            throw new Error(`[s3] failed to upload part ${partNumber}: no ETag received`);
+          // If buffer is getting too large, pause and wait
+          if (currentSize > MAX_BUFFER_SIZE) {
+            console.log('[s3] buffer size exceeded limit, pausing stream');
+            stream.pause();
+            await uploadQueue.waitForAll();
+            stream.resume();
+            console.log('[s3] stream resumed');
           }
-
-          uploadedParts.push({
-            PartNumber: partNumber,
-            ETag: uploadPartResult.ETag,
-          });
-
-          partNumber++;
         }
+      }
+
+      if (abortController.signal.aborted) {
+        throw new Error('Upload cancelled by client');
       }
 
       if (currentSize > 0) {
         console.log(`[s3] uploading final part ${partNumber} [${bytesToString(currentSize)}] for ${filename}`);
 
-        const finalPart = Buffer.allocUnsafe(currentSize);
+        const finalPart = bufferPool.acquire();
         let offset = 0;
 
         for (const chunk of chunks) {
@@ -671,31 +702,20 @@ export class S3 implements Storage {
           offset += chunk.length;
         }
 
-        const uploadPartResult = await this.client.send(
-          new UploadPartCommand({
-            Bucket: this.bucket,
-            Key: remotePath,
-            UploadId: uploadID,
-            PartNumber: partNumber,
-            Body: finalPart,
-          }),
-        );
+        const uploadPartResult = await this.uploadPartWithRetry(remotePath, uploadID, partNumber, finalPart);
 
-        // explicitly clear buffer references
+        uploadedParts.push(uploadPartResult);
+        bufferPool.release(finalPart);
+
         chunks.length = 0;
-        finalPart.fill(0);
-
-        if (!uploadPartResult.ETag) {
-          throw new Error(`[s3] failed to upload final part ${partNumber}: no ETag received`);
-        }
-
-        uploadedParts.push({
-          PartNumber: partNumber,
-          ETag: uploadPartResult.ETag,
-        });
       }
 
-      console.log(`[s3] completing multipart upload for ${filename} with ${uploadedParts.length} parts`);
+      console.log('[s3] waiting for all parts to complete');
+      await uploadQueue.waitForAll();
+
+      console.log(`[s3] completing multipart upload with ${uploadedParts.length} parts`);
+      console.log(`[s3] upload stats: ${JSON.stringify(uploadQueue.getStats())}`);
+      console.log(`[s3] buffer pool stats: ${JSON.stringify(bufferPool.getStats())}`);
 
       await this.client.send(
         new CompleteMultipartUploadCommand({
@@ -712,16 +732,75 @@ export class S3 implements Storage {
     } catch (error) {
       console.error(`[s3] multipart upload failed, aborting: ${(error as Error).message}`);
 
-      await this.client.send(
-        new AbortMultipartUploadCommand({
-          Bucket: this.bucket,
-          Key: remotePath,
-          UploadId: uploadID,
-        }),
-      );
+      uploadQueue.cancel();
+      console.log('[s3] waiting for active uploads before aborting multipart upload');
+      await uploadQueue.waitForActiveUploads();
+
+      try {
+        await this.client.send(
+          new AbortMultipartUploadCommand({
+            Bucket: this.bucket,
+            Key: remotePath,
+            UploadId: uploadID,
+          }),
+        );
+        console.log('[s3] multipart upload aborted');
+      } catch (abortError) {
+        console.error(`[s3] failed to abort multipart upload: ${(abortError as Error).message}`);
+      }
 
       throw error;
+    } finally {
+      stream.off('close', handleStreamClose);
+      bufferPool.clear();
     }
+  }
+
+  private async uploadPartWithRetry(
+    remotePath: string,
+    uploadID: string,
+    partNumber: number,
+    partData: Buffer,
+    maxRetries = 3,
+  ): Promise<{ PartNumber: number; ETag: string }> {
+    let attempt = 0;
+
+    while (attempt < maxRetries) {
+      try {
+        const result = await this.client.send(
+          new UploadPartCommand({
+            Bucket: this.bucket,
+            Key: remotePath,
+            UploadId: uploadID,
+            PartNumber: partNumber,
+            Body: partData,
+          }),
+        );
+
+        if (!result.ETag) {
+          throw new Error('No ETag received');
+        }
+
+        return {
+          PartNumber: partNumber,
+          ETag: result.ETag,
+        };
+      } catch (error) {
+        attempt++;
+
+        if (attempt >= maxRetries) {
+          throw error;
+        }
+
+        // Exponential backoff: 1s, 2s, 4s
+        const delay = Math.pow(2, attempt - 1) * 1000;
+
+        console.log(`[s3] part ${partNumber} failed, retry ${attempt}/${maxRetries} in ${delay}ms`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+
+    throw new Error(`Upload part ${partNumber} failed after ${maxRetries} retries`);
   }
 
   async saveResultDetails(resultID: string, resultDetails: ResultDetails, size: number): Promise<Result> {

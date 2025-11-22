@@ -52,7 +52,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const contentLength = (req.query['fileContentLength'] as string) ?? '';
 
-  if (contentLength || parseInt(contentLength, 10)) {
+  if (contentLength || Number.parseInt(contentLength, 10)) {
     console.log(
       `[upload] fileContentLength query parameter is provided for result ${resultID}, using presigned URL flow`,
     );
