@@ -129,7 +129,6 @@ export function closeDatabase(): void {
 export function getDatabaseStats(): {
   resultsCount: number;
   reportsCount: number;
-  configExists: boolean;
   dbSizeOnDisk: string;
   estimatedRAM: string;
 } {
@@ -137,7 +136,6 @@ export function getDatabaseStats(): {
 
   const resultsCount = db.prepare('SELECT COUNT(*) as count FROM results').get() as { count: number };
   const reportsCount = db.prepare('SELECT COUNT(*) as count FROM reports').get() as { count: number };
-  const configExists = db.prepare('SELECT COUNT(*) as count FROM config').get() as { count: number };
 
   const stats = {
     pageCount: db.pragma('page_count', { simple: true }) as number,
@@ -151,7 +149,6 @@ export function getDatabaseStats(): {
   return {
     resultsCount: resultsCount.count,
     reportsCount: reportsCount.count,
-    configExists: configExists.count > 0,
     dbSizeOnDisk: `${(dbSizeBytes / 1024 / 1024).toFixed(2)} MB`,
     estimatedRAM: `${(cacheSizeBytes / 1024 / 1024).toFixed(2)} MB`,
   };
@@ -165,7 +162,6 @@ export function clearAll(): void {
   db.exec(`
     DELETE FROM results;
     DELETE FROM reports;
-    DELETE FROM config;
     DELETE FROM cache_metadata;
   `);
 
