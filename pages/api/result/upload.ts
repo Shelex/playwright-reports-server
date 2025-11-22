@@ -11,35 +11,6 @@ import { withError } from '@/app/lib/withError';
 
 export const config = { api: { bodyParser: false } };
 
-async function waitForBufferDrain(stream: PassThrough, maxWaitMs = 30 * 1000): Promise<void> {
-  const startTime = Date.now();
-
-  return new Promise((resolve, reject) => {
-    const checkBuffer = () => {
-      const buffered = stream.readableLength || 0;
-
-      if (buffered === 0) {
-        console.log('[upload] buffer is empty');
-        resolve();
-
-        return;
-      }
-
-      if (Date.now() - startTime > maxWaitMs) {
-        reject(new Error(`Timeout waiting for buffer to drain (${buffered} bytes remaining)`));
-
-        return;
-      }
-
-      console.log(`[upload] waiting for buffer to drain (${buffered} bytes remaining)`);
-
-      setTimeout(checkBuffer, 250);
-    };
-
-    checkBuffer();
-  });
-}
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'PUT') {
     res.setHeader('Allow', 'PUT');
@@ -52,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const contentLength = (req.query['fileContentLength'] as string) ?? '';
 
-  if (contentLength || Number.parseInt(contentLength, 10)) {
+  if (contentLength && Number.parseInt(contentLength, 10)) {
     console.log(
       `[upload] fileContentLength query parameter is provided for result ${resultID}, using presigned URL flow`,
     );
@@ -76,20 +47,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     fileHwm: DEFAULT_STREAM_CHUNK_SIZE,
   });
 
-  let saveResultPromise: Promise<void>;
+  let saveResultPromise: Promise<void> | null = null;
 
   const uploadPromise = new Promise<void>((resolve, reject) => {
     let fileReceived = false;
     let cleanupDone = false;
+    let isPaused = false;
 
     const cleanup = () => {
       if (cleanupDone) return;
       cleanupDone = true;
 
       console.log('[upload] cleaning up streams');
-
-      // stop reading from req
-      req.unpipe(bb);
 
       // remove all listeners to prevent memory leaks
       req.removeAllListeners('aborted');
@@ -112,7 +81,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     bb.on('file', (_, fileStream) => {
       fileReceived = true;
-      let isPaused = false;
 
       saveResultPromise = service
         .saveResult(fileName, filePassThrough, presignedUrl, contentLength)
@@ -129,29 +97,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!canContinue && !isPaused) {
           isPaused = true;
           fileStream.pause();
-          req.unpipe(bb);
-          console.log('[upload] PAUSED - buffer full, stop reading req');
-          console.log(`  - fileStream buffered: ${fileStream.readableLength} bytes`);
-          console.log(`  - PassThrough buffered: ${filePassThrough.readableLength} bytes`);
-          console.log(`  - PassThrough writable buffer: ${filePassThrough.writableLength} bytes`);
+          req.pause();
         }
       });
 
-      filePassThrough.on('drain', async () => {
-        if (isPaused) {
-          const fileStreamBuffered = fileStream.readableLength || 0;
-          const passThroughBuffered = filePassThrough.readableLength || 0;
-
-          console.log('[upload] Drain event received');
-          console.log(`  - fileStream buffered: ${fileStreamBuffered} bytes`);
-          console.log(`  - PassThrough buffered: ${passThroughBuffered} bytes`);
-          await waitForBufferDrain(filePassThrough);
-          isPaused = false;
-          req.pipe(bb);
-          fileStream.resume();
-
-          console.log('[upload] RESUMED - buffer drained, continue reading req');
+      filePassThrough.on('drain', () => {
+        if (!isPaused) {
+          return;
         }
+        isPaused = false;
+        fileStream.resume();
+        req.resume();
       });
 
       fileStream.on('end', () => {
@@ -184,30 +140,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return;
       }
 
-      if (saveResultPromise) {
-        const { error } = await withError(saveResultPromise);
+      if (!saveResultPromise) {
+        cleanup();
+        reject(new Error('Upload was not initiated'));
 
-        if (error) {
+        return;
+      }
+
+      console.log('[upload] incoming stream finished, waiting for storage upload to complete...');
+
+      const { error } = await withError(saveResultPromise);
+
+      if (error) {
+        cleanup();
+        reject(error);
+
+        return;
+      }
+
+      if (contentLength) {
+        const expected = Number.parseInt(contentLength, 10);
+
+        if (Number.isFinite(expected) && expected > 0 && fileSize !== expected) {
           cleanup();
-          reject(error);
+          reject(new Error(`Size mismatch: received ${fileSize} bytes, expected ${expected} bytes`));
 
           return;
         }
-
-        if (contentLength) {
-          const expected = parseInt(contentLength, 10);
-
-          if (Number.isFinite(expected) && expected > 0 && fileSize !== expected) {
-            cleanup();
-            reject(new Error(`Size mismatch: received ${fileSize} bytes, expected ${expected} bytes`));
-
-            return;
-          }
-        }
-
-        cleanup();
-        resolve();
       }
+
+      cleanup();
+      resolve();
     });
   });
 
@@ -220,18 +183,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       filePassThrough.destroy();
     }
 
-    res.status(400).json({ error: `upload result failed: ${uploadError.message}` });
-
-    return;
+    return res.status(400).json({ error: `upload result failed: ${uploadError.message}` });
   }
 
   const { result: uploadResult, error: uploadResultDetailsError } = await withError(
-    service.saveResultDetails(resultID!, resultDetails, fileSize),
+    service.saveResultDetails(resultID, resultDetails, fileSize),
   );
 
   if (uploadResultDetailsError) {
     res.status(400).json({ error: `upload result details failed: ${uploadResultDetailsError.message}` });
-    await service.deleteResults([resultID!]);
+    await service.deleteResults([resultID]);
 
     return;
   }
