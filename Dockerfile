@@ -72,4 +72,5 @@ ENV PORT=3000
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output
 CMD ["sh", "-c", "HOSTNAME=0.0.0.0 node server.js"]
 
-HEALTHCHECK --interval=3m --timeout=3s CMD curl -f http://localhost:$PORT/api/ping || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:$PORT/api/ping || exit 1
