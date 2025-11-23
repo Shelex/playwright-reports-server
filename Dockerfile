@@ -60,7 +60,7 @@ RUN mkdir .next && \
 # https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/scripts/start-with-express.js ./app/scripts/start-with-express.js
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/start-with-express.js ./scripts/start-with-express.js
 
 # Create folders required for storing results and reports
 ARG DATA_DIR=/app/data
