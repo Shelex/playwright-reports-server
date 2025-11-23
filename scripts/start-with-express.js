@@ -9,7 +9,6 @@ const baseDir = isDocker ? '.' : join('.next', 'standalone');
 console.log(`[startup] Environment: ${isDocker ? 'Docker' : 'Local development'}`);
 console.log(`[startup] Base directory: ${baseDir}`);
 
-// Validation
 if (!isDocker) {
   if (!existsSync(join('.next', 'standalone'))) {
     console.error('[startup] Error: Next.js build not found!');

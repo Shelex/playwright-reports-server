@@ -62,6 +62,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/start-with-express.js ./scripts/start-with-express.js
 
+# Install Express server dependencies (not traced by Next.js)
+# These are needed by the bundled express-server.js
+RUN npm install --omit=dev express http-proxy-middleware && \
+    chown -R nextjs:nodejs node_modules
+
 # Create folders required for storing results and reports
 ARG DATA_DIR=/app/data
 ARG RESULTS_DIR=${DATA_DIR}/results
