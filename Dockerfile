@@ -13,8 +13,15 @@ RUN npm ci
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
+
+# Install build dependencies for native modules
+RUN apk add --no-cache python3 make g++ 
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# Ensure native module for sqlite3 is built for for linux
+RUN npm rebuild better-sqlite3
 
 ARG API_BASE_PATH=""
 ENV API_BASE_PATH=$API_BASE_PATH
@@ -70,7 +77,9 @@ ENV PORT=3000
 
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output
-CMD ["sh", "-c", "HOSTNAME=0.0.0.0 node server.js"]
+# express-server.js is our custom server that adds upload handling
+# and proxies requests to the Next.js server
+CMD ["sh", "-c", "HOSTNAME=0.0.0.0 npm run start"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:$PORT/api/ping || exit 1

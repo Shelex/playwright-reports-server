@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { Request, Response } from 'express';
 
 import { PassThrough } from 'node:stream';
 import { randomUUID } from 'node:crypto';
@@ -9,8 +9,6 @@ import { service } from '@/app/lib/service';
 import { DEFAULT_STREAM_CHUNK_SIZE } from '@/app/lib/storage/constants';
 import { withError } from '@/app/lib/withError';
 
-export const config = { api: { bodyParser: false } };
-
 async function waitForBufferDrain(stream: PassThrough, maxWaitMs = 30 * 1000): Promise<void> {
   const startTime = Date.now();
 
@@ -19,7 +17,6 @@ async function waitForBufferDrain(stream: PassThrough, maxWaitMs = 30 * 1000): P
       const buffered = stream.readableLength || 0;
 
       if (buffered === 0) {
-        console.log('[upload] buffer is empty');
         resolve();
 
         return;
@@ -31,8 +28,6 @@ async function waitForBufferDrain(stream: PassThrough, maxWaitMs = 30 * 1000): P
         return;
       }
 
-      console.log(`[upload] waiting for buffer to drain (${buffered} bytes remaining)`);
-
       setTimeout(checkBuffer, 250);
     };
 
@@ -40,13 +35,7 @@ async function waitForBufferDrain(stream: PassThrough, maxWaitMs = 30 * 1000): P
   });
 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'PUT') {
-    res.setHeader('Allow', 'PUT');
-
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
-
+export async function handleUpload(req: Request, res: Response) {
   const resultID = randomUUID();
   const fileName = `${resultID}.zip`;
 
@@ -54,9 +43,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (contentLength || parseInt(contentLength, 10)) {
     console.log(
-      `[upload] fileContentLength query parameter is provided for result ${resultID}, using presigned URL flow`,
+      `[express] fileContentLength query parameter is provided for result ${resultID}, using presigned URL flow`,
     );
   }
+
   // if there is fileContentLength query parameter we can use presigned URL for direct upload
   const presignedUrl = contentLength ? await service.getPresignedUrl(fileName) : '';
 
@@ -68,7 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
 
   const bb = Busboy({
-    headers: req.headers,
+    headers: req.headers as Record<string, string>,
     limits: {
       files: 1,
     },
@@ -81,12 +71,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const uploadPromise = new Promise<void>((resolve, reject) => {
     let fileReceived = false;
     let cleanupDone = false;
+    let uploadCompleted = false;
 
     const cleanup = () => {
       if (cleanupDone) return;
       cleanupDone = true;
 
-      console.log('[upload] cleaning up streams');
+      console.log('[express] cleaning up streams');
 
       // stop reading from req
       req.unpipe(bb);
@@ -102,9 +93,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     };
 
     const onAborted = () => {
-      console.log('[upload] request aborted or closed');
-      cleanup();
-      reject(new Error('Client aborted connection'));
+      // only treat as error if upload hasn't completed successfully
+      if (!uploadCompleted) {
+        console.log('[express] request aborted or closed prematurely');
+        cleanup();
+        reject(new Error('Client aborted connection'));
+      }
     };
 
     req.on('aborted', onAborted);
@@ -130,37 +124,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           isPaused = true;
           fileStream.pause();
           req.unpipe(bb);
-          console.log('[upload] PAUSED - buffer full, stop reading req');
-          console.log(`  - fileStream buffered: ${fileStream.readableLength} bytes`);
-          console.log(`  - PassThrough buffered: ${filePassThrough.readableLength} bytes`);
-          console.log(`  - PassThrough writable buffer: ${filePassThrough.writableLength} bytes`);
         }
       });
 
       filePassThrough.on('drain', async () => {
         if (isPaused) {
-          const fileStreamBuffered = fileStream.readableLength || 0;
-          const passThroughBuffered = filePassThrough.readableLength || 0;
-
-          console.log('[upload] Drain event received');
-          console.log(`  - fileStream buffered: ${fileStreamBuffered} bytes`);
-          console.log(`  - PassThrough buffered: ${passThroughBuffered} bytes`);
           await waitForBufferDrain(filePassThrough);
           isPaused = false;
           req.pipe(bb);
           fileStream.resume();
-
-          console.log('[upload] RESUMED - buffer drained, continue reading req');
         }
       });
 
       fileStream.on('end', () => {
-        console.log('[upload] fileStream ended');
+        console.log('[express] fileStream ended');
         filePassThrough.end();
       });
 
       fileStream.on('error', (e) => {
-        console.error('[upload] fileStream error:', e);
+        console.error('[express] fileStream error:', e);
         cleanup();
         reject(e);
       });
@@ -171,12 +153,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     bb.on('error', (error: Error) => {
-      console.error('[upload] busboy error:', error);
+      console.error('[express] busboy error:', error);
       cleanup();
       reject(error);
     });
 
     bb.on('finish', async () => {
+      console.log('[express] busboy finished');
+
+      req.removeAllListeners('aborted');
+      req.removeAllListeners('close');
+
       if (!fileReceived) {
         cleanup();
         reject(new Error('No file received'));
@@ -205,6 +192,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         }
 
+        // Mark upload as completed before cleanup to prevent false abort errors
+        uploadCompleted = true;
         cleanup();
         resolve();
       }
@@ -271,7 +260,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       );
 
       if (error) {
-        return Response.json({ error: `failed to generate report: ${error.message}` }, { status: 500 });
+        return res.status(500).json({ error: `failed to generate report: ${error.message}` });
       }
 
       generatedReport = result;

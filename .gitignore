@@ -41,6 +41,12 @@ next-env.d.ts
 data/reports
 data/results
 
+# compiled server files
+/app/**/*.js
+/pages/**/*.js
+/server/**/*.js
+!scripts/**/*.js
+
 # vscode
 .vscode
 
