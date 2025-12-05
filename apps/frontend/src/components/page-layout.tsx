@@ -1,8 +1,7 @@
 import { Spinner } from '@heroui/react';
 import type { ServerDataInfo } from '@playwright-reports/shared';
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { useEffect, useLayoutEffect } from 'react';
 import { toast } from 'sonner';
-import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from '../hooks/useAuth';
 import { useAuthConfig } from '../hooks/useAuthConfig';
 import useQuery from '../hooks/useQuery';
@@ -26,8 +25,7 @@ export default function PageLayout({ render }: Readonly<PageLayoutProps>) {
   } = useQuery<ServerDataInfo>('/api/info', {
     enabled: isAuthenticated,
   });
-  const [refreshId, setRefreshId] = useState<string>(uuidv4());
-
+  
   useEffect(() => {
     // Only show error if auth is required
     if (authRequired === false) {
@@ -52,10 +50,7 @@ export default function PageLayout({ render }: Readonly<PageLayoutProps>) {
     return <Spinner className="flex justify-center items-center" />;
   }
 
-  const updateRefreshId = () => {
-    setRefreshId(uuidv4());
-  };
-
+  
   if (error) {
     toast.error(error.message);
 
@@ -66,7 +61,7 @@ export default function PageLayout({ render }: Readonly<PageLayoutProps>) {
     <>
       {!!info && (
         <div className="space-y-6">
-          <div className="gap-10">{render({ info, onUpdate: updateRefreshId })}</div>
+          <div className="gap-10">{render({ info, onUpdate: () => refetch() })}</div>
         </div>
       )}
     </>

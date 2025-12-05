@@ -1,6 +1,6 @@
 import { type PassThrough, Readable } from 'node:stream';
 import { env } from '../../config/env.js';
-import type { SiteWhiteLabelConfig } from '../../types/index.js';
+import type { SiteWhiteLabelConfig } from '@playwright-reports/shared';
 import { defaultConfig } from '../config.js';
 import { serveReportRoute } from '../constants';
 import { isValidPlaywrightVersion } from '../pw.js';
