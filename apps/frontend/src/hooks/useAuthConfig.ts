@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { withBase } from '../lib/url';
-import type { SiteWhiteLabelConfig } from '../types';
+import type { SiteWhiteLabelConfig } from '@playwright-reports/shared';
 
 export function useAuthConfig() {
   const { data: config, isLoading } = useQuery<SiteWhiteLabelConfig>({

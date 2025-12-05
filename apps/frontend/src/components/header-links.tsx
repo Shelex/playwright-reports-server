@@ -1,5 +1,5 @@
 import { Link } from '@heroui/link';
-import type { SiteWhiteLabelConfig } from '../types';
+import type { SiteWhiteLabelConfig } from '@playwright-reports/shared';
 import {
   BitbucketIcon,
   CyborgTestIcon,

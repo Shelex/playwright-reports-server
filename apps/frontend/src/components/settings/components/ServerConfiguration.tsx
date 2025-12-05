@@ -3,7 +3,7 @@
 import { Button, Card, CardBody, CardHeader, Chip, Divider, Input } from '@heroui/react';
 import { useRef, useState } from 'react';
 import { defaultLinks } from '../../../config/site';
-import type { ServerConfig } from '../types';
+import type { ServerConfig } from '@playwright-reports/shared';
 
 interface ServerConfigurationProps {
   config: ServerConfig;

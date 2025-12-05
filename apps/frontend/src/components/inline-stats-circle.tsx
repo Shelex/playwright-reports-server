@@ -1,9 +1,8 @@
 'use client';
 
 import { CircularProgress } from '@heroui/react';
+import type { ReportStats } from '@playwright-reports/shared';
 import type { FC } from 'react';
-
-import type { ReportStats } from '../types/parser';
 
 type ReportFiltersProps = {
   stats: ReportStats;

@@ -2,7 +2,7 @@
 
 import { Button, Card, CardBody, CardHeader, Chip, Divider, Input } from '@heroui/react';
 
-import type { JiraConfig, ServerConfig } from '../types';
+import type { JiraConfig, ServerConfig } from '@playwright-reports/shared';
 
 interface JiraConfigurationProps {
   config: ServerConfig;

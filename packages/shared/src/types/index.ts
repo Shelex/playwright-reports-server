@@ -2,12 +2,14 @@ export type UUID = `${string}-${string}-${string}-${string}-${string}`;
 
 export type HeaderLinks = Record<string, string>;
 
-// React-specific types - only available when React is installed
 export type IconSvgProps = {
   size?: number;
+  width?: number;
+  height?: number;
+  className?: string;
+  [key: string]: any;
 };
 
-// Jira Configuration Types
 export interface JiraConfig {
   baseUrl?: string;
   email?: string;
@@ -21,6 +23,7 @@ export interface JiraConfig {
     description?: string;
   }>;
   message?: string;
+  error?: string;
 }
 
 export interface JiraApiResponse {
@@ -165,9 +168,10 @@ export interface ReportInfo {
   stats: ReportStats;
 }
 
-interface ReportMetadata {
+export interface ReportMetadata {
   actualWorkers: number;
   playwrightVersion?: string;
+  [key: string]: any; // Allow additional custom fields
 }
 
 export interface ReadResultsOutput {
@@ -223,6 +227,27 @@ export interface ServerDataInfo {
   reportsFolderSizeinMB: string;
 }
 
+export interface ReportPath {
+  reportID: string;
+  project?: string;
+}
+
+export interface ResultDetails {
+  project?: string;
+  title?: string;
+  testRun?: string;
+  playwrightVersion?: string;
+  triggerReportGeneration?: string;
+  shardCurrent?: string;
+  shardTotal?: string;
+  [key: string]: string | number | boolean | undefined;
+}
+
+export interface ReadReportsOutput {
+  reports: ReportHistory[];
+  total: number;
+}
+
 export interface PaginationResponse<T> {
   data: T[];
   pagination: {
@@ -247,5 +272,25 @@ export interface ErrorResponse {
     message: string;
     details?: Record<string, unknown>;
     timestamp: string;
+  };
+}
+
+export interface ServerConfig {
+  title?: string;
+  headerLinks?: Record<string, string>;
+  logoPath?: string;
+  faviconPath?: string;
+  reporterPaths?: string[];
+  cron?: {
+    resultExpireDays?: number;
+    resultExpireCronSchedule?: string;
+    reportExpireDays?: number;
+    reportExpireCronSchedule?: string;
+  };
+  jira?: {
+    baseUrl?: string;
+    email?: string;
+    apiToken?: string;
+    projectKey?: string;
   };
 }
