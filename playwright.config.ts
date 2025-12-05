@@ -37,13 +37,16 @@ export default defineConfig({
       name: 'api',
       testDir: './tests/api',
       testMatch: /.*\.test\.ts/,
-      use: { baseURL: 'http://localhost:3000', ...devices['Desktop Chrome'] },
+      use: { baseURL: 'http://localhost:3001', ...devices['Desktop Chrome'] },
     },
   ],
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000/api/info',
-    reuseExistingServer: !process.env.CI,
+    command: './scripts/test-server-start.sh',
+    url: 'http://localhost:3001/api/info',
+    reuseExistingServer: true,
+    timeout: 120000,
+    stdout: 'pipe',
+    stderr: 'pipe',
   },
 });

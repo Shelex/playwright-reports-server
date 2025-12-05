@@ -1,0 +1,68 @@
+import { withBase } from "./url";
+
+export interface AuthSession {
+	user?: {
+		name?: string;
+		email?: string;
+		image?: string;
+	};
+	expires: string;
+	accessToken?: string;
+	error?: string;
+	isLoading?: boolean;
+}
+
+export interface AuthConfig {
+	authRequired: boolean;
+	database?: {
+		sizeOnDisk?: string;
+		estimatedRAM?: string;
+		results?: number;
+		reports?: number;
+	};
+	dataStorage?: string;
+	s3Endpoint?: string;
+	s3Bucket?: string;
+}
+
+export const getAuthSession = (): Promise<AuthSession> => {
+	return fetch(withBase("/api/auth/session"))
+		.then((res) => res.json())
+		.catch(() => ({ user: undefined, expires: "" }));
+};
+
+export const signOut = (): Promise<void> => {
+	return fetch(withBase("/api/auth/signout"), { method: "POST" }).then(
+		() => {},
+	);
+};
+
+export const signIn = async (
+	_provider: string,
+	options?: { apiToken?: string; redirect?: boolean },
+): Promise<AuthSession & { ok?: boolean; error?: string }> => {
+	const response = await fetch(withBase("/api/auth/signin"), {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({
+			apiToken: options?.apiToken,
+			redirect: options?.redirect !== false,
+		}),
+	});
+
+	const result = await response.json();
+	return {
+		...result,
+		ok: response.ok,
+		error: response.ok ? undefined : result.error,
+	};
+};
+
+export const getProviders = () => {
+	return Promise.resolve({
+		credentials: {
+			name: process.env.NODE_ENV === "development" ? "No Auth" : "credentials",
+			id: "credentials",
+		},
+	});
+};

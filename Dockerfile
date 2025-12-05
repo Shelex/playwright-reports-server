@@ -1,35 +1,33 @@
 FROM node:22-alpine AS base
 
-# Install dependencies only when needed
-FROM base AS deps
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
+# Install dependencies for backend
+FROM base AS backend-deps
 RUN apk add --no-cache libc6-compat
-WORKDIR /app
-
-# Install dependencies based on the preferred package manager
-COPY package.json package-lock.json* ./
+WORKDIR /app/backend
+COPY backend/package.json backend/package-lock.json* ./
 RUN npm ci
 
-# Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+# Install dependencies for frontend
+FROM base AS frontend-deps
+WORKDIR /app/frontend
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm ci
 
-ARG API_BASE_PATH=""
-ENV API_BASE_PATH=$API_BASE_PATH
-
-ARG ASSETS_BASE_PATH=""
-ENV ASSETS_BASE_PATH=$ASSETS_BASE_PATH
-
-# Next.js collects completely anonymous telemetry data about general usage.
-# Learn more here: https://nextjs.org/telemetry
-# Uncomment the following line in case you want to disable telemetry during the build.
-ENV NEXT_TELEMETRY_DISABLED=1
-
+# Build frontend
+FROM base AS frontend-builder
+WORKDIR /app/frontend
+COPY --from=frontend-deps /app/frontend/node_modules ./node_modules
+COPY frontend/ .
 RUN npm run build
 
-# Production image, copy all the files and run next
+# Build backend
+FROM base AS backend-builder
+WORKDIR /app/backend
+COPY --from=backend-deps /app/backend/node_modules ./node_modules
+COPY backend/ .
+RUN npm run build
+
+# Production image
 FROM base AS runner
 WORKDIR /app
 
@@ -37,22 +35,19 @@ ENV NODE_ENV=production
 
 RUN apk add --no-cache curl
 
-# Uncomment the following line in case you want to disable telemetry during runtime.
-# ENV NEXT_TELEMETRY_DISABLED 1
-
 RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 --ingroup nodejs nextjs
+    adduser --system --uid 1001 --ingroup nodejs appuser
 
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+# Copy backend build
+COPY --from=backend-builder --chown=appuser:nodejs /app/backend/dist ./backend/dist
+COPY --from=backend-builder --chown=appuser:nodejs /app/backend/node_modules ./backend/node_modules
+COPY --from=backend-builder --chown=appuser:nodejs /app/backend/package.json ./backend/package.json
 
-# Set the correct permission for prerender cache
-RUN mkdir .next && \
-    chown nextjs:nodejs .next
+# Copy frontend build
+COPY --from=frontend-builder --chown=appuser:nodejs /app/frontend/dist ./frontend/dist
 
-# Automatically leverage output traces to reduce image size
-# https://nextjs.org/docs/advanced-features/output-file-tracing
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Copy public assets
+COPY --from=frontend-builder --chown=appuser:nodejs /app/frontend/public ./frontend/public
 
 # Create folders required for storing results and reports
 ARG DATA_DIR=/app/data
@@ -60,17 +55,18 @@ ARG RESULTS_DIR=${DATA_DIR}/results
 ARG REPORTS_DIR=${DATA_DIR}/reports
 ARG TEMP_DIR=/app/.tmp
 RUN mkdir -p ${DATA_DIR} ${RESULTS_DIR} ${REPORTS_DIR} ${TEMP_DIR} && \
-    chown -R nextjs:nodejs ${DATA_DIR} ${TEMP_DIR}
+    chown -R appuser:nodejs ${DATA_DIR} ${TEMP_DIR}
 
-USER nextjs
+USER appuser
 
-EXPOSE 3000
+EXPOSE 3001
 
-ENV PORT=3000
+ENV PORT=3001
+ENV FRONTEND_DIST=/app/frontend/dist
 
-# server.js is created by next build from the standalone output
-# https://nextjs.org/docs/pages/api-reference/next-config-js/output
-CMD ["sh", "-c", "HOSTNAME=0.0.0.0 node server.js"]
+WORKDIR /app/backend
+
+CMD ["node", "dist/index.js"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:$PORT/api/ping || exit 1
