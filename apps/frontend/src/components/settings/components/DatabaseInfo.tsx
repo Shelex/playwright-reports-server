@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 
 import useMutation from '../../../hooks/useMutation';
 import { invalidateCache } from '../../../lib/query-cache';
-import type { DatabaseStats } from '../../../types';
+import type { DatabaseStats } from '@playwright-reports/shared';
 
 interface DatabaseInfoProps {
   stats?: DatabaseStats;

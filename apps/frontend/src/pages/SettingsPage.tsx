@@ -6,11 +6,10 @@ import CronConfiguration from '../components/settings/components/CronConfigurati
 import EnvironmentInfo from '../components/settings/components/EnvironmentInfo';
 import JiraConfiguration from '../components/settings/components/JiraConfiguration';
 import ServerConfiguration from '../components/settings/components/ServerConfiguration';
-import type { JiraConfig, ServerConfig } from '../components/settings/types';
+import type { JiraConfig, ServerConfig, EnvInfo, SiteWhiteLabelConfig } from '@playwright-reports/shared';
 import { useAuth } from '../hooks/useAuth';
 
 import useQuery from '../hooks/useQuery';
-import type { EnvInfo, SiteWhiteLabelConfig } from '../types';
 
 export default function SettingsPage() {
   const session = useAuth();

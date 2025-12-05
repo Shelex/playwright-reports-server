@@ -1,6 +1,3 @@
-// re-export
-export type { Report } from '../types';
-
 export interface StorageConfig {
   type: 'fs' | 's3';
   basePath?: string;

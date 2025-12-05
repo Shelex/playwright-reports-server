@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@heroui/react';
+import type { ReadReportsHistory, ReportHistory } from '@playwright-reports/shared';
 import { keepPreviousData } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -21,7 +22,6 @@ import useQuery from '../hooks/useQuery';
 import { defaultProjectName } from '../lib/constants';
 import { withQueryParams } from '../lib/network';
 import { withBase } from '../lib/url';
-import type { ReadReportsHistory, ReportHistory } from '../types';
 import FormattedDate from './date-format';
 import DeleteReportButton from './delete-report-button';
 import { BranchIcon, FolderIcon } from './icons';
@@ -138,20 +138,14 @@ export default function ReportsTable({ onChange }: Readonly<ReportsTableProps>) 
     refetch();
   };
 
-  const onPageChange = useCallback(
-    (page: number) => {
-      setPage(page);
-    },
-    [page, rowsPerPage]
-  );
+  const onPageChange = useCallback((page: number) => {
+    setPage(page);
+  }, []);
 
-  const onProjectChange = useCallback(
-    (project: string) => {
-      setProject(project);
-      setPage(1);
-    },
-    [page, rowsPerPage]
-  );
+  const onProjectChange = useCallback((project: string) => {
+    setProject(project);
+    setPage(1);
+  }, []);
 
   const onSearchChange = useCallback((searchTerm: string) => {
     setSearch(searchTerm);
@@ -160,7 +154,7 @@ export default function ReportsTable({ onChange }: Readonly<ReportsTableProps>) 
 
   const pages = useMemo(() => {
     return total ? Math.ceil(total / rowsPerPage) : 0;
-  }, [project, total, rowsPerPage]);
+  }, [total, rowsPerPage]);
 
   error && toast.error(error.message);
 
@@ -247,7 +241,20 @@ export default function ReportsTable({ onChange }: Readonly<ReportsTableProps>) 
               </TableCell>
               <TableCell className="w-1/6">{item.project}</TableCell>
               <TableCell className="w-1/12">
-                {<InlineStatsCircle stats={item.stats || {}} />}
+                {
+                  <InlineStatsCircle
+                    stats={
+                      item.stats || {
+                        total: 0,
+                        expected: 0,
+                        unexpected: 0,
+                        flaky: 0,
+                        skipped: 0,
+                        ok: false,
+                      }
+                    }
+                  />
+                }
               </TableCell>
               <TableCell className="w-1/6">
                 <FormattedDate date={item.createdAt} />

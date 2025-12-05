@@ -1,6 +1,5 @@
+import type { IconSvgProps } from '@playwright-reports/shared';
 import type { FC } from 'react';
-
-import type { IconSvgProps } from '../types';
 
 export const DiscordIcon: FC<IconSvgProps> = ({ size = 40, width, height, ...props }) => {
   return (

@@ -2,7 +2,7 @@
 
 import { Button, Card, CardBody, CardHeader, Chip, Input } from '@heroui/react';
 
-import type { ServerConfig } from '../types';
+import type { ServerConfig } from '@playwright-reports/shared';
 
 interface CronConfigurationProps {
   config: ServerConfig;
