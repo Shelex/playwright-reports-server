@@ -1,0 +1,131 @@
+import {
+  Link,
+  LinkIcon,
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from '@heroui/react';
+import type {
+  ReportHistory,
+  ReportTest,
+  ReportTestOutcome,
+  TestHistory,
+} from '@playwright-reports/shared';
+import type { FC } from 'react';
+import FormattedDate from '@/components/date-format';
+import { subtitle } from '@/components/primitives';
+import { testStatusToColor } from '@/lib/tailwind';
+import { parseMilliseconds } from '@/lib/time';
+import { withBase } from '@/lib/url';
+
+interface TestInfoProps {
+  history: ReportHistory[];
+  test: ReportTest;
+}
+
+const getTestHistory = (testId: string, history: ReportHistory[]) => {
+  if (!testId || !Array.isArray(history)) {
+    return [];
+  }
+
+  return history
+    .map((report) => {
+      if (!report?.files) {
+        return null;
+      }
+
+      const file = report.files.find((file) => file.tests?.some((test) => test.testId === testId));
+
+      if (!file) {
+        return null;
+      }
+
+      const test = file.tests?.find((test) => test.testId === testId);
+
+      if (!test) {
+        return null;
+      }
+
+      return {
+        ...test,
+        createdAt: report.createdAt,
+        reportID: report.reportID,
+        reportUrl: report.reportUrl,
+      } as TestHistory;
+    })
+    .filter((item): item is TestHistory => item !== null);
+};
+
+const TestInfo: FC<TestInfoProps> = ({ test, history }: TestInfoProps) => {
+  if (!test) {
+    return <div className="shadow-md rounded-lg p-6">No test data available</div>;
+  }
+
+  const formatted = testStatusToColor(test.outcome || 'expected');
+  const safeHistory = Array.isArray(history) ? history : [];
+  const testHistory = getTestHistory(test.testId || 'unknown', safeHistory);
+
+  return (
+    <div className="shadow-md rounded-lg p-6">
+      <div className="mb-4">
+        <p>
+          Outcome: <span className={formatted.color}>{formatted.title}</span>
+        </p>
+        <p>
+          Location:{' '}
+          {`${test.location?.file || 'unknown'}:${test.location?.line || 0}:${test.location?.column || 0}`}
+        </p>
+        <p>Duration: {parseMilliseconds(test.duration || 0)}</p>
+        {test.annotations && test.annotations.length > 0 && (
+          <p>Annotations: {test.annotations.map((a) => JSON.stringify(a)).join(', ')}</p>
+        )}
+        {test.tags && test.tags.length > 0 && <p>Tags: {test.tags.join(', ')}</p>}
+      </div>
+      {!!testHistory?.length && (
+        <div>
+          <h3 className={subtitle()}>Results:</h3>
+          <Table aria-label="Test History">
+            <TableHeader>
+              <TableColumn>Created At</TableColumn>
+              <TableColumn>Status</TableColumn>
+              <TableColumn>Duration</TableColumn>
+              <TableColumn>Actions</TableColumn>
+            </TableHeader>
+            <TableBody items={testHistory.filter(Boolean)}>
+              {(item) => {
+                const itemOutcome = testStatusToColor(
+                  (item.outcome as ReportTestOutcome) || 'expected'
+                );
+
+                return (
+                  <TableRow key={`${item.reportID}-${item.testId}`}>
+                    <TableCell className="w-3/8">
+                      <FormattedDate date={item.createdAt || ''} />
+                    </TableCell>
+                    <TableCell className="w-2/8">
+                      <span className={itemOutcome.color}>{itemOutcome.title}</span>
+                    </TableCell>
+                    <TableCell className="w-2/8">{parseMilliseconds(item.duration || 0)}</TableCell>
+                    <TableCell className="w-1/8">
+                      <Link
+                        href={`${withBase(item.reportUrl || '')}#?testId=${item.testId || ''}`}
+                        target="_blank"
+                      >
+                        <LinkIcon />
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                );
+              }}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default TestInfo;

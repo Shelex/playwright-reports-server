@@ -5,20 +5,17 @@
 **/.tmp
 
 # dependencies
-/node_modules
+**/node_modules
 /.pnp
 .pnp.js
 
 # testing
 /coverage
-
-# next.js
-.next/
-/out/
+**/test-results
 
 # production
-/build
-/backend/dist
+**/build
+**/dist
 
 # misc
 .DS_Store
