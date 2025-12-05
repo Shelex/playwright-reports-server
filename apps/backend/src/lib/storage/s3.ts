@@ -21,13 +21,13 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import type { SiteWhiteLabelConfig } from '@playwright-reports/shared';
-import { env } from '../../config/env';
-import { withError } from '../../lib/withError';
+import { env } from '../../config/env.js';
+import { withError } from '../../lib/withError.js';
 import { defaultConfig, isConfigValid } from '../config.js';
 import { serveReportRoute } from '../constants.js';
 import { parse } from '../parser/index.js';
 import { generatePlaywrightReport } from '../pw.js';
-import { processBatch } from './batch';
+import { processBatch } from './batch.js';
 import {
   APP_CONFIG_S3,
   DATA_FOLDER,
@@ -38,9 +38,9 @@ import {
   REPORTS_PATH,
   RESULTS_BUCKET,
   TMP_FOLDER,
-} from './constants';
-import { getFileReportID } from './file';
-import { bytesToString } from './format';
+} from './constants.js';
+import { getFileReportID } from './file.js';
+import { bytesToString } from './format.js';
 import {
   isReportHistory,
   type ReadReportsOutput,
@@ -53,7 +53,7 @@ import {
   type ResultDetails,
   type ServerDataInfo,
   type Storage,
-} from './types';
+} from './types.js';
 
 const createClient = () => {
   const endPoint = env.S3_ENDPOINT;

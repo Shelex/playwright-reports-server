@@ -70,14 +70,13 @@ async function start() {
 
     await fastify.register(fastifyStatic, {
       root: frontendDistPath,
-      prefix: '/assets/',
-      decorateReply: false,
+      decorateReply: true,
     });
 
     // spa fallback for non-api routes
     fastify.setNotFoundHandler(async (request, reply) => {
       if (!request.url.startsWith('/api') && !request.url.startsWith('/data')) {
-        return reply.sendFile('index.html', frontendDistPath);
+        return reply.sendFile('index.html');
       }
       return reply.code(404).send({ error: 'Not Found' });
     });

@@ -1,7 +1,7 @@
 import type { PassThrough } from 'node:stream';
 import type { SiteWhiteLabelConfig, UUID } from '@playwright-reports/shared';
-import type { ReportInfo, ReportTest } from '@/lib/parser/types';
-import type { Pagination } from './pagination';
+import type { ReportInfo, ReportTest } from '../parser/types.js';
+import type { Pagination } from './pagination.js';
 
 export interface Storage {
   getServerDataInfo: () => Promise<ServerDataInfo>;

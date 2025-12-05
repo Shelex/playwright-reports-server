@@ -236,7 +236,7 @@ export class JiraService {
     }
   ): Promise<any> {
     try {
-      const { storage } = await import('@/lib/storage');
+      const { storage } = await import('../storage/index.js');
 
       let fileName = attachment.name;
 

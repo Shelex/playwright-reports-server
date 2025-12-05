@@ -2,10 +2,10 @@ import { type PassThrough, Readable } from 'node:stream';
 import { env } from '../../config/env.js';
 import type { SiteWhiteLabelConfig } from '@playwright-reports/shared';
 import { defaultConfig } from '../config.js';
-import { serveReportRoute } from '../constants';
+import { serveReportRoute } from '../constants.js';
 import { isValidPlaywrightVersion } from '../pw.js';
-import { DEFAULT_STREAM_CHUNK_SIZE } from '../storage/constants';
-import { bytesToString, getUniqueProjectsList } from '../storage/format';
+import { DEFAULT_STREAM_CHUNK_SIZE } from '../storage/constants.js';
+import { bytesToString, getUniqueProjectsList } from '../storage/format.js';
 import {
   type ReadReportsInput,
   type ReadResultsInput,
@@ -17,7 +17,7 @@ import {
   storage,
 } from '../storage/index.js';
 import type { S3 } from '../storage/s3.js';
-import { withError } from '../withError';
+import { withError } from '../withError.js';
 import { configCache } from './cache/config.js';
 import { reportDb, resultDb } from './db/index.js';
 import { lifecycle } from './lifecycle.js';
