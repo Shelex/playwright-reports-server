@@ -1,0 +1,87 @@
+import {
+	type UseQueryOptions,
+	useQuery as useTanStackQuery,
+} from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+
+import { withQueryParams } from "../config/network";
+import { withBase } from "../lib/url";
+import { useAuth } from "./useAuth";
+import { useAuthConfig } from "./useAuthConfig";
+
+const useQuery = <ReturnType>(
+	path: string,
+	options?: Omit<UseQueryOptions<ReturnType, Error>, "queryKey" | "queryFn"> & {
+		dependencies?: unknown[];
+		callback?: string;
+		method?: string;
+		body?: BodyInit | null;
+	},
+) => {
+	const session = useAuth();
+	const navigate = useNavigate();
+	const { authRequired } = useAuthConfig();
+
+	useEffect(() => {
+		// Don't redirect if auth is not required
+		if (authRequired === false) {
+			return;
+		}
+
+		// Don't redirect if we haven't determined auth requirements yet
+		if (authRequired === null) {
+			return;
+		}
+
+		if (session.status === "unauthenticated") {
+			toast.warning("Unauthorized");
+			navigate(
+				withQueryParams(
+					withBase("/login"),
+					options?.callback
+						? { callbackUrl: encodeURI(options.callback) }
+						: { callbackUrl: encodeURI(withBase("/")) },
+				),
+			);
+
+			return;
+		}
+
+		if (session.status === "loading") {
+			return;
+		}
+	}, [session.status, authRequired, navigate, options?.callback]);
+
+	return useTanStackQuery<ReturnType, Error>({
+		queryKey: [path, ...(options?.dependencies ?? [])],
+		queryFn: async () => {
+			const headers: HeadersInit = {};
+
+			if (session.data?.user?.apiToken) {
+				headers.Authorization = session.data.user.apiToken;
+			}
+
+			const fullPath = withBase(path);
+			const response = await fetch(fullPath, {
+				headers,
+				body: options?.body ? JSON.stringify(options.body) : undefined,
+				method: options?.method ?? "GET",
+			});
+
+			if (!response.ok && response.status !== 401) {
+				toast.error(`Network response was not ok: ${await response.text()}`);
+				throw new Error(
+					`Network response was not ok: ${await response.text()}`,
+				);
+			}
+
+			return response.json();
+		},
+		enabled: authRequired === false || session.status === "authenticated",
+		...options,
+	});
+};
+
+export default useQuery;
