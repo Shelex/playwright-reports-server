@@ -234,7 +234,6 @@ export async function registerConfigRoutes(fastify: FastifyInstance) {
     '/api/cache/refresh',
     {
       schema: {
-        body: { type: 'object', additionalProperties: true },
         response: {
           200: { type: 'object' },
           400: { type: 'object', properties: { error: { type: 'string' } } },
