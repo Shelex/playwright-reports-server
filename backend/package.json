@@ -21,6 +21,7 @@
 		"better-sqlite3": "^12.4.1",
 		"busboy": "^1.6.0",
 		"croner": "^9.0.0",
+		"dotenv": "^17.2.3",
 		"envalid": "^8.0.0",
 		"fastify": "^5.2.0",
 		"get-folder-size": "5.0.0",
