@@ -1,7 +1,7 @@
 import { Cron } from 'croner';
 import { env } from '../../config/env.js';
-import { withError } from '../../lib/withError';
-import { service } from '.';
+import { withError } from '../../lib/withError.js';
+import { service } from './index.js';
 
 const runningCron = Symbol.for('playwright.reports.cron.service');
 const instance = globalThis as typeof globalThis & {

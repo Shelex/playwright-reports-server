@@ -11,7 +11,7 @@ import { serveReportRoute } from '../constants.js';
 import { parse } from '../parser/index.js';
 import { generatePlaywrightReport } from '../pw.js';
 import { withError } from '../withError.js';
-import { processBatch } from './batch';
+import { processBatch } from './batch.js';
 import {
   APP_CONFIG,
   DATA_FOLDER,
@@ -21,9 +21,9 @@ import {
   REPORTS_PATH,
   RESULTS_FOLDER,
   TMP_FOLDER,
-} from './constants';
-import { createDirectory } from './folders';
-import { bytesToString } from './format';
+} from './constants.js';
+import { createDirectory } from './folders.js';
+import { bytesToString } from './format.js';
 import type {
   ReadReportsOutput,
   ReportHistory,

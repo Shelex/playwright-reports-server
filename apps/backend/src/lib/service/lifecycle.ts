@@ -1,6 +1,6 @@
-import { configCache } from './cache/config';
-import { cronService } from './cron';
-import { reportDb, resultDb } from './db';
+import { configCache } from './cache/config.js';
+import { cronService } from './cron.js';
+import { reportDb, resultDb } from './db/index.js';
 
 const createdLifecycle = Symbol.for('playwright.reports.lifecycle');
 const instance = globalThis as typeof globalThis & {

@@ -1,4 +1,4 @@
-import { defaultProjectName } from './constants';
+import { defaultProjectName } from './constants.js';
 
 export const buildUnauthorizedResponse = (): Response => {
   return new Response('Unauthorized', { status: 401 });

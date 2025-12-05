@@ -10,6 +10,7 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			"@": resolve(__dirname, "./src"),
+			"@playwright-reports/shared": resolve(__dirname, process.env.DOCKER_BUILD === 'true' ? "./packages/shared" : "../../packages/shared"),
 		},
 	},
 	server: {

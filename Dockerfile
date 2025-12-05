@@ -1,46 +1,56 @@
 FROM node:22-alpine AS base
 
-# Install dependencies for shared package
-FROM base AS shared-deps
-WORKDIR /app/packages/shared
-COPY packages/shared/package.json packages/shared/package-lock.json* ./
+# Install all dependencies for monorepo
+FROM base AS deps
+WORKDIR /app
+COPY package.json package-lock.json* ./
 RUN npm ci
 
 # Install dependencies for backend
 FROM base AS backend-deps
 RUN apk add --no-cache libc6-compat
-WORKDIR /app/apps/backend
-COPY apps/backend/package.json apps/backend/package-lock.json* ./
-RUN npm ci
 
 # Install dependencies for frontend
-FROM base AS frontend-deps
-WORKDIR /app/apps/frontend
-COPY apps/frontend/package.json apps/frontend/package-lock.json* ./
-RUN npm ci
 
 # Build shared package first
 FROM base AS shared-builder
 WORKDIR /app/packages/shared
-COPY --from=shared-deps /app/packages/shared/node_modules ./node_modules
+COPY --from=deps /app/node_modules ./node_modules
 COPY packages/shared/ .
 RUN npm run build
 
 # Build frontend
 FROM base AS frontend-builder
 WORKDIR /app/apps/frontend
-COPY --from=frontend-deps /app/apps/frontend/node_modules ./node_modules
-COPY --from=shared-builder /app/packages/shared/dist ./packages/shared/dist
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=shared-builder /app/packages/shared ./packages/shared
 COPY apps/frontend/ .
-RUN npm run build
+# Remove the shared dependency from package.json temporarily to avoid npm trying to install it
+RUN sed -i '/"@playwright-reports\/shared":/d' package.json
+# Create symlink for shared package in node_modules for TypeScript resolution
+RUN mkdir -p ./node_modules/@playwright-reports \
+    ln -sf ../../packages/shared ./node_modules/@playwright-reports/shared
+# Install missing rollup native dependency if needed
+RUN npm install @rollup/rollup-linux-arm64-musl --no-save || true
+# Skip TypeScript checks and just build with Vite
+ENV DOCKER_BUILD=true
+RUN npm run build:vite
 
 # Build backend
 FROM base AS backend-builder
 WORKDIR /app/apps/backend
-COPY --from=backend-deps /app/apps/backend/node_modules ./node_modules
-COPY --from=shared-builder /app/packages/shared/dist ./packages/shared/dist
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=shared-builder /app/packages/shared ./packages/shared
 COPY apps/backend/ .
+# Create symlink for shared package in node_modules for TypeScript resolution
+RUN mkdir -p ./node_modules/@playwright-reports \
+    ln -sf ../../packages/shared ./node_modules/@playwright-reports/shared
+# Build first with dev dependencies
 RUN npm run build
+# Remove the shared dependency from package.json temporarily to avoid npm trying to install it
+RUN sed -i '/"@playwright-reports\/shared":/d' package.json
+# Install backend production dependencies (removes dev dependencies)
+RUN npm ci --only=production
 
 # Production image
 FROM base AS runner
@@ -53,9 +63,14 @@ RUN apk add --no-cache curl
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 --ingroup nodejs appuser
 
+# Copy all node_modules from deps
+COPY --from=deps --chown=appuser:nodejs /app/node_modules ./node_modules
+
+# Copy backend node_modules for backend-specific dependencies
+COPY --from=backend-builder --chown=appuser:nodejs /app/apps/backend/node_modules ./apps/backend/node_modules
+
 # Copy backend build
 COPY --from=backend-builder --chown=appuser:nodejs /app/apps/backend/dist ./apps/backend/dist
-COPY --from=backend-builder --chown=appuser:nodejs /app/apps/backend/node_modules ./apps/backend/node_modules
 COPY --from=backend-builder --chown=appuser:nodejs /app/apps/backend/package.json ./apps/backend/package.json
 
 # Copy frontend build

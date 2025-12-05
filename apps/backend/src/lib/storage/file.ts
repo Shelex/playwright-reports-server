@@ -1,4 +1,4 @@
-import { REPORTS_BUCKET } from './constants';
+import { REPORTS_BUCKET } from './constants.js';
 
 export const isUUID = (uuid?: string): boolean => {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid ?? '');

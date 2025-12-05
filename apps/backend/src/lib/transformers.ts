@@ -1,5 +1,5 @@
-import type { ReportFile, ReportTest, ReportTestFilters } from '@/lib/parser';
-import type { ReportHistory } from '@/lib/storage/types';
+import type { ReportFile, ReportTest, ReportTestFilters } from './parser/index.js';
+import type { ReportHistory } from './storage/types.js';
 
 const isTestMatchingFilters = (test: ReportTest, filters?: ReportTestFilters): boolean => {
   if (!filters) {

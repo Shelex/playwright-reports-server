@@ -1,8 +1,8 @@
 import type Database from 'better-sqlite3';
 import { storage } from '../../storage/index.js';
 import type { ReadReportsInput, ReadReportsOutput, ReportHistory } from '../../storage/types.js';
-import { withError } from '../../withError';
-import { getDatabase } from './db';
+import { withError } from '../../withError.js';
+import { getDatabase } from './db.js';
 
 const initiatedReportsDb = Symbol.for('playwright.reports.db.reports');
 const instance = globalThis as typeof globalThis & {

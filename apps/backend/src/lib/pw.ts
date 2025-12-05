@@ -4,11 +4,11 @@ import { existsSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import util from 'node:util';
-import { defaultConfig } from './config';
-import { storage } from './storage';
-import { REPORTS_FOLDER, TMP_FOLDER } from './storage/constants';
-import { createDirectory } from './storage/folders';
-import type { ReportMetadata } from './storage/types';
+import { defaultConfig } from './config.js';
+import { storage } from './storage/index.js';
+import { REPORTS_FOLDER, TMP_FOLDER } from './storage/constants.js';
+import { createDirectory } from './storage/folders.js';
+import type { ReportMetadata } from './storage/types.js';
 
 const execAsync = util.promisify(exec);
 

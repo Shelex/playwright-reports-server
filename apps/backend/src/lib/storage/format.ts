@@ -1,4 +1,4 @@
-import type { Report, Result } from './types';
+import type { Report, Result } from './types.js';
 
 export const bytesToString = (bytes: number): string => {
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];

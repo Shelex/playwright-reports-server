@@ -16,7 +16,8 @@
 		"declarationMap": true,
 		"sourceMap": true,
 		"paths": {
-			"@/*": ["./src/*"]
+			"@/*": ["./src/*"],
+			"@playwright-reports/shared": ["./node_modules/@playwright-reports/shared/src"]
 		}
 	},
 	"include": ["src/**/*"],
