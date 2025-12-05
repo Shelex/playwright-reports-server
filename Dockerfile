@@ -49,6 +49,8 @@ COPY --from=frontend-builder --chown=appuser:nodejs /app/frontend/dist ./fronten
 # Copy public assets
 COPY --from=frontend-builder --chown=appuser:nodejs /app/frontend/public ./frontend/public
 
+COPY --chown=appuser:nodejs .env /app/.env
+
 # Create folders required for storing results and reports
 ARG DATA_DIR=/app/data
 ARG RESULTS_DIR=${DATA_DIR}/results

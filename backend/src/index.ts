@@ -4,9 +4,12 @@ import fastifyCors from "@fastify/cors";
 import fastifyJwt from "@fastify/jwt";
 import fastifyMultipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
+import { config } from "dotenv";
 import Fastify from "fastify";
 import { lifecycle } from "./lib/service/lifecycle.js";
 import { registerApiRoutes } from "./routes/index.js";
+
+config({ path: join(__dirname, "../../.env") });
 
 const PORT = parseInt(process.env.PORT || "3001", 10);
 const HOST = process.env.HOST || "0.0.0.0";
