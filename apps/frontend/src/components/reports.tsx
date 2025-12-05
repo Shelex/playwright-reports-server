@@ -5,7 +5,7 @@ interface ReportsProps {
   onChange: () => void;
 }
 
-export default function Reports({ onChange }: ReportsProps) {
+export default function Reports({ onChange }: Readonly<ReportsProps>) {
   return (
     <>
       <div className="flex flex-row justify-between">

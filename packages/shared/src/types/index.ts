@@ -93,7 +93,13 @@ export interface Result {
   stats?: ReportStats;
 }
 
-export type ReportTestOutcome = 'passed' | 'failed' | 'skipped' | 'flaky' | 'expected' | 'unexpected';
+export type ReportTestOutcome =
+  | 'passed'
+  | 'failed'
+  | 'skipped'
+  | 'flaky'
+  | 'expected'
+  | 'unexpected';
 
 export enum ReportTestOutcomeEnum {
   Expected = 'expected',

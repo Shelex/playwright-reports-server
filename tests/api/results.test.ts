@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test';
-import { test } from './fixtures/base';
 import { ResultController } from './controllers/result.controller';
+import { test } from './fixtures/base';
 
 test('/api/result/list shows result list', async ({ request }) => {
   const resultList = await request.get('/api/result/list');
@@ -42,7 +42,10 @@ test('/api/result/list page per row return proper data count', async ({ request 
   }
 });
 
-test('/api/result/list search return valid data by existing resultID', async ({ request, uploadedResult }) => {
+test('/api/result/list search return valid data by existing resultID', async ({
+  request,
+  uploadedResult,
+}) => {
   const resultID = uploadedResult.body.data.resultID;
   const api = new ResultController(request);
   const { response, json } = await api.list({ search: resultID });

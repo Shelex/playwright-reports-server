@@ -1,12 +1,12 @@
 'use client';
 
 import { Spinner } from '@heroui/react';
+import type { ReportHistory } from '@playwright-reports/shared';
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import useQuery from '../hooks/useQuery';
 import { defaultProjectName } from '../lib/constants';
 import { withQueryParams } from '../lib/network';
-import type { ReportHistory } from '@playwright-reports/shared';
 import { title } from './primitives';
 import ProjectSelect from './project-select';
 import { TrendChart } from './trend-chart';

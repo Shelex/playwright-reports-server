@@ -4,9 +4,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { PassThrough } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-
+import type { SiteWhiteLabelConfig } from '@playwright-reports/shared';
 import getFolderSize from 'get-folder-size';
-import type { SiteWhiteLabelConfig } from '../../types/index.js';
 import { defaultConfig, isConfigValid, noConfigErr } from '../config.js';
 import { serveReportRoute } from '../constants.js';
 import { parse } from '../parser/index.js';

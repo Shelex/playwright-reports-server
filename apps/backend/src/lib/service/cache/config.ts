@@ -1,4 +1,4 @@
-import type { SiteWhiteLabelConfig } from '../../../types/index.js';
+import type { SiteWhiteLabelConfig } from '@playwright-reports/shared';
 import { defaultConfig } from '../../config.js';
 import { storage } from '../../storage/index.js';
 

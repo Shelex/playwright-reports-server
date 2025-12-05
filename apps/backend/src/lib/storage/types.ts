@@ -1,7 +1,6 @@
 import type { PassThrough } from 'node:stream';
+import type { SiteWhiteLabelConfig, UUID } from '@playwright-reports/shared';
 import type { ReportInfo, ReportTest } from '@/lib/parser/types';
-
-import type { SiteWhiteLabelConfig, UUID } from '@/types';
 import type { Pagination } from './pagination';
 
 export interface Storage {

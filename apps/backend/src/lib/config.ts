@@ -1,5 +1,5 @@
+import type { SiteWhiteLabelConfig } from '@playwright-reports/shared';
 import { defaultLinks } from '../config/site.js';
-import type { SiteWhiteLabelConfig } from '../types/index.js';
 
 export const defaultConfig: SiteWhiteLabelConfig = {
   title: 'Cyborg Tests',

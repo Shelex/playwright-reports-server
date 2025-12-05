@@ -1,9 +1,9 @@
 'use client';
 
 import { Button, Card, CardBody, CardHeader, Chip, Divider, Input } from '@heroui/react';
+import type { ServerConfig } from '@playwright-reports/shared';
 import { useRef, useState } from 'react';
 import { defaultLinks } from '../../../config/site';
-import type { ServerConfig } from '@playwright-reports/shared';
 
 interface ServerConfigurationProps {
   config: ServerConfig;
@@ -27,7 +27,7 @@ export default function ServerConfiguration({
   onCancel,
   onUpdateTempConfig,
   onAddHeaderLink,
-}: ServerConfigurationProps) {
+}: Readonly<ServerConfigurationProps>) {
   const logoFileRef = useRef<HTMLInputElement>(null);
   const faviconFileRef = useRef<HTMLInputElement>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);

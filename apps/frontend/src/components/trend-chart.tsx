@@ -1,9 +1,8 @@
 'use client';
 import { Alert } from '@heroui/react';
+import type { ReportHistory } from '@playwright-reports/shared';
 import { Link } from 'react-router-dom';
 import { Area, AreaChart, XAxis } from 'recharts';
-
-import type { ReportHistory } from '@playwright-reports/shared';
 import {
   type ChartConfig,
   ChartContainer,

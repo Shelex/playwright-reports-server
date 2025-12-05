@@ -26,7 +26,7 @@ export default function JiraConfiguration({
   onSave,
   onCancel,
   onUpdateTempConfig,
-}: JiraConfigurationProps) {
+}: Readonly<JiraConfigurationProps>) {
   return (
     <Card className="mb-6 p-4">
       <CardHeader

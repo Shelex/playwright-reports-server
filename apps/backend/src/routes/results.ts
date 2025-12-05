@@ -150,9 +150,7 @@ export async function registerResultRoutes(fastify: FastifyInstance) {
       }
 
       if (data.file && !Array.isArray(data.file)) {
-        let saveResultPromise: Promise<void>;
-
-        saveResultPromise = service.saveResult(
+        const saveResultPromise = service.saveResult(
           fileName,
           filePassThrough,
           presignedUrl,

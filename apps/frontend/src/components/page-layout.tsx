@@ -46,7 +46,7 @@ export default function PageLayout({ render }: Readonly<PageLayoutProps>) {
     }
 
     refetch({ cancelRefetch: false });
-  }, [refreshId, session, authRequired]);
+  }, [session, authRequired, authIsLoading, refetch]);
 
   if (authIsLoading || isInfoLoading) {
     return <Spinner className="flex justify-center items-center" />;
