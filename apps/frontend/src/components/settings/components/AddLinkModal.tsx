@@ -16,7 +16,7 @@ export default function AddLinkModal({
   onAddLink,
   onCancel,
   onUpdateLinkData,
-}: AddLinkModalProps) {
+}: Readonly<AddLinkModalProps>) {
   if (!isOpen) return null;
 
   return (

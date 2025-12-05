@@ -31,8 +31,8 @@ export const getAuthSession = (): Promise<AuthSession> => {
     .catch(() => ({ user: undefined, expires: '' }));
 };
 
-export const signOut = (): Promise<void> => {
-  return fetch(withBase('/api/auth/signout'), { method: 'POST' }).then(() => {});
+export const signOut = async (): Promise<void> => {
+  await fetch(withBase('/api/auth/signout'), { method: 'POST' });
 };
 
 export const signIn = async (

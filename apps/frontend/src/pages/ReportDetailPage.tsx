@@ -1,4 +1,5 @@
 import { Button, Spinner } from '@heroui/react';
+import type { ReportHistory } from '@playwright-reports/shared';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import FormattedDate from '../components/date-format';
@@ -8,7 +9,6 @@ import ReportStatistics from '../components/report-details/report-stats';
 import { useAuth } from '../hooks/useAuth';
 import useQuery from '../hooks/useQuery';
 import { withBase } from '../lib/url';
-import type { ReportHistory } from '@playwright-reports/shared';
 
 function ReportDetailPage() {
   const { id } = useParams<{ id: string }>();

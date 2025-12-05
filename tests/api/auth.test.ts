@@ -1,6 +1,6 @@
-import { test } from './fixtures/base';
-import { expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
+import { expect } from '@playwright/test';
+import { test } from './fixtures/base';
 //  TO DO: investigate how run test with auth and without it
 
 // test ('should return success response if the Autorization header is right', async ({request}) => {

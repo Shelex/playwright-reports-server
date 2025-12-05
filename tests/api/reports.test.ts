@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test';
-import { test } from './fixtures/base';
 import { ReportController } from './controllers/report.controller';
+import { test } from './fixtures/base';
 
 test('/api/report/list shows report list', async ({ request }) => {
   const reportList = await request.get('/api/report/list');
@@ -36,7 +36,10 @@ test('/api/report/list page per row return proper data count', async ({ request 
   }
 });
 
-test('/api/report/list search return valid data by existing reportId', async ({ request, generatedReport }) => {
+test('/api/report/list search return valid data by existing reportId', async ({
+  request,
+  generatedReport,
+}) => {
   const title = generatedReport.body.metadata?.title;
   const api = new ReportController(request);
   const { response, json } = await api.list({ search: title });

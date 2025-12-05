@@ -20,9 +20,9 @@ import {
   UploadPartCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import type { SiteWhiteLabelConfig } from '@playwright-reports/shared';
 import { env } from '../../config/env';
 import { withError } from '../../lib/withError';
-import type { SiteWhiteLabelConfig } from '../../types/index.js';
 import { defaultConfig, isConfigValid } from '../config.js';
 import { serveReportRoute } from '../constants.js';
 import { parse } from '../parser/index.js';

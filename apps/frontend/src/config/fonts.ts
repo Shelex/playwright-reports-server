@@ -1,4 +1,3 @@
-// Font configuration for Vite
 export const fontSans = {
   variable: '--font-sans',
 };

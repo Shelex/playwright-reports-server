@@ -1,4 +1,3 @@
-// API Endpoints
 export const API_ENDPOINTS = {
   // Auth
   AUTH_SIGNIN: '/api/auth/signin',
@@ -39,7 +38,6 @@ export const API_ENDPOINTS = {
   HEALTH: '/api/health',
 } as const;
 
-// Test Outcome Constants
 export const TEST_OUTCOMES = {
   PASSED: 'passed',
   FAILED: 'failed',
@@ -47,13 +45,11 @@ export const TEST_OUTCOMES = {
   FLAKY: 'flaky',
 } as const;
 
-// Storage Types
 export const STORAGE_TYPES = {
   FILESYSTEM: 'fs',
   S3: 's3',
 } as const;
 
-// Default Configuration
 export const DEFAULT_CONFIG = {
   PORT: 3001,
   HOST: '0.0.0.0',
@@ -63,14 +59,12 @@ export const DEFAULT_CONFIG = {
   FRONTEND_PORT: 3000,
 } as const;
 
-// File Upload Limits
 export const UPLOAD_LIMITS = {
   MAX_FILE_SIZE: 100 * 1024 * 1024, // 100MB
   MAX_FILES: 1,
   DEFAULT_CHUNK_SIZE: 25 * 1024 * 1024, // 25MB
 } as const;
 
-// Pagination Defaults
 export const PAGINATION_DEFAULTS = {
   DEFAULT_LIMIT: 20,
   MAX_LIMIT: 100,

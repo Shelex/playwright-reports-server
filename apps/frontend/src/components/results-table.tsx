@@ -80,20 +80,14 @@ export default function ResultsTable({
     refetch();
   };
 
-  const onPageChange = useCallback(
-    (page: number) => {
-      setPage(page);
-    },
-    [page, rowsPerPage]
-  );
+  const onPageChange = useCallback((page: number) => {
+    setPage(page);
+  }, []);
 
-  const onProjectChange = useCallback(
-    (project: string) => {
-      setProject(project);
-      setPage(1);
-    },
-    [page, rowsPerPage]
-  );
+  const onProjectChange = useCallback((project: string) => {
+    setProject(project);
+    setPage(1);
+  }, []);
 
   const onTagsChange = useCallback((tags: string[]) => {
     setSelectedTags(tags);
@@ -107,7 +101,7 @@ export default function ResultsTable({
 
   const pages = useMemo(() => {
     return total ? Math.ceil(total / rowsPerPage) : 0;
-  }, [project, total, rowsPerPage]);
+  }, [total, rowsPerPage]);
 
   const onChangeSelect = (keys: Selection) => {
     if (keys === 'all') {

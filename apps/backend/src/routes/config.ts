@@ -1,5 +1,6 @@
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import type { SiteWhiteLabelConfig } from '@playwright-reports/shared';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { env } from '../config/env.js';
 import { cronService } from '../lib/service/cron.js';
@@ -8,7 +9,6 @@ import { service } from '../lib/service/index.js';
 import { JiraService } from '../lib/service/jira.js';
 import { DATA_FOLDER } from '../lib/storage/constants.js';
 import { withError } from '../lib/withError.js';
-import type { SiteWhiteLabelConfig } from '../types/index.js';
 import { type AuthRequest, authenticate } from './auth.js';
 
 interface MultipartFile {

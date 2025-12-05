@@ -1,12 +1,11 @@
 'use client';
 
 import { Button } from '@heroui/react';
+import type { DatabaseStats } from '@playwright-reports/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-
 import useMutation from '../../../hooks/useMutation';
 import { invalidateCache } from '../../../lib/query-cache';
-import type { DatabaseStats } from '@playwright-reports/shared';
 
 interface DatabaseInfoProps {
   stats?: DatabaseStats;

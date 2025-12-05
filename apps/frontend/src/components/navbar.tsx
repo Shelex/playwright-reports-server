@@ -8,12 +8,12 @@ import {
   Navbar as NextUINavbar,
 } from '@heroui/navbar';
 import { Skeleton } from '@heroui/skeleton';
+import type { SiteWhiteLabelConfig } from '@playwright-reports/shared';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { siteConfig as defaultConfig } from '../config/site';
 import useQuery from '../hooks/useQuery';
 import { withBase } from '../lib/url';
-import type { SiteWhiteLabelConfig } from '@playwright-reports/shared';
 import { HeaderLinks } from './header-links';
 import { subtitle } from './primitives';
 import { ThemeSwitch } from './theme-switch';

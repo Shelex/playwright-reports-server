@@ -1,4 +1,10 @@
 import { Spinner } from '@heroui/react';
+import type {
+  EnvInfo,
+  JiraConfig,
+  ServerConfig,
+  SiteWhiteLabelConfig,
+} from '@playwright-reports/shared';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import AddLinkModal from '../components/settings/components/AddLinkModal';
@@ -6,7 +12,6 @@ import CronConfiguration from '../components/settings/components/CronConfigurati
 import EnvironmentInfo from '../components/settings/components/EnvironmentInfo';
 import JiraConfiguration from '../components/settings/components/JiraConfiguration';
 import ServerConfiguration from '../components/settings/components/ServerConfiguration';
-import type { JiraConfig, ServerConfig, EnvInfo, SiteWhiteLabelConfig } from '@playwright-reports/shared';
 import { useAuth } from '../hooks/useAuth';
 
 import useQuery from '../hooks/useQuery';

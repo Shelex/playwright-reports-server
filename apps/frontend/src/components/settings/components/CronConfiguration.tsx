@@ -24,7 +24,7 @@ export default function CronConfiguration({
   onSave,
   onCancel,
   onUpdateTempConfig,
-}: CronConfigurationProps) {
+}: Readonly<CronConfigurationProps>) {
   return (
     <Card className="mb-6 p-4">
       <CardHeader

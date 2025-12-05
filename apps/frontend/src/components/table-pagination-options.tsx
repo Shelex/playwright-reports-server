@@ -28,7 +28,7 @@ export default function TablePaginationOptions({
   onProjectChange,
   onSearchChange,
   onTagsChange,
-}: TablePaginationRowProps) {
+}: Readonly<TablePaginationRowProps>) {
   const rowPerPageItems = rowPerPageOptions ?? defaultRowPerPageOptions;
 
   const onRowsPerPageChange = useCallback(
@@ -38,7 +38,7 @@ export default function TablePaginationOptions({
       setRowsPerPage(rows);
       setPage(1);
     },
-    [rowsPerPage]
+    [setPage, setRowsPerPage]
   );
 
   return (
