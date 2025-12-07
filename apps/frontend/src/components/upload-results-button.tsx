@@ -235,9 +235,9 @@ export default function UploadResultsButton({
                     </div>
                     {tags.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-2">
-                        {tags.map((tag, index) => (
+                        {tags.map((tag) => (
                           <div
-                            key={index}
+                            key={`tag-${tag}`}
                             className="flex items-center gap-1 bg-default-100 dark:bg-default-200 px-2 py-1 rounded-md"
                           >
                             <span className="text-sm">{tag}</span>

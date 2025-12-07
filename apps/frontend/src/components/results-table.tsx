@@ -30,10 +30,10 @@ const columns = [
   { name: '', uid: 'actions' },
 ];
 
-const notMetadataKeys = ['resultID', 'title', 'createdAt', 'size', 'sizeBytes', 'project'];
+const notMetadataKeys = new Set(['resultID', 'title', 'createdAt', 'size', 'sizeBytes', 'project']);
 
 const getTags = (item: Result) => {
-  return Object.entries(item).filter(([key]) => !notMetadataKeys.includes(key));
+  return Object.entries(item).filter(([key]) => !notMetadataKeys.has(key));
 };
 
 interface ResultsTableProps {
@@ -196,9 +196,9 @@ export default function ResultsTable({
                 <FormattedDate date={new Date(item.createdAt)} />
               </TableCell>
               <TableCell className="w-1/3">
-                {getTags(item).map(([key, value], index) => (
+                {getTags(item).map(([key, value]) => (
                   <Chip
-                    key={`${key}-${index}`}
+                    key={`${item.resultID}-${key}`}
                     className="m-1 p-3 text-nowrap bg-[#DAE7F8] dark:bg-[#1E3A8A]"
                     size="sm"
                   >{`${key}: ${value}`}</Chip>

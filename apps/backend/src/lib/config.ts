@@ -1,6 +1,9 @@
 import type { SiteWhiteLabelConfig } from '@playwright-reports/shared';
 import { defaultLinks } from '../config/site.js';
 
+const defaultReportExpirationDays = '90';
+const defaultResultExpirationDays = '30';
+
 export const defaultConfig: SiteWhiteLabelConfig = {
   title: 'Cyborg Tests',
   headerLinks: defaultLinks,
@@ -8,9 +11,9 @@ export const defaultConfig: SiteWhiteLabelConfig = {
   faviconPath: '/favicon.ico',
   reporterPaths: [],
   cron: {
-    resultExpireDays: Number(process.env.RESULT_EXPIRE_DAYS) ?? 30,
+    resultExpireDays: Number(process.env.RESULT_EXPIRE_DAYS ?? defaultResultExpirationDays),
     resultExpireCronSchedule: process.env.RESULT_EXPIRE_CRON_SCHEDULE ?? '0 2 * * *',
-    reportExpireDays: Number(process.env.REPORT_EXPIRE_DAYS) ?? 90,
+    reportExpireDays: Number(process.env.REPORT_EXPIRE_DAYS ?? defaultReportExpirationDays),
     reportExpireCronSchedule: process.env.REPORT_EXPIRE_CRON_SCHEDULE ?? '0 3 * * *',
   },
   jira: {
@@ -23,7 +26,7 @@ export const defaultConfig: SiteWhiteLabelConfig = {
 
 export const noConfigErr = 'no config';
 
-export const isConfigValid = (config: any): config is SiteWhiteLabelConfig => {
+export const isConfigValid = (config: unknown): config is SiteWhiteLabelConfig => {
   return (
     !!config &&
     typeof config === 'object' &&

@@ -96,11 +96,7 @@ export default function ServerConfiguration({
             </Chip>
           )}
         </div>
-        {editingSection !== 'server' ? (
-          <Button color="primary" isDisabled={editingSection !== 'none'} onPress={onEdit}>
-            {editingSection === 'none' ? 'Edit Configuration' : 'Section in Use'}
-          </Button>
-        ) : (
+        {editingSection === 'server' ? (
           <div className="flex gap-2">
             <Button color="success" isLoading={isUpdating} onPress={onSave}>
               Save Changes
@@ -109,6 +105,10 @@ export default function ServerConfiguration({
               Cancel
             </Button>
           </div>
+        ) : (
+          <Button color="primary" isDisabled={editingSection !== 'none'} onPress={onEdit}>
+            {editingSection === 'none' ? 'Edit Configuration' : 'Section in Use'}
+          </Button>
         )}
       </CardHeader>
       <CardBody>
@@ -260,7 +260,7 @@ export default function ServerConfiguration({
                 ? tempConfig.reporterPaths || []
                 : config.reporterPaths || []
               ).map((path, index) => (
-                <div key={index} className="flex items-center gap-2">
+                <div key={path} className="flex items-center gap-2">
                   <Input
                     isDisabled={editingSection !== 'server'}
                     placeholder="./data/reporters/reporter.js"

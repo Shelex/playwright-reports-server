@@ -1,6 +1,28 @@
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { config } from 'dotenv';
 import { cleanEnv, num, str } from 'envalid';
 
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+
+const envPaths = [
+  join(__dirname, '../../../../.env'), //backend dist folder
+  join(process.cwd(), '.env'), // working directory
+  '/app/.env', // app root in Docker
+];
+
+for (const envPath of envPaths) {
+  try {
+    config({ path: envPath });
+    break;
+  } catch {
+    // Continue to next path if this one doesn't exist
+  }
+}
+
 export const env = cleanEnv(process.env, {
+  PORT: num({ desc: 'Port to run the server on', default: 3001 }),
+  HOST: str({ desc: 'Host to run the server on', default: '0.0.0.0' }),
   API_TOKEN: str({ desc: 'API token for authorization', default: undefined }),
   UI_AUTH_EXPIRE_HOURS: str({
     desc: 'How much hours are allowed to keep auth session valid',
