@@ -1,21 +1,13 @@
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import fastifyCookie from '@fastify/cookie';
 import fastifyCors from '@fastify/cors';
 import fastifyJwt from '@fastify/jwt';
 import fastifyMultipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
-import { config } from 'dotenv';
 import Fastify from 'fastify';
+import { env } from './config/env.js';
 import { lifecycle } from './lib/service/lifecycle.js';
 import { registerApiRoutes } from './routes/index.js';
-
-const __dirname = fileURLToPath(new URL('.', import.meta.url));
-config({ path: join(__dirname, '../../../.env') });
-
-const PORT = Number.parseInt(process.env.PORT || '3001', 10);
-const HOST = process.env.HOST || '0.0.0.0';
-const AUTH_SECRET = process.env.AUTH_SECRET || 'development-secret-change-in-production';
 
 async function start() {
   const fastify = Fastify({
@@ -32,7 +24,7 @@ async function start() {
   await fastify.register(fastifyCookie);
 
   await fastify.register(fastifyJwt, {
-    secret: AUTH_SECRET,
+    secret: env.AUTH_SECRET ?? '',
     cookie: {
       cookieName: 'token',
       signed: false,
@@ -97,8 +89,8 @@ async function start() {
   process.on('SIGTERM', () => closeGracefully('SIGTERM'));
 
   try {
-    await fastify.listen({ port: PORT, host: HOST });
-    fastify.log.info(`Server listening on http://${HOST}:${PORT}`);
+    await fastify.listen({ port: env.PORT, host: env.HOST });
+    fastify.log.info(`Server listening on http://${env.HOST}:${env.PORT}`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);

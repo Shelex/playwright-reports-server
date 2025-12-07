@@ -221,9 +221,9 @@ export default function ReportsTable({ onChange }: Readonly<ReportsTableProps>) 
 
                   {/* Metadata chips below title */}
                   <div className="flex flex-wrap gap-1 mt-1">
-                    {getMetadataItems(item).map(({ key, value, icon }, index) => (
+                    {getMetadataItems(item).map(({ key, value, icon }) => (
                       <Chip
-                        key={`${key}-${index}`}
+                        key={`${item.reportID}-${key}`}
                         className="text-xs h-5"
                         color="default"
                         size="sm"

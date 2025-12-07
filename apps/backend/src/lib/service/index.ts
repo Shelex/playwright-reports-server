@@ -1,10 +1,12 @@
-import { type PassThrough, Readable } from 'node:stream';
-import { env } from '../../config/env.js';
+import { createWriteStream } from 'node:fs';
+import path from 'node:path';
+import { PassThrough, Readable } from 'node:stream';
 import type { SiteWhiteLabelConfig } from '@playwright-reports/shared';
+import { env } from '../../config/env.js';
 import { defaultConfig } from '../config.js';
 import { serveReportRoute } from '../constants.js';
 import { isValidPlaywrightVersion } from '../pw.js';
-import { DEFAULT_STREAM_CHUNK_SIZE } from '../storage/constants.js';
+import { DEFAULT_STREAM_CHUNK_SIZE, TMP_FOLDER } from '../storage/constants.js';
 import { bytesToString, getUniqueProjectsList } from '../storage/format.js';
 import {
   type ReadReportsInput,
@@ -235,28 +237,53 @@ class Service {
   public async saveResult(
     filename: string,
     stream: PassThrough,
-    presignedUrl?: string,
-    contentLength?: string
+    options?: {
+      presignedUrl?: string;
+      contentLength?: string;
+      shouldStoreLocalCopy?: boolean;
+    }
   ) {
-    if (!presignedUrl) {
-      console.log(`[service] saving result`);
+    // redirect stream to other PassThrough just in case
+    // we need to store local copy as well as upload to S3
+    const uploadStream = new PassThrough({ highWaterMark: DEFAULT_STREAM_CHUNK_SIZE });
 
-      return await storage.saveResult(filename, stream);
+    if (options?.shouldStoreLocalCopy && env.DATA_STORAGE === 's3') {
+      const localCopyStream = new PassThrough({ highWaterMark: DEFAULT_STREAM_CHUNK_SIZE });
+      stream.pipe(localCopyStream);
+      const localCopyPath = path.join(TMP_FOLDER, 'results', filename);
+      const writeStream = createWriteStream(localCopyPath);
+      localCopyStream.pipe(writeStream);
+
+      writeStream.on('finish', () => {
+        console.log(`[service] local copy saved: ${localCopyPath}`);
+      });
+
+      writeStream.on('error', (error) => {
+        console.error(`[service] local write error: ${error.message}`);
+      });
     }
 
-    console.log(`[service] using direct upload via presigned URL`, presignedUrl);
+    stream.pipe(uploadStream);
+
+    if (!options?.presignedUrl) {
+      console.log(`[service] saving result`);
+
+      return await storage.saveResult(filename, uploadStream);
+    }
+
+    console.log(`[service] using direct upload via presigned URL`, options?.presignedUrl);
 
     const { error } = await withError(
-      fetch(presignedUrl, {
+      fetch(options?.presignedUrl, {
         method: 'PUT',
-        body: Readable.toWeb(stream, {
+        body: Readable.toWeb(uploadStream, {
           strategy: {
             highWaterMark: DEFAULT_STREAM_CHUNK_SIZE,
           },
         }),
         headers: {
           'Content-Type': 'application/zip',
-          'Content-Length': contentLength,
+          'Content-Length': options?.contentLength,
         },
         duplex: 'half',
       } as RequestInit)

@@ -84,6 +84,9 @@ COPY --from=frontend-builder --chown=appuser:nodejs /app/apps/frontend/public ./
 
 # Copy environment configuration (for default values)
 COPY --chown=appuser:nodejs .env.example /app/.env.example
+# Create empty .env if .env doesn't exist
+RUN touch /app/.env \ 
+    chown appuser:nodejs /app/.env
 
 # Create folders required for storing results and reports
 ARG DATA_DIR=/app/data

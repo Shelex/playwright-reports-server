@@ -132,7 +132,7 @@ export async function registerResultRoutes(fastify: FastifyInstance) {
 
     try {
       const data = await request.file({
-        limits: { files: 1, fileSize: 100 * 1024 * 1024 },
+        limits: { files: 1 },
       });
 
       if (!data) {
@@ -150,12 +150,12 @@ export async function registerResultRoutes(fastify: FastifyInstance) {
       }
 
       if (data.file && !Array.isArray(data.file)) {
-        const saveResultPromise = service.saveResult(
-          fileName,
-          filePassThrough,
+        const shouldStoreLocalCopy = resultDetails.triggerReportGeneration === 'true';
+        const saveResultPromise = service.saveResult(fileName, filePassThrough, {
           presignedUrl,
-          contentLength
-        );
+          contentLength,
+          shouldStoreLocalCopy,
+        });
 
         let isPaused = false;
 

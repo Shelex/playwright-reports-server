@@ -945,6 +945,28 @@ export class S3 implements Storage {
 
     for (const resultId of resultsIds) {
       const fileName = `${resultId}.zip`;
+
+      // check for local copy of results file first
+      const temporaryPath = path.join(TMP_FOLDER, 'results', fileName);
+      const { error: temporaryFileExistError } = await withError(fs.access(temporaryPath));
+      if (!temporaryFileExistError) {
+        console.log(
+          `[s3] result ${resultId} already downloaded at ${temporaryPath}, skipping download`
+        );
+        const { error: copyError } = await withError(
+          fs.copyFile(temporaryPath, path.join(tempFolder, fileName))
+        );
+
+        if (copyError) {
+          console.error(
+            `[s3] failed to copy existing result file for ${resultId}: ${copyError.message}`
+          );
+          break;
+        }
+
+        continue;
+      }
+
       const objectKey = path.join(RESULTS_BUCKET, fileName);
 
       console.log(`[s3] checking existence of result: ${objectKey}`);
