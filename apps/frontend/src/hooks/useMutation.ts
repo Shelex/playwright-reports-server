@@ -30,7 +30,10 @@ const useMutation = <TData = unknown, TVariables = unknown>(
 
       const fullPath = withBase(path ?? url);
       const response = await fetch(fullPath, {
-        headers,
+        headers: body && Object.keys(body).length > 0 ? headers : {
+          ...headers,
+          'Content-Type': 'text/plain',
+        },
         body: body && Object.keys(body).length > 0 ? JSON.stringify(body) : undefined,
         method: options?.method ?? 'POST',
       });

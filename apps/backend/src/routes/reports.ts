@@ -161,3 +161,4 @@ export async function registerReportRoutes(fastify: FastifyInstance) {
     }
   });
 }
+

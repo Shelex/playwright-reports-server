@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { PassThrough } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import type { FastifyInstance } from 'fastify';
 import { DeleteResultsRequestSchema, ListResultsQuerySchema } from '../lib/schemas/index.js';
 import { service } from '../lib/service/index.js';
@@ -111,101 +112,112 @@ export async function registerResultRoutes(fastify: FastifyInstance) {
     const resultID = randomUUID();
     const fileName = `${resultID}.zip`;
 
-    const query = request.query as Record<string, string>;
-    const contentLength = query['fileContentLength'] || '';
-
-    if (contentLength || Number.parseInt(contentLength, 10)) {
-      console.log(
-        `[upload] fileContentLength query parameter is provided for result ${resultID}, using presigned URL flow`
-      );
-    }
-
-    // if there is fileContentLength query parameter we can use presigned URL for direct upload
-    const presignedUrl = contentLength ? await service.getPresignedUrl(fileName) : '';
-
-    const resultDetails: Record<string, string> = {};
-    let fileSize = 0;
-
-    const filePassThrough = new PassThrough({
-      highWaterMark: DEFAULT_STREAM_CHUNK_SIZE,
-    });
-
     try {
-      const data = await request.file({
-        limits: { files: 1 },
+      const query = request.query as Record<string, string>;
+      const contentLength = query['fileContentLength'] || '';
+
+      // if there is fileContentLength query parameter we can use presigned URL for direct upload
+      const presignedUrl = contentLength ? await service.getPresignedUrl(fileName) : '';
+
+      const resultDetails: Record<string, string> = {};
+      const parts = request.parts();
+
+      const filePassThrough = new PassThrough({
+        highWaterMark: DEFAULT_STREAM_CHUNK_SIZE,
       });
 
-      if (!data) {
-        return reply.status(400).send({ error: 'upload result failed: No file received' });
-      }
+      let fileStream: any = null;
+      let fileSize = 0;
 
-      for (const [key, prop] of Object.entries(data.fields)) {
-        if (key === 'file') continue;
+      const uploadPromise = new Promise<void>((resolve, reject) => {
+        let fileReceived = false;
+        let isComplete = false;
 
-        if (prop && typeof prop === 'object' && 'value' in prop) {
-          resultDetails[key] = String(prop.value);
-        } else {
-          resultDetails[key] = typeof prop === 'string' ? prop : String(prop);
-        }
-      }
+        const onAborted = () => {
+          if (!isComplete) {
+            console.log(`[upload] client disconnected, fileSize so far: ${fileSize} bytes`);
+            if (!filePassThrough.destroyed) {
+              filePassThrough.destroy(new Error('Client aborted connection'));
+            }
+            reject(new Error('Client aborted connection'));
+          }
+        };
 
-      if (data.file && !Array.isArray(data.file)) {
-        const shouldStoreLocalCopy = resultDetails.triggerReportGeneration === 'true';
-        const saveResultPromise = service.saveResult(fileName, filePassThrough, {
-          presignedUrl,
-          contentLength,
-          shouldStoreLocalCopy,
-        });
-
-        let isPaused = false;
-
-        data.file.on('data', (chunk: Buffer) => {
-          fileSize += chunk.length;
-
-          const canContinue = filePassThrough.write(chunk);
-
-          if (!canContinue && !isPaused) {
-            isPaused = true;
-            data.file?.pause();
+        filePassThrough.on('error', (error) => {
+          if (!isComplete) {
+            reject(error);
           }
         });
 
-        filePassThrough.on('drain', () => {
-          if (isPaused) {
-            isPaused = false;
-            data.file?.resume();
+        request.raw.on('aborted', onAborted);
+        request.raw.on('close', onAborted);
+
+        (async () => {
+          try {
+            for await (const part of parts) {
+              if (part.type === 'field') {
+                resultDetails[part.fieldname] = part.value as string;
+              }
+
+              if (part.type === 'file' && !fileReceived) {
+                fileStream = part;
+                fileReceived = true;
+
+                fileStream.file.on('data', (chunk: Buffer) => {
+                  fileSize += chunk.length;
+                });
+                const shouldStoreLocalCopy = resultDetails.triggerReportGeneration === 'true';
+                const savePromise = service.saveResult(fileName, filePassThrough, {
+                  presignedUrl,
+                  contentLength,
+                  shouldStoreLocalCopy,
+                });
+
+                pipeline(fileStream.file, filePassThrough).catch((pipelineError) => {
+                  if (!filePassThrough.destroyed) {
+                    filePassThrough.destroy();
+                  }
+                  reject(new Error(`Stream pipeline failed: ${pipelineError.message}`));
+                });
+
+                savePromise
+                  .then(() => {
+                    console.log(
+                      `[upload] file saved successfully: ${fileName}, size: ${fileSize} bytes`
+                    );
+                  })
+                  .catch((saveError) => {
+                    console.error(`[upload] save error:`, saveError);
+                    if (!filePassThrough.destroyed) {
+                      filePassThrough.destroy();
+                    }
+                  });
+
+                isComplete = true;
+                resolve();
+                break;
+              }
+            }
+
+            if (!fileReceived) {
+              isComplete = true;
+              reject(new Error('upload result failed: No file received'));
+            }
+          } catch (error) {
+            isComplete = true;
+            reject(error);
           }
-        });
+        })();
+      });
 
-        data.file.on('end', () => {
-          console.log('[upload] file ended');
-          filePassThrough.end();
-        });
-
-        data.file.on('error', (error) => {
-          console.error('[upload] file error:', error);
-          filePassThrough.destroy();
-          throw error;
-        });
-
-        data.file.pipe(filePassThrough);
-        await saveResultPromise;
-
-        if (contentLength) {
-          const expected = Number.parseInt(contentLength, 10);
-          if (Number.isFinite(expected) && expected > 0 && fileSize !== expected) {
-            return reply.status(400).send({
-              error: `Size mismatch: received ${fileSize} bytes, expected ${expected} bytes`,
-            });
-          }
-        }
-      }
+      await uploadPromise;
 
       const { result: uploadResult, error: uploadResultDetailsError } = await withError(
         service.saveResultDetails(resultID, resultDetails, fileSize)
       );
 
       if (uploadResultDetailsError) {
+        await withError(service.deleteResults([resultID]));
         return reply.status(400).send({
           error: `upload result details failed: ${uploadResultDetailsError.message}`,
         });
@@ -237,13 +249,14 @@ export async function registerResultRoutes(fastify: FastifyInstance) {
         );
 
         console.log(
-          `found ${testRunResults?.length} results for the test run ${resultDetails.testRun}`
+          `[upload] found ${testRunResults?.length} results for test run ${resultDetails.testRun}`
         );
 
-        if (testRunResults?.length === Number.parseInt(resultDetails.shardTotal)) {
+        if (testRunResults?.length === Number.parseInt(resultDetails.shardTotal, 10)) {
           const ids = testRunResults.map((result) => result.resultID);
 
-          console.log('triggerReportGeneration for', resultDetails.testRun, ids);
+          console.log(`[upload] triggering report generation for ${resultDetails.testRun}`);
+
           const { result, error } = await withError(
             service.generateReport(ids, {
               project: resultDetails.project,
@@ -253,7 +266,9 @@ export async function registerResultRoutes(fastify: FastifyInstance) {
           );
 
           if (error) {
-            return reply.status(500).send({ error: `failed to generate report: ${error.message}` });
+            return reply.status(500).send({
+              error: `failed to generate report: ${error.message}`,
+            });
           }
 
           generatedReport = result;
@@ -270,20 +285,12 @@ export async function registerResultRoutes(fastify: FastifyInstance) {
     } catch (error) {
       console.error('[upload] error:', error);
 
-      if (!filePassThrough.destroyed) {
-        filePassThrough.destroy();
-      }
-
       const { error: deleteError } = await withError(service.deleteResults([resultID]));
       if (deleteError) {
         console.error(`[upload] cleanup failed for result ${resultID}:`, deleteError);
-        reply.status(400).send({
-          error: `upload result failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        });
-        return;
       }
 
-      return reply.status(400).send({
+      return reply.status(500).send({
         error: `upload result failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       });
     }

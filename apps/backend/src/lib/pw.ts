@@ -5,10 +5,11 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import util from 'node:util';
 import { defaultConfig } from './config.js';
-import { storage } from './storage/index.js';
 import { REPORTS_FOLDER, TMP_FOLDER } from './storage/constants.js';
 import { createDirectory } from './storage/folders.js';
+import { storage } from './storage/index.js';
 import type { ReportMetadata } from './storage/types.js';
+import { withError } from './withError.js';
 
 const execAsync = util.promisify(exec);
 
@@ -89,25 +90,33 @@ export const generatePlaywrightReport = async (
   */
   const mergeConfig = `export default { testDir: 'rootTestsDir' };`;
 
-  await fs.writeFile(path.join(tempFolder, 'merge.config.ts'), mergeConfig);
+  const configPath = path.join(TMP_FOLDER, 'merge.config.ts');
+  await fs.writeFile(configPath, mergeConfig);
   try {
     // installing playwright into cache if not installed
     const installResult = await execAsync(`npx playwright${versionTag} --version`);
 
     console.log(`[pw] npx cache for playwright${versionTag}`, installResult);
 
-    const command = `npx playwright${versionTag} merge-reports --reporter ${reporterArgs.join(' --reporter ')} --config ${tempFolder}/merge.config.ts ${tempFolder}`;
+    const command = `npx playwright${versionTag} merge-reports --reporter ${reporterArgs.join(' --reporter ')} --config ${configPath} ${tempFolder}`;
 
     console.log('[pw] used merge config', mergeConfig);
     console.log(`[pw] executing merging command: ${command}`);
-    const result = await execAsync(command, {
-      env: {
-        ...process.env,
-        // Avoid opening the report on server
-        PW_TEST_HTML_REPORT_OPEN: 'never',
-        PLAYWRIGHT_HTML_REPORT: reportPath,
-      },
-    });
+    const { result, error } = await withError(
+      execAsync(command, {
+        env: {
+          ...process.env,
+          // Avoid opening the report on server
+          PW_TEST_HTML_REPORT_OPEN: 'never',
+          PLAYWRIGHT_HTML_REPORT: reportPath,
+        },
+      })
+    );
+
+    if (error) {
+      console.error('[pw] merge command error output:', error.message);
+      throw error;
+    }
 
     console.log('[pw] merge result', result);
 

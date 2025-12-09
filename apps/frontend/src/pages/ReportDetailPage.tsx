@@ -1,6 +1,6 @@
 import { Button, Spinner } from '@heroui/react';
 import type { ReportHistory } from '@playwright-reports/shared';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import FormattedDate from '../components/date-format';
 import { subtitle, title } from '../components/primitives';
@@ -12,8 +12,11 @@ import { withBase } from '../lib/url';
 
 function ReportDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const auth = useAuth();
   const isAuthLoading = auth.status === 'loading';
+
+  const highlightTestId = location.state?.highlightTestId;
 
   const {
     data: report,
@@ -50,7 +53,9 @@ function ReportDetailPage() {
             <Button color="primary">Open report</Button>
           </Link>
         </div>
-        <div className="md:w-3/4 max-w-full">{report && <FileList report={report} />}</div>
+        <div className="md:w-3/4 max-w-full">
+          {report && <FileList report={report} highlightTestId={highlightTestId} />}
+        </div>
       </div>
     </>
   );

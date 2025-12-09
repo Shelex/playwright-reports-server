@@ -1,10 +1,9 @@
 import { Accordion, AccordionItem, Button, Chip } from '@heroui/react';
+import type { ReportFile, ReportHistory, ReportTest } from '@playwright-reports/shared';
 import { useState } from 'react';
-
+import { FailureAnalysisButton } from '@/components/analytics/FailureAnalysisButton';
 import JiraTicketModal from '@/components/jira-ticket-modal';
 import { testStatusToColor } from '@/lib/tailwind';
-
-import type { ReportFile, ReportHistory, ReportTest } from '@playwright-reports/shared';
 import TestInfo from './test-info';
 
 interface SuiteNode {
@@ -60,10 +59,16 @@ function buildTestTree(rootName: string, tests: ReportTest[]): SuiteNode {
 interface SuiteNodeComponentProps {
   suite: SuiteNode;
   history: ReportHistory[];
+  reportId?: string;
   onCreateJiraTicket: (test: ReportTest) => void;
 }
 
-const SuiteNodeComponent = ({ suite, history, onCreateJiraTicket }: SuiteNodeComponentProps) => {
+const SuiteNodeComponent = ({
+  suite,
+  history,
+  reportId,
+  onCreateJiraTicket,
+}: SuiteNodeComponentProps) => {
   return (
     <Accordion key={suite.name} aria-label={suite.name} selectionMode="multiple" title={suite.name}>
       {[
@@ -76,6 +81,7 @@ const SuiteNodeComponent = ({ suite, history, onCreateJiraTicket }: SuiteNodeCom
           >
             <SuiteNodeComponent
               history={history}
+              reportId={reportId}
               suite={child}
               onCreateJiraTicket={onCreateJiraTicket}
             />
@@ -83,6 +89,7 @@ const SuiteNodeComponent = ({ suite, history, onCreateJiraTicket }: SuiteNodeCom
         )),
         ...suite.tests.map((test) => {
           const status = testStatusToColor(test.outcome || 'passed');
+          const isFailed = test.outcome === 'failed' || test.outcome === 'unexpected';
 
           return (
             <AccordionItem
@@ -98,16 +105,25 @@ const SuiteNodeComponent = ({ suite, history, onCreateJiraTicket }: SuiteNodeCom
                   <Chip color="default" size="sm">
                     {test.projectName || 'Unknown'}
                   </Chip>
-                  <Button
-                    className="ml-auto"
-                    color="primary"
-                    size="sm"
-                    title="Create Jira ticket for this failed test"
-                    variant="flat"
-                    onPress={() => onCreateJiraTicket(test)}
-                  >
-                    Create Jira Ticket
-                  </Button>
+                  <div className="ml-auto flex gap-2">
+                    {isFailed && (
+                      <FailureAnalysisButton
+                        reportId={reportId || ''}
+                        testId={test.testId || 'unknown'}
+                        testTitle={test.title || 'Unknown test'}
+                        errorMessage={test.results?.[0]?.message}
+                      />
+                    )}
+                    <Button
+                      color="primary"
+                      size="sm"
+                      title="Create Jira ticket for this failed test"
+                      variant="flat"
+                      onPress={() => onCreateJiraTicket(test)}
+                    >
+                      Create Jira Ticket
+                    </Button>
+                  </div>
                 </span>
               }
             >
@@ -141,6 +157,7 @@ const FileSuitesTree = ({ file, history, reportId }: FileSuitesTreeProps) => {
     <>
       <SuiteNodeComponent
         history={history}
+        reportId={reportId}
         suite={suiteTree}
         onCreateJiraTicket={handleCreateJiraTicket}
       />

@@ -212,6 +212,7 @@ export interface ReportHistory {
   sizeBytes: number;
   stats?: ReportStats;
   files?: ReportFile[];
+  duration?: number;
 }
 
 export interface TestHistory extends ReportTest {
@@ -300,3 +301,5 @@ export interface ServerConfig {
     projectKey?: string;
   };
 }
+
+export * from './analytics.js';

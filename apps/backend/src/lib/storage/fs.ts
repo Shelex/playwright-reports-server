@@ -335,9 +335,34 @@ export async function generateReport(resultsIds: string[], metadata?: ReportMeta
 
   try {
     for (const id of resultsIds) {
-      await fs.copyFile(path.join(RESULTS_FOLDER, `${id}.zip`), path.join(tempFolder, `${id}.zip`));
+      const sourceZipPath = path.join(RESULTS_FOLDER, `${id}.zip`);
+      const targetZipPath = path.join(tempFolder, `${id}.zip`);
+
+      console.log(`[fs] copying result ${id} to temp folder`);
+
+      const { result: stats, error: statError } = await withError(fs.stat(sourceZipPath));
+
+      if (statError || !stats) {
+        throw new Error(
+          `source zip file not found or inaccessible for result ${id}: ${statError?.message}`
+        );
+      }
+
+      if (stats.size === 0) {
+        throw new Error(`zip file for result ${id} is empty`);
+      }
+
+      console.log(`[fs] source zip file size: ${stats.size} bytes`);
+
+      const { error: copyError } = await withError(fs.copyFile(sourceZipPath, targetZipPath));
+
+      if (copyError) {
+        throw new Error(`failed to copy zip file for result ${id}: ${copyError.message}`);
+      }
     }
-    const generated = await generatePlaywrightReport(reportId, metadata!);
+
+    console.log(`[fs] all zip files copied, calling playwright merge-reports`);
+    const generated = await generatePlaywrightReport(reportId, metadata ?? {});
     const info = await parseReportMetadata(reportId, generated.reportPath, metadata);
 
     await saveReportMetadata(generated.reportPath, info);

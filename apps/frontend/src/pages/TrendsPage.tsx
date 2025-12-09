@@ -1,5 +1,5 @@
-import ReportTrends from '../components/report-trends';
+import AnalyticsDashboard from '../components/analytics/AnalyticsDashboard';
 
 export default function TrendsPage() {
-  return <ReportTrends />;
+  return <AnalyticsDashboard />;
 }

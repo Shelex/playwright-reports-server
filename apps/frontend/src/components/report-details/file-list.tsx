@@ -1,6 +1,7 @@
 'use client';
 
 import { Accordion, AccordionItem, Alert, Spinner } from '@heroui/react';
+import type { ReportHistory } from '@playwright-reports/shared';
 import { type FC, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import InlineStatsCircle from '@/components/inline-stats-circle';
@@ -8,16 +9,15 @@ import { subtitle } from '@/components/primitives';
 import { StatChart } from '@/components/stat-chart';
 import useQuery from '@/hooks/useQuery';
 import { pluralize } from '@/lib/transformers';
-
-import type { ReportHistory } from '@playwright-reports/shared';
 import FileSuitesTree from './suite-tree';
 import ReportFilters from './tests-filters';
 
 interface FileListProps {
   report?: ReportHistory | null;
+  highlightTestId?: string;
 }
 
-const FileList: FC<FileListProps> = ({ report }) => {
+const FileList: FC<FileListProps> = ({ report, highlightTestId }) => {
   const {
     data: history,
     isLoading: isHistoryLoading,
@@ -28,12 +28,24 @@ const FileList: FC<FileListProps> = ({ report }) => {
   });
 
   const [filteredTests, setFilteredTests] = useState<ReportHistory | undefined>(report!);
+  const [defaultExpandedKeys, setDefaultExpandedKeys] = useState<string[] | undefined>();
 
   useEffect(() => {
     if (historyError) {
       toast.error(historyError.message);
     }
   }, [historyError]);
+
+  useEffect(() => {
+    if (highlightTestId && filteredTests?.files) {
+      const fileWithTest = filteredTests.files.find((file) =>
+        file.tests?.some((test: any) => test.testId === highlightTestId)
+      );
+      if (fileWithTest?.fileId) {
+        setDefaultExpandedKeys([fileWithTest.fileId]);
+      }
+    }
+  }, [highlightTestId, filteredTests]);
 
   if (!report) {
     return <Spinner color="primary" label="Loading..." />;
@@ -50,7 +62,12 @@ const FileList: FC<FileListProps> = ({ report }) => {
       {!filteredTests?.files?.length ? (
         <Alert color="warning" title={`No files found`} />
       ) : (
-        <Accordion isCompact={true} variant="bordered">
+        <Accordion
+          isCompact={true}
+          variant="bordered"
+          defaultExpandedKeys={defaultExpandedKeys}
+          selectedKeys={defaultExpandedKeys}
+        >
           {(filteredTests?.files ?? []).map((file: any) => (
             <AccordionItem
               key={file.fileId}

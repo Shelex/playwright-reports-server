@@ -25,7 +25,7 @@ export default function PageLayout({ render }: Readonly<PageLayoutProps>) {
   } = useQuery<ServerDataInfo>('/api/info', {
     enabled: isAuthenticated,
   });
-  
+
   useEffect(() => {
     // Only show error if auth is required
     if (authRequired === false) {
@@ -50,7 +50,6 @@ export default function PageLayout({ render }: Readonly<PageLayoutProps>) {
     return <Spinner className="flex justify-center items-center" />;
   }
 
-  
   if (error) {
     toast.error(error.message);
 

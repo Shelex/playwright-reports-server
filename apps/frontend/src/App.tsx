@@ -1,4 +1,5 @@
-import { Route, Routes } from 'react-router-dom';
+import { useLayoutEffect } from 'react';
+import { Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { Layout } from './components/Layout';
 import HomePage from './pages/HomePage';
@@ -18,6 +19,7 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/report/:id" element={<ReportDetailPage />} />
+          <Route path="/report/:id/:testId" element={<RedirectTestDetails />} />
           <Route path="/results" element={<ResultsPage />} />
           <Route path="/trends" element={<TrendsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
@@ -27,6 +29,20 @@ function App() {
       </Layout>
     </Providers>
   );
+}
+
+function RedirectTestDetails() {
+  const { id, testId } = useParams<{ id: string; testId: string }>();
+  const navigate = useNavigate();
+
+  useLayoutEffect(() => {
+    navigate(`/report/${id}`, {
+      state: { highlightTestId: testId },
+      replace: true,
+    });
+  });
+
+  return null;
 }
 
 export default App;

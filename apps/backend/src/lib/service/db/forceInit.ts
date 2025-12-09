@@ -1,5 +1,5 @@
-import { reportDb, resultDb } from './index.js';
 import { withError } from '../../withError.js';
+import { reportDb, resultDb } from './index.js';
 
 export const forceInitDatabase = async () => {
   const { error: cleanupError } = await withError(

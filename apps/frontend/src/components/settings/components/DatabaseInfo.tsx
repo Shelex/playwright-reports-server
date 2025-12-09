@@ -20,7 +20,7 @@ export default function DatabaseInfo({ stats }: Readonly<DatabaseInfoProps>) {
   } = useMutation('/api/cache/refresh', {
     method: 'POST',
     onSuccess: () => {
-      invalidateCache(queryClient, { queryKeys: ['/api'] });
+      invalidateCache(queryClient, { queryKeys: ['/api', '/api/info'] });
       toast.success(`db refreshed successfully`);
     },
   });

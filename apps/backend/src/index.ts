@@ -14,6 +14,7 @@ async function start() {
     logger: {
       level: process.env.LOG_LEVEL || 'info',
     },
+    bodyLimit: 4294967294, // ~4GB, effectively unlimited
   });
 
   await fastify.register(fastifyCors, {
@@ -31,7 +32,13 @@ async function start() {
     },
   });
 
-  await fastify.register(fastifyMultipart);
+  await fastify.register(fastifyMultipart, {
+    limits: {
+      fileSize: 0, // 0 = unlimited
+      files: 1,
+    },
+    attachFieldsToBody: false,
+  });
 
   fastify.get('/api/ping', async () => {
     return {

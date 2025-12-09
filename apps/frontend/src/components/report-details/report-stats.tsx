@@ -1,8 +1,7 @@
+import type { ReportStats } from '@playwright-reports/shared';
 import type { FC } from 'react';
-
 import { StatChart } from '@/components/stat-chart';
 import { pluralize } from '@/lib/transformers';
-import type { ReportStats } from '@playwright-reports/shared';
 
 interface StatisticsProps {
   stats?: ReportStats;

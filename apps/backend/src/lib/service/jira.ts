@@ -1,5 +1,5 @@
-import { env } from '../../config/env.js';
 import type { JiraConfig } from '@playwright-reports/shared';
+import { env } from '../../config/env.js';
 
 export interface JiraIssueFields {
   summary: string;

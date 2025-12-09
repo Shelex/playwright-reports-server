@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { registerAnalyticsRoutes } from './analytics.js';
 import { registerAuthRoutes } from './auth.js';
 import { registerConfigRoutes } from './config.js';
 import { registerJiraRoutes } from './jira.js';
@@ -13,4 +14,5 @@ export async function registerApiRoutes(fastify: FastifyInstance) {
   await registerConfigRoutes(fastify);
   await registerServeRoutes(fastify);
   await registerJiraRoutes(fastify);
+  await registerAnalyticsRoutes(fastify);
 }

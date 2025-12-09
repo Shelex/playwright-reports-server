@@ -18,7 +18,7 @@ export const invalidateCache = async (
         queryClient.invalidateQueries({
           predicate: (query) =>
             query.queryKey.some(
-              (key) => typeof key === 'string' && key.includes(options.predicate!)
+              (key) => typeof key === 'string' && key.includes(options.predicate as string)
             ),
         });
       }
