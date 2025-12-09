@@ -1066,7 +1066,7 @@ export class S3 implements Storage {
   private async parseReportMetadata(
     reportId: string,
     reportPath: string,
-    metadata?: Record<string, string>,
+    metadata?: ReportMetadata,
     htmlContent?: string // to pass file content if stored on s3
   ): Promise<ReportMetadata> {
     console.log(`[s3] creating report metadata for ${reportId} and ${reportPath}`);
@@ -1074,10 +1074,18 @@ export class S3 implements Storage {
 
     const info = await parse(html as string);
 
-    const content = Object.assign(info, metadata, {
-      reportId,
-      createdAt: new Date().toISOString(),
-    });
+    const content = Object.assign(
+      info,
+      {
+        reportId,
+        createdAt: new Date().toISOString(),
+      },
+      metadata ?? {}
+    );
+
+    if (metadata?.displayNumber) {
+      content.displayNumber = metadata.displayNumber;
+    }
 
     return content;
   }

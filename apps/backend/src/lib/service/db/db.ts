@@ -70,6 +70,7 @@ function initializeSchema(db: Database.Database): void {
       reportID TEXT PRIMARY KEY,
       project TEXT NOT NULL,
       title TEXT,
+      displayNumber INTEGER,
       createdAt TEXT NOT NULL,
       reportUrl TEXT NOT NULL,
       size TEXT,
@@ -84,6 +85,7 @@ function initializeSchema(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_reports_project ON reports(project);
     CREATE INDEX IF NOT EXISTS idx_reports_createdAt ON reports(createdAt DESC);
     CREATE INDEX IF NOT EXISTS idx_reports_updatedAt ON reports(updatedAt DESC);
+    CREATE INDEX IF NOT EXISTS idx_reports_displayNumber ON reports(displayNumber);
   `);
 
   db.exec(`

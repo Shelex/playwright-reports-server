@@ -389,6 +389,7 @@ async function parseReportMetadata(
     },
     metadata ?? {}
   );
+  if (metadata?.displayNumber) content.displayNumber = metadata.displayNumber;
 
   return content;
 }

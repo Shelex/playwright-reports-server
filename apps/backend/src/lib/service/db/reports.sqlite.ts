@@ -14,10 +14,31 @@ export class ReportDatabase {
   private readonly db = getDatabase();
 
   private readonly insertStmt: Database.Statement<
-    [string, string, string | null, string, string, string | null, number, string | null, string]
+    [
+      string,
+      string,
+      string | null,
+      number | null,
+      string,
+      string,
+      string | null,
+      number,
+      string | null,
+      string,
+    ]
   >;
   private readonly updateStmt: Database.Statement<
-    [string, string | null, string, string | null, number, string | null, string, string]
+    [
+      string,
+      string | null,
+      number | null,
+      string,
+      string | null,
+      number,
+      string | null,
+      string,
+      string,
+    ]
   >;
   private readonly deleteStmt: Database.Statement<[string]>;
   private readonly getByIDStmt: Database.Statement<[string]>;
@@ -27,13 +48,13 @@ export class ReportDatabase {
 
   private constructor() {
     this.insertStmt = this.db.prepare(`
-      INSERT OR REPLACE INTO reports (reportID, project, title, createdAt, reportUrl, size, sizeBytes, stats, metadata, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      INSERT OR REPLACE INTO reports (reportID, project, title, displayNumber, createdAt, reportUrl, size, sizeBytes, stats, metadata, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `);
 
     this.updateStmt = this.db.prepare(`
       UPDATE reports
-      SET project = ?, title = ?, reportUrl = ?, size = ?, sizeBytes = ?, stats = ?, metadata = ?, updatedAt = CURRENT_TIMESTAMP
+      SET project = ?, title = ?, displayNumber = ?, reportUrl = ?, size = ?, sizeBytes = ?, stats = ?, metadata = ?, updatedAt = CURRENT_TIMESTAMP
       WHERE reportID = ?
     `);
 
@@ -83,9 +104,39 @@ export class ReportDatabase {
 
     console.log(`[report db] caching ${result.reports.length} reports`);
 
+    const existingDisplayNumbersSet = new Set(
+      (
+        this.db
+          .prepare('SELECT displayNumber FROM reports WHERE displayNumber IS NOT NULL')
+          .all() as Array<{ displayNumber: number }>
+      ).map((row) => row.displayNumber)
+    );
+
     const insertMany = this.db.transaction((reports: ReportHistory[]) => {
-      for (const report of reports) {
-        this.insertReport(report);
+      const sortedReports = reports.sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+
+      let nextDisplayNumber = 1;
+
+      for (const report of sortedReports) {
+        let displayNumber = report.displayNumber;
+
+        if (!displayNumber) {
+          while (existingDisplayNumbersSet.has(nextDisplayNumber)) {
+            nextDisplayNumber++;
+          }
+          displayNumber = nextDisplayNumber;
+          existingDisplayNumbersSet.add(displayNumber);
+          nextDisplayNumber++;
+        }
+
+        const reportWithDisplayNumber = {
+          ...report,
+          displayNumber,
+        };
+
+        this.insertReport(reportWithDisplayNumber);
       }
     });
 
@@ -96,8 +147,18 @@ export class ReportDatabase {
   }
 
   private insertReport(report: ReportHistory): void {
-    const { reportID, project, title, createdAt, reportUrl, size, sizeBytes, stats, ...metadata } =
-      report;
+    const {
+      reportID,
+      project,
+      title,
+      displayNumber,
+      createdAt,
+      reportUrl,
+      size,
+      sizeBytes,
+      stats,
+      ...metadata
+    } = report;
 
     const createdAtStr =
       createdAt instanceof Date
@@ -110,6 +171,7 @@ export class ReportDatabase {
       reportID,
       project || '',
       title || null,
+      displayNumber || null,
       createdAtStr,
       reportUrl,
       size || null,
@@ -133,16 +195,33 @@ export class ReportDatabase {
 
   public onCreated(report: ReportHistory) {
     console.log(`[report db] adding report ${report.reportID}`);
-    this.insertReport(report);
+
+    const reportWithDisplayNumber = {
+      ...report,
+      displayNumber: report.displayNumber ?? this.getNextDisplayNumber(),
+    };
+
+    this.insertReport(reportWithDisplayNumber);
   }
 
   public onUpdated(report: ReportHistory) {
     console.log(`[report db] updating report ${report.reportID}`);
-    const { reportID, project, title, reportUrl, size, sizeBytes, stats, ...metadata } = report;
+    const {
+      reportID,
+      project,
+      title,
+      displayNumber,
+      reportUrl,
+      size,
+      sizeBytes,
+      stats,
+      ...metadata
+    } = report;
 
     this.updateStmt.run(
       project || '',
       title || null,
+      displayNumber || null,
       reportUrl,
       size || null,
       sizeBytes || 0,
@@ -157,6 +236,7 @@ export class ReportDatabase {
       reportID: string;
       project: string;
       title: string | null;
+      displayNumber: number | null;
       createdAt: string;
       reportUrl: string;
       size: string | null;
@@ -174,6 +254,7 @@ export class ReportDatabase {
           reportID: string;
           project: string;
           title: string | null;
+          displayNumber: number | null;
           createdAt: string;
           reportUrl: string;
           size: string | null;
@@ -191,6 +272,7 @@ export class ReportDatabase {
       reportID: string;
       project: string;
       title: string | null;
+      displayNumber: number | null;
       createdAt: string;
       reportUrl: string;
       size: string | null;
@@ -213,6 +295,7 @@ export class ReportDatabase {
       reportID: string;
       project: string;
       title: string | null;
+      displayNumber: number | null;
       createdAt: string;
       reportUrl: string;
       size: string | null;
@@ -282,6 +365,7 @@ export class ReportDatabase {
       reportID: string;
       project: string;
       title: string | null;
+      displayNumber: number | null;
       createdAt: string;
       reportUrl: string;
       size: string | null;
@@ -296,11 +380,18 @@ export class ReportDatabase {
     };
   }
 
+  public getNextDisplayNumber(): number {
+    const result = this.db.prepare('SELECT MAX(displayNumber) as maxNumber FROM reports').get() as {
+      maxNumber: number | null;
+    };
+
+    return (result.maxNumber || 0) + 1;
+  }
+
   public async refresh(): Promise<void> {
     console.log('[report db] refreshing cache');
     this.clear();
     this.initialized = false;
-    // Re-initialize immediately by reading from filesystem
     await this.init();
   }
 
@@ -308,6 +399,7 @@ export class ReportDatabase {
     reportID: string;
     project: string;
     title: string | null;
+    displayNumber: number | null;
     createdAt: string;
     reportUrl: string;
     size: string | null;
@@ -322,6 +414,7 @@ export class ReportDatabase {
       reportID: row.reportID,
       project: row.project,
       title: row.title || undefined,
+      displayNumber: row.displayNumber || undefined,
       createdAt: row.createdAt,
       reportUrl: row.reportUrl,
       size: row.size || undefined,

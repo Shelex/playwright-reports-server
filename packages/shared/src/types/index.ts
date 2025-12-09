@@ -76,6 +76,7 @@ export interface EnvInfo {
 export interface Report {
   reportID: string;
   title?: string;
+  displayNumber?: number;
   project: string;
   reportUrl: string;
   createdAt: string;
@@ -205,6 +206,7 @@ export interface ReadReportsHistory {
 export interface ReportHistory {
   reportID: string;
   title?: string;
+  displayNumber?: number;
   project: string;
   reportUrl: string;
   createdAt: string;

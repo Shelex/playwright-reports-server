@@ -40,6 +40,7 @@ const columns = [
 const coreFields = [
   'reportID',
   'title',
+  'displayNumber',
   'project',
   'createdAt',
   'size',
@@ -212,14 +213,14 @@ export default function ReportsTable({ onChange }: Readonly<ReportsTableProps>) 
             <TableRow key={item.reportID}>
               <TableCell className="w-1/3">
                 <div className="flex flex-col">
-                  {/* Main title and link */}
                   <Link to={withBase(`/report/${item.reportID}`)}>
                     <div className="flex flex-row items-center">
-                      {item.title || item.reportID} <LinkIcon />
+                      {item.title ??
+                        (item.displayNumber ? `#${item.displayNumber}` : item.reportID)}
+                      <LinkIcon />
                     </div>
                   </Link>
 
-                  {/* Metadata chips below title */}
                   <div className="flex flex-wrap gap-1 mt-1">
                     {getMetadataItems(item).map(({ key, value, icon }) => (
                       <Chip

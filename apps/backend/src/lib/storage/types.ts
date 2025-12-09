@@ -82,6 +82,7 @@ export type Result = {
 export type Report = {
   reportID: string;
   title?: string;
+  displayNumber?: number;
   project: string;
   reportUrl: string;
   createdAt: Date;
@@ -101,8 +102,9 @@ export type ReportMetadata = Partial<{
   title: string;
   project: string;
   playwrightVersion?: string;
+  displayNumber?: number;
 }> &
-  Record<string, string>;
+  Record<string, string | number | undefined>;
 
 export interface ServerDataInfo {
   dataFolderSizeinMB: string;
