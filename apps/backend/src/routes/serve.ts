@@ -54,17 +54,17 @@ export async function registerServeRoutes(fastify: FastifyInstance) {
 
       if (isLlmEnabled && isIndexHtml) {
         const reportId = extractReportIdFromPath(targetPath);
-        const testId = extractTestIdFromUrl(request.url);
         const project = extractProjectFromPath(targetPath);
 
-        if (!report || !testId) {
-          throw new Error('missing reportId or testId, skipping button injection');
-        }
-
         try {
+          if (!reportId) {
+            console.warn('[serve] missing reportId, skipping button injection');
+            throw new Error('missing reportId or testId, skipping button injection');
+          }
+
           const testUrl = {
             reportId: reportId ?? 'unknown',
-            testId: testId ?? 'unknown',
+            testId: 'unknown', // will be defined on button click, as it is unknown from index
             projectId: project ?? '',
             isPlaywrightReport: true,
             isTestPage: false,
