@@ -346,18 +346,21 @@ export class AnalyticsService {
     };
   }
 
-  async getTestStepTimingTrends(reportId: string, testId: string): Promise<StepTimingTrend | null> {
+  async getTestTrends(reportId: string, testId: string): Promise<StepTimingTrend | null> {
     const allReports = await this.getRecentReports();
-    const testReports = allReports.filter((report: BackendReportHistory) =>
-      report.files?.some((file: ReportFile) =>
-        file.tests?.some(
-          (test: ReportTest) =>
-            test.testId === testId || `${file.fileName}:${test.title}` === testId
-        )
-      )
-    );
+    const testReports = allReports.filter((report: BackendReportHistory) => {
+      const hasMatchingTest = report.files?.some((file: ReportFile) =>
+        file.tests?.some((test: ReportTest) => {
+          const currentTestId = test.testId || `${file.fileName}:${test.title}`;
+          const matches = currentTestId === testId;
+          return matches;
+        })
+      );
+      return hasMatchingTest;
+    });
 
-    if (testReports.length === 0) {
+    if (!testReports.length) {
+      console.log(`[analytics] No historical data found for testId: ${testId}`);
       return null;
     }
 

@@ -96,32 +96,6 @@ function initializeSchema(db: Database.Database): void {
     );
   `);
 
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS failure_analyses (
-      id TEXT PRIMARY KEY,
-      report_id TEXT NOT NULL,
-      test_id TEXT NOT NULL,
-      test_title TEXT,
-      failed_step_index INTEGER,
-      root_cause TEXT,
-      confidence TEXT,
-      debugging_steps TEXT,
-      code_fix TEXT,
-      prevention_strategy TEXT,
-      model TEXT,
-      generated_at TEXT DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
-
-  
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_failure_analyses_report ON failure_analyses(report_id);
-  `);
-
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_failure_analyses_test ON failure_analyses(test_id);
-  `);
-
   console.log('[db] schema initialized');
 }
 

@@ -1,7 +1,6 @@
 import { Accordion, AccordionItem, Button, Chip } from '@heroui/react';
 import type { ReportFile, ReportHistory, ReportTest } from '@playwright-reports/shared';
 import { useState } from 'react';
-import { FailureAnalysisButton } from '@/components/analytics/FailureAnalysisButton';
 import JiraTicketModal from '@/components/jira-ticket-modal';
 import { testStatusToColor } from '@/lib/tailwind';
 import TestInfo from './test-info';
@@ -106,14 +105,6 @@ const SuiteNodeComponent = ({
                     {test.projectName || 'Unknown'}
                   </Chip>
                   <div className="ml-auto flex gap-2">
-                    {isFailed && (
-                      <FailureAnalysisButton
-                        reportId={reportId || ''}
-                        testId={test.testId || 'unknown'}
-                        testTitle={test.title || 'Unknown test'}
-                        errorMessage={test.results?.[0]?.message}
-                      />
-                    )}
                     <Button
                       color="primary"
                       size="sm"

@@ -8,31 +8,6 @@ export interface LLMConfig {
   maxTokens: number;
 }
 
-
-export interface FailureAnalysis {
-  id: string;
-  reportId: string;
-  testId: string;
-  testTitle: string;
-  failedStepIndex: number;
-  rootCause: string;
-  confidence: 'high' | 'medium' | 'low';
-  debuggingSteps: string[];
-  codeFix: string;
-  preventionStrategy: string;
-  model: string;
-  generatedAt: Date;
-}
-
-
-export interface FailureAnalysisRequest {
-  reportId: string;
-  testId: string;
-  failedStepIndex: number;
-  includeHistory: boolean;
-  includePerformance: boolean;
-}
-
 export interface LLMProvider {
   sendMessage(prompt: string): Promise<{
     content: string;

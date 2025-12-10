@@ -1,10 +1,17 @@
 import { access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { report } from 'node:process';
 import type { FastifyInstance } from 'fastify';
 import mime from 'mime';
 import { env } from '../config/env.js';
 import { DATA_FOLDER } from '../lib/storage/constants.js';
 import { storage } from '../lib/storage/index.js';
+import { injectTestAnalysis } from '../lib/utils/html-injector.js';
+import {
+  extractProjectFromPath,
+  extractReportIdFromPath,
+  extractTestIdFromUrl,
+} from '../lib/utils/url-parser.js';
 import { withError } from '../lib/withError.js';
 import { type AuthRequest, authenticate } from './auth.js';
 
@@ -37,15 +44,44 @@ export async function registerServeRoutes(fastify: FastifyInstance) {
         });
       }
 
+      let reportHtml = content;
       const headers: Record<string, string> = {
         'Content-Type': contentType ?? 'application/octet-stream',
       };
 
-      if ((request as AuthRequest).user?.apiToken) {
-        headers['X-API-Token'] = (request as AuthRequest).user!.apiToken;
+      const isLlmEnabled = process.env.LLM_ENABLED === 'true';
+      const isIndexHtml = contentType === 'text/html' && targetPath.endsWith('index.html');
+
+      if (isLlmEnabled && isIndexHtml) {
+        const reportId = extractReportIdFromPath(targetPath);
+        const testId = extractTestIdFromUrl(request.url);
+        const project = extractProjectFromPath(targetPath);
+
+        if (!report || !testId) {
+          throw new Error('missing reportId or testId, skipping button injection');
+        }
+
+        try {
+          const testUrl = {
+            reportId: reportId ?? 'unknown',
+            testId: testId ?? 'unknown',
+            projectId: project ?? '',
+            isPlaywrightReport: true,
+            isTestPage: false,
+          };
+
+          reportHtml = await injectTestAnalysis(content.toString(), testUrl);
+        } catch (injectionError) {
+          console.error('[serve] Failed to inject LLM analysis:', injectionError);
+          // continue with original content if injection fails
+        }
       }
 
-      return reply.code(200).headers(headers).send(content);
+      if ((request as AuthRequest).user?.apiToken) {
+        headers['X-API-Token'] = (request as AuthRequest).user?.apiToken ?? '';
+      }
+
+      return reply.code(200).headers(headers).send(reportHtml);
     } catch (error) {
       fastify.log.error({ error }, 'File serving error');
       return reply.code(500).send({ error: 'Internal server error' });

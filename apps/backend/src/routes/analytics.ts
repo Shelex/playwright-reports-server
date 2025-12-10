@@ -1,8 +1,7 @@
-import crypto from 'node:crypto';
-import type { FailureAnalysisRequest, LLMConfig } from '@playwright-reports/shared';
+import type { LLMConfig } from '@playwright-reports/shared';
 import type { FastifyInstance } from 'fastify';
+import { withError } from '@/lib/withError.js';
 import { analyticsService } from '../lib/service/analytics.js';
-import { getDatabase } from '../lib/service/db/index.js';
 import { createLLMProvider } from '../lib/service/llm.js';
 
 export async function registerAnalyticsRoutes(fastify: FastifyInstance) {
@@ -26,40 +25,12 @@ export async function registerAnalyticsRoutes(fastify: FastifyInstance) {
     }
   });
 
-  fastify.get('/api/analytics/:reportId/tests/:testId/timings', async (request, reply) => {
+  fastify.post('/api/llm/analyze-failed-test', async (request, reply) => {
     try {
-      const { reportId, testId } = request.params as { reportId: string; testId: string };
-
-      const trends = await analyticsService.getTestStepTimingTrends(reportId, testId);
-
-      if (!trends) {
-        reply.status(404);
-        return { success: false, error: 'Test timing trends not found' };
-      }
-
-      return { success: true, data: trends };
-    } catch (error) {
-      fastify.log.error({
-        error: 'Test timing trends error',
-        message: error instanceof Error ? error.message : String(error),
-      });
-      reply.status(500);
-      return { success: false, error: 'Failed to fetch test timing trends' };
-    }
-  });
-
-  fastify.post('/api/llm/analyze-failure', async (request, reply) => {
-    try {
-      const {
-        prompt,
-        testId,
-        reportId,
-        request: analysisRequest,
-      } = request.body as {
-        prompt: string;
+      const { testId, reportId, prompt } = request.body as {
         testId: string;
         reportId: string;
-        request?: FailureAnalysisRequest;
+        prompt: string;
       };
 
       let llmConfig: LLMConfig;
@@ -89,22 +60,45 @@ export async function registerAnalyticsRoutes(fastify: FastifyInstance) {
         return { success: false, error: 'LLM configuration is invalid' };
       }
 
-      const response = await llmProvider.sendMessage(prompt);
+      console.log(`[llm] Fetching historical data for testId: ${testId}, reportId: ${reportId}`);
+      const trends = await analyticsService.getTestTrends(reportId, testId);
+      console.log(
+        `[llm] Historical data result:`,
+        trends ? `Found ${trends.runs.length} runs` : 'No historical data found'
+      );
 
-      if (analysisRequest) {
-        await storeFailureAnalysis({
-          reportId: analysisRequest.reportId,
-          testId: analysisRequest.testId,
-          testTitle: analysisRequest.testId,
-          failedStepIndex: analysisRequest.failedStepIndex,
-          rootCause: response.content,
-          confidence: 'unknown', // determined from llm
-          debuggingSteps: [], // determined from llm
-          codeFix: '', // determined from llm
-          preventionStrategy: '', // determined from llm
-          model: response.model,
-          generatedAt: new Date(),
-        });
+      let enhancedPrompt = prompt;
+      if (trends && trends.runs.length > 0) {
+        const recentFailures = trends.runs
+          .filter((run) => run.isOutlier)
+          .slice(-3)
+          .map((run) => ({
+            date: run.runDate.toISOString(),
+            error: 'Test failure detected with outlier timing',
+          }));
+
+        const testContext = {
+          totalRuns: trends.runs.length,
+          recentFailures,
+          averageDuration: trends.statistics?.mean || 0,
+          isFlaky:
+            trends.runs.length > 5 && trends.statistics.stdDev > trends.statistics.mean * 0.3,
+        };
+
+        enhancedPrompt += `\n\n**Historical Context:**\n`;
+        enhancedPrompt += `- Total runs: ${testContext.totalRuns}\n`;
+        enhancedPrompt += `- Average duration: ${testContext.averageDuration}ms\n`;
+        enhancedPrompt += `- Status: ${testContext.isFlaky ? 'Potentially flaky' : 'Stable'}\n`;
+
+        if (testContext.recentFailures.length > 0) {
+          enhancedPrompt += `- Recent failures: ${testContext.recentFailures.length}\n`;
+        }
+      }
+
+      const { result: response, error } = await withError(llmProvider.sendMessage(enhancedPrompt));
+      if (error || !response) {
+        reply.status(400);
+        return { success: false, error: 'Failed to get response from LLM service' };
       }
 
       return {
@@ -113,6 +107,8 @@ export async function registerAnalyticsRoutes(fastify: FastifyInstance) {
           content: response.content,
           usage: response.usage,
           model: response.model,
+          testId,
+          reportId,
         },
       };
     } catch (error) {
@@ -121,7 +117,7 @@ export async function registerAnalyticsRoutes(fastify: FastifyInstance) {
         message: error instanceof Error ? error.message : String(error),
       });
       reply.status(500);
-      return { success: false, error: 'Failed to analyze failure with AI' };
+      return { success: false, error: 'Failed to analyze test with LLM' };
     }
   });
 }
@@ -216,44 +212,4 @@ async function getLLMConfig(): Promise<LLMConfig> {
     temperature: parsedTemperature,
     maxTokens: parsedMaxTokens,
   };
-}
-
-async function storeFailureAnalysis(analysis: {
-  reportId: string;
-  testId: string;
-  testTitle: string;
-  failedStepIndex: number;
-  rootCause: string;
-  confidence: string;
-  debuggingSteps: string[];
-  codeFix: string;
-  preventionStrategy: string;
-  model: string;
-  generatedAt: Date;
-}): Promise<void> {
-  const db = getDatabase();
-
-  const stmt = db.prepare(`
-    INSERT INTO failure_analyses
-    (id, report_id, test_id, test_title, failed_step_index, root_cause, confidence, debugging_steps, code_fix, prevention_strategy, model, generated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  const id = crypto.randomUUID();
-  const debuggingSteps = JSON.stringify(analysis.debuggingSteps || []);
-
-  stmt.run(
-    id,
-    analysis.reportId,
-    analysis.testId,
-    analysis.testTitle,
-    analysis.failedStepIndex,
-    analysis.rootCause,
-    analysis.confidence,
-    debuggingSteps,
-    analysis.codeFix,
-    analysis.preventionStrategy,
-    analysis.model,
-    analysis.generatedAt.toISOString()
-  );
 }

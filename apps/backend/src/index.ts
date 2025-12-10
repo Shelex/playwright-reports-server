@@ -9,11 +9,24 @@ import { env } from './config/env.js';
 import { lifecycle } from './lib/service/lifecycle.js';
 import { registerApiRoutes } from './routes/index.js';
 
+const logByEnv = {
+  dev: {
+    transport: {
+      target: 'pino-pretty',
+      options: {
+        translateTime: 'HH:MM:ss Z',
+        ignore: 'pid,hostname',
+      },
+    },
+  },
+  prod: {
+    level: process.env.LOG_LEVEL || 'info',
+  },
+};
+
 async function start() {
   const fastify = Fastify({
-    logger: {
-      level: process.env.LOG_LEVEL || 'info',
-    },
+    logger: logByEnv[env.isDev ? 'dev' : 'prod'],
     bodyLimit: 4294967294, // ~4GB, effectively unlimited
   });
 
