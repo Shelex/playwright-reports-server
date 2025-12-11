@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from 'dotenv';
 import { cleanEnv, num, str } from 'envalid';
-import type { LLMProviderType } from '@/lib/llm/types';
+import type { LLMProviderType } from '../lib/llm/types';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 

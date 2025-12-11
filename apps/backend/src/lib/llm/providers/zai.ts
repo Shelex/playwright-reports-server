@@ -40,7 +40,7 @@ export class ZAIProvider extends LLMProvider {
   }
 
   protected async parseResponse(response: Response): Promise<LLMResponse> {
-    const data = await response.json();
+    const data = await response.json() as any;
 
     if (!data.choices || data.choices.length === 0) {
       throw new Error(`Z.AI API error: No choices returned in response`);
@@ -54,7 +54,7 @@ export class ZAIProvider extends LLMProvider {
       usage: {
         inputTokens: data.usage?.prompt_tokens || 0,
         outputTokens: data.usage?.completion_tokens || 0,
-        totalTokens: data.usage?.total_tokens,
+        totalTokens: data.usage?.total_tokens || 0,
       },
       model: data.model || this.config.model,
       finishReason: choice.finish_reason,

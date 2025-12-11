@@ -22,13 +22,14 @@ RUN npm run build
 # Build frontend
 FROM base AS frontend-builder
 WORKDIR /app/apps/frontend
-COPY --from=deps /app/node_modules ./node_modules
 COPY --from=shared-builder /app/packages/shared ./packages/shared
 COPY apps/frontend/ .
 # Remove the shared dependency from package.json temporarily to avoid npm trying to install it
 RUN sed -i '/"@playwright-reports\/shared":/d' package.json
+
+RUN npm install
 # Create symlink for shared package in node_modules for TypeScript resolution
-RUN mkdir -p ./node_modules/@playwright-reports \
+RUN mkdir -p ./node_modules/@playwright-reports && \
     ln -sf ../../packages/shared ./node_modules/@playwright-reports/shared
 # Install missing rollup native dependency if needed
 RUN npm install @rollup/rollup-linux-arm64-musl --no-save || true
@@ -42,15 +43,18 @@ WORKDIR /app/apps/backend
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=shared-builder /app/packages/shared ./packages/shared
 COPY apps/backend/ .
-# Create symlink for shared package in node_modules for TypeScript resolution
-RUN mkdir -p ./node_modules/@playwright-reports \
-    ln -sf ../../packages/shared ./node_modules/@playwright-reports/shared
-# Build first with dev dependencies
-RUN npm run build
+
 # Remove the shared dependency from package.json temporarily to avoid npm trying to install it
 RUN sed -i '/"@playwright-reports\/shared":/d' package.json
+# Install backend dependencies including dev dependencies needed for build
+RUN npm install
+# Create symlink for shared package in node_modules for TypeScript resolution
+RUN mkdir -p ./node_modules/@playwright-reports && \
+    ln -sf ../../packages/shared ./node_modules/@playwright-reports/shared
+# Build first with all dependencies
+RUN npm run build
 # Install backend production dependencies (removes dev dependencies)
-RUN npm ci --only=production
+RUN npm install --only=production
 
 # Production image
 FROM base AS runner

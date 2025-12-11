@@ -21,7 +21,7 @@ export async function injectTestAnalysis(html: string, testUrl: ParsedTestUrl): 
   }
 }
 
-async function injectClientSideScript(document: Document, testUrl: ParsedTestUrl): Promise<void> {
+async function injectClientSideScript(document: any, testUrl: ParsedTestUrl): Promise<void> {
   const style = document.createElement('style');
   style.textContent = `
     .playwright-llm-analysis {

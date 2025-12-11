@@ -25,14 +25,14 @@ export class OpenAIProvider extends LLMProvider {
   }
 
   protected async parseResponse(response: Response): Promise<LLMResponse> {
-    const data = await response.json();
+    const data = await response.json() as any;
 
     return {
       content: data.choices?.[0]?.message?.content || '',
       usage: {
         inputTokens: data.usage?.prompt_tokens || 0,
         outputTokens: data.usage?.completion_tokens || 0,
-        totalTokens: data.usage?.total_tokens,
+        totalTokens: data.usage?.total_tokens || 0,
       },
       model: data.model || this.config.model,
       finishReason: data.choices?.[0]?.finish_reason,

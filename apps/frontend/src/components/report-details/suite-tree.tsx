@@ -88,7 +88,6 @@ const SuiteNodeComponent = ({
         )),
         ...suite.tests.map((test) => {
           const status = testStatusToColor(test.outcome || 'passed');
-          const isFailed = test.outcome === 'failed' || test.outcome === 'unexpected';
 
           return (
             <AccordionItem

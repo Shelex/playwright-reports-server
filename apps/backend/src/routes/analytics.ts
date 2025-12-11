@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { withError } from '@/lib/withError.js';
+import { withError } from '../lib/withError.js';
 import { llmService } from '../lib/llm/index.js';
 import { analyticsService } from '../lib/service/analytics.js';
 
