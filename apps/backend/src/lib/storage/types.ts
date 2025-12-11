@@ -32,7 +32,7 @@ export interface Storage {
 
 export interface ReportPath {
   reportID: string;
-  project: string;
+  project?: string;
 }
 
 export interface ReadResultsInput {

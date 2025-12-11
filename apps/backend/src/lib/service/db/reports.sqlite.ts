@@ -267,8 +267,10 @@ export class ReportDatabase {
     return row ? this.rowToReport(row) : undefined;
   }
 
-  public getByProject(project: string): ReportHistory[] {
-    const rows = this.getByProjectStmt.all(project) as Array<{
+  public getByProject(project?: string): ReportHistory[] {
+    const stmt = project ? this.getByProjectStmt : this.getAllStmt;
+
+    const rows = stmt.all(project ?? '') as Array<{
       reportID: string;
       project: string;
       title: string | null;

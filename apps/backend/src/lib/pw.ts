@@ -24,11 +24,11 @@ export const generatePlaywrightReport = async (
   reportId: UUID,
   metadata: ReportMetadata
 ): Promise<{ reportPath: string }> => {
-  const { project, playwrightVersion } = metadata;
+  const { playwrightVersion } = metadata;
 
   console.log(`[pw] generating Playwright report ${reportId}`);
 
-  const reportPath = path.join(REPORTS_FOLDER, project ?? '', reportId);
+  const reportPath = path.join(REPORTS_FOLDER, reportId);
 
   await createDirectory(reportPath);
 

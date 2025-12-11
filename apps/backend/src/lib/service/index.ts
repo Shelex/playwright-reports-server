@@ -147,8 +147,7 @@ class Service {
 
     reportDb.onCreated(report);
 
-    const projectPath = metadata?.project ? `${encodeURI(metadata.project)}/` : '';
-    const reportUrl = `${serveReportRoute}/${projectPath}${reportId}/index.html`;
+    const reportUrl = `${serveReportRoute}/${reportId}/index.html`;
 
     return { reportId, reportUrl, metadata: metadataWithVersion };
   }

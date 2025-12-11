@@ -35,7 +35,6 @@ import {
   REPORT_METADATA_FILE,
   REPORTS_BUCKET,
   REPORTS_FOLDER,
-  REPORTS_PATH,
   RESULTS_BUCKET,
   TMP_FOLDER,
 } from './constants.js';
@@ -489,15 +488,12 @@ export class S3 implements Storage {
 
         const dir = path.dirname(file.Key);
         const id = path.basename(dir);
-        const parentDir = path.basename(path.dirname(dir));
-
-        const projectName = parentDir === REPORTS_PATH ? '' : parentDir;
 
         const report = {
           reportID: id,
-          project: projectName,
+          project: '',
           createdAt: file.LastModified ?? new Date(),
-          reportUrl: `${serveReportRoute}/${projectName ? encodeURIComponent(projectName) : ''}/${id}/index.html`,
+          reportUrl: `${serveReportRoute}/${id}/index.html`,
           size: '',
           sizeBytes: 0,
         };
@@ -533,7 +529,7 @@ export class S3 implements Storage {
         console.log(`[s3.batch] reading report ${report.reportID} metadata`);
 
         const { result: metadata, error: metadataError } = await withError(
-          this.readOrParseReportMetadata(report.reportID, report.project)
+          this.readOrParseReportMetadata(report.reportID)
         );
 
         if (metadataError) {
@@ -553,9 +549,9 @@ export class S3 implements Storage {
     );
   }
 
-  async readOrParseReportMetadata(id: string, projectName: string): Promise<ReportHistory> {
+  async readOrParseReportMetadata(id: string): Promise<ReportHistory> {
     const { result: metadataContent, error: metadataError } = await withError(
-      this.readFile(path.join(REPORTS_BUCKET, projectName, id, REPORT_METADATA_FILE), 'utf-8')
+      this.readFile(path.join(REPORTS_BUCKET, id, REPORT_METADATA_FILE), 'utf-8')
     );
 
     if (metadataError)
@@ -573,7 +569,7 @@ export class S3 implements Storage {
     console.log(`metadata file not found for ${id}, creating new metadata`);
     try {
       const { result: htmlContent, error: htmlError } = await withError(
-        this.readFile(path.join(REPORTS_BUCKET, projectName, id, 'index.html'), 'utf-8')
+        this.readFile(path.join(REPORTS_BUCKET, id, 'index.html'), 'utf-8')
       );
 
       if (htmlError)
@@ -581,9 +577,8 @@ export class S3 implements Storage {
 
       const created = await this.parseReportMetadata(
         id,
-        path.join(REPORTS_FOLDER, projectName, id),
+        path.join(REPORTS_FOLDER, id),
         {
-          project: projectName,
           reportID: id,
         },
         htmlContent?.toString()
@@ -591,7 +586,7 @@ export class S3 implements Storage {
 
       console.log(`metadata object created for ${id}: ${JSON.stringify(created)}`);
 
-      await this.saveReportMetadata(id, path.join(REPORTS_FOLDER, projectName, id), created);
+      await this.saveReportMetadata(id, path.join(REPORTS_FOLDER, id), created);
 
       Object.assign(metadata, created);
     } catch (e) {
@@ -1027,7 +1022,7 @@ export class S3 implements Storage {
 
     if (parseReportMetadataError) console.error(parseReportMetadataError.message);
 
-    const remotePath = path.join(REPORTS_BUCKET, metadata?.project ?? '', reportId);
+    const remotePath = path.join(REPORTS_BUCKET, reportId);
 
     const { error: uploadError } = await withError(
       this.uploadReport(reportId, reportPath, remotePath)
@@ -1051,7 +1046,7 @@ export class S3 implements Storage {
   private async saveReportMetadata(reportId: string, reportPath: string, metadata: ReportMetadata) {
     console.log(`[s3] report uploaded: ${reportId}, uploading metadata to ${reportPath}`);
     const { error: metadataError } = await withError(
-      this.write(path.join(REPORTS_BUCKET, metadata.project ?? '', reportId), [
+      this.write(path.join(REPORTS_BUCKET, reportId), [
         {
           name: REPORT_METADATA_FILE,
           content: JSON.stringify(metadata),

@@ -18,7 +18,6 @@ import {
   DEFAULT_STREAM_CHUNK_SIZE,
   REPORT_METADATA_FILE,
   REPORTS_FOLDER,
-  REPORTS_PATH,
   RESULTS_FOLDER,
   TMP_FOLDER,
 } from './constants.js';
@@ -128,9 +127,9 @@ function isMissingFileError(error?: Error | null) {
   return error?.message.includes('ENOENT');
 }
 
-async function readOrParseReportMetadata(id: string, projectName: string): Promise<ReportMetadata> {
+async function readOrParseReportMetadata(id: string): Promise<ReportMetadata> {
   const { result: metadataContent, error: metadataError } = await withError(
-    readFile(path.join(projectName, id, REPORT_METADATA_FILE), 'utf-8')
+    readFile(path.join(id, REPORT_METADATA_FILE), 'utf-8')
   );
 
   if (metadataError) console.error(`failed to read metadata for ${id}: ${metadataError.message}`);
@@ -143,14 +142,14 @@ async function readOrParseReportMetadata(id: string, projectName: string): Promi
 
   console.log(`metadata file not found for ${id}, creating new metadata`);
   try {
-    const parsed = await parseReportMetadata(id, path.join(REPORTS_FOLDER, projectName, id), {
-      project: projectName,
+    const reportPath = path.join(REPORTS_FOLDER, id);
+    const parsed = await parseReportMetadata(id, reportPath, {
       reportID: id,
     });
 
     console.log(`parsed metadata for ${id}`);
 
-    await saveReportMetadata(path.join(REPORTS_FOLDER, projectName, id), parsed);
+    await saveReportMetadata(reportPath, parsed);
 
     Object.assign(metadata, parsed);
   } catch (e) {
@@ -199,25 +198,16 @@ export async function readReports(): Promise<ReadReportsOutput> {
   await createDirectoriesIfMissing();
   const entries = await fs.readdir(REPORTS_FOLDER, {
     withFileTypes: true,
-    recursive: true,
   });
 
-  const reportEntries = entries.filter(
-    (entry) =>
-      !entry.isDirectory() &&
-      entry.name === 'index.html' &&
-      !('parentPath' in entry && entry.parentPath?.endsWith('trace'))
-  );
+  const reportEntries = entries.filter((entry) => entry.isDirectory());
 
   const stats = await processBatch<Dirent, Stats & { filePath: string; createdAt: Date }>(
     {},
     reportEntries,
     20,
     async (file) => {
-      const filePath =
-        'parentPath' in file
-          ? file.parentPath
-          : path.join(REPORTS_FOLDER, (file as Dirent<string>).name || '');
+      const filePath = path.join(REPORTS_FOLDER, file.name);
       const stat = await fs.stat(filePath);
 
       return Object.assign(stat, { filePath, createdAt: stat.birthtime });
@@ -230,22 +220,18 @@ export async function readReports(): Promise<ReadReportsOutput> {
     10,
     async (file) => {
       const id = path.basename(file.filePath);
-      const reportPath = path.dirname(file.filePath);
-      const parentDir = path.basename(reportPath);
-      const sizeBytes = await getFolderSize.loose(path.join(reportPath, id));
+      const sizeBytes = await getFolderSize.loose(file.filePath);
       const size = bytesToString(sizeBytes);
 
-      const projectName = parentDir === REPORTS_PATH ? '' : parentDir;
-
-      const metadata = await readOrParseReportMetadata(id, projectName);
+      const metadata = await readOrParseReportMetadata(id);
 
       return {
         reportID: id,
-        project: projectName,
+        project: metadata.project || '',
         createdAt: file.birthtime,
         size,
         sizeBytes,
-        reportUrl: `${serveReportRoute}/${projectName ? encodeURIComponent(projectName) : ''}/${id}/index.html`,
+        reportUrl: `${serveReportRoute}/${id}/index.html`,
         ...metadata,
       } as ReportHistory;
     }
@@ -265,9 +251,7 @@ export async function deleteResult(resultId: string) {
 }
 
 export async function deleteReports(reports: ReportPath[]) {
-  const paths = reports.map((report) =>
-    report.project ? `${report.project}/${report.reportID}` : report.reportID
-  );
+  const paths = reports.map((report) => report.reportID);
 
   await processBatch<string, void>(undefined, paths, 10, async (path) => {
     await deleteReport(path);

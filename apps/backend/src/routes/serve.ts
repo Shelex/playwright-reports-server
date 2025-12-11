@@ -1,17 +1,12 @@
 import { access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { report } from 'node:process';
 import type { FastifyInstance } from 'fastify';
 import mime from 'mime';
 import { env } from '../config/env.js';
 import { DATA_FOLDER } from '../lib/storage/constants.js';
 import { storage } from '../lib/storage/index.js';
 import { injectTestAnalysis } from '../lib/utils/html-injector.js';
-import {
-  extractProjectFromPath,
-  extractReportIdFromPath,
-  extractTestIdFromUrl,
-} from '../lib/utils/url-parser.js';
+import { extractReportIdFromPath } from '../lib/utils/url-parser.js';
 import { withError } from '../lib/withError.js';
 import { type AuthRequest, authenticate } from './auth.js';
 
@@ -54,7 +49,6 @@ export async function registerServeRoutes(fastify: FastifyInstance) {
 
       if (isLlmEnabled && isIndexHtml) {
         const reportId = extractReportIdFromPath(targetPath);
-        const project = extractProjectFromPath(targetPath);
 
         try {
           if (!reportId) {
@@ -65,7 +59,6 @@ export async function registerServeRoutes(fastify: FastifyInstance) {
           const testUrl = {
             reportId: reportId ?? 'unknown',
             testId: 'unknown', // will be defined on button click, as it is unknown from index
-            projectId: project ?? '',
             isPlaywrightReport: true,
             isTestPage: false,
           };
