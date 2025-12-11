@@ -1,0 +1,123 @@
+import { env } from '../../config/env.js';
+import { getCustomSystemPrompt, testFailedWithContext } from './prompts/index.js';
+import { AnthropicProvider } from './providers/anthropic.js';
+import { OpenAIProvider } from './providers/openai.js';
+import { ZAIProvider } from './providers/zai.js';
+import type { LLMProviderConfig } from './types/index.js';
+
+export class LLMService {
+  private static instance: LLMService;
+  private provider: OpenAIProvider | AnthropicProvider | ZAIProvider | null = null;
+  private config: LLMProviderConfig | null = null;
+
+  private constructor() {
+    const provider = env.LLM_PROVIDER ?? 'openai';
+
+    if (!env.LLM_API_KEY) {
+      throw new Error('LLM_API_KEY environment variable is required when LLM_ENABLED is true');
+    }
+
+    this.config = {
+      provider,
+      baseUrl: env.LLM_BASE_URL ?? '',
+      apiKey: env.LLM_API_KEY,
+      model: env.LLM_MODEL ?? '',
+      temperature: env.LLM_TEMPERATURE ?? 0.3,
+      requestTimeoutMs: 30 * 1000,
+      maxRetries: 3,
+      retryDelayMs: 1 * 1000,
+    };
+  }
+
+  static getInstance(): LLMService {
+    if (!LLMService.instance) {
+      LLMService.instance = new LLMService();
+    }
+    return LLMService.instance;
+  }
+
+  isConfigured(): boolean {
+    return !!env.LLM_BASE_URL && !!env.LLM_API_KEY;
+  }
+
+  async initialize(): Promise<void> {
+    if (!this.isConfigured()) {
+      throw new Error('LLM service is not enabled. Set LLM_BASE_URL and LLM_API_KEY to enable');
+    }
+
+    this.config = {
+      provider: env.LLM_PROVIDER,
+      baseUrl: env.LLM_BASE_URL ?? '',
+      apiKey: env.LLM_API_KEY ?? '',
+      model: env.LLM_MODEL ?? '',
+      temperature: env.LLM_TEMPERATURE || 0.3,
+      requestTimeoutMs: 30 * 1000,
+      maxRetries: 3,
+      retryDelayMs: 1 * 1000,
+    };
+    this.provider = this.createProvider();
+    await this.provider.validateConfig();
+  }
+
+  async getAvailableModels(): Promise<string[]> {
+    if (!this.provider) {
+      throw new Error('LLM provider not initialized');
+    }
+
+    return this.provider.getAvailableModels();
+  }
+
+  async sendMessage(
+    prompt: string,
+    systemPrompt?: string,
+    context?: {
+      totalRuns?: number;
+      averageDuration?: number;
+      isFlaky?: boolean;
+      recentFailures?: number;
+      additionalContext?: string;
+    }
+  ) {
+    if (!this.provider) {
+      throw new Error('LLM provider not initialized');
+    }
+
+    let enhancedPrompt = prompt;
+
+    if (context) {
+      enhancedPrompt = testFailedWithContext(prompt, context);
+    }
+
+    const finalSystemPrompt = getCustomSystemPrompt(systemPrompt);
+
+    return this.provider.sendMessage(enhancedPrompt, finalSystemPrompt);
+  }
+
+  private createProvider(): OpenAIProvider | AnthropicProvider | ZAIProvider {
+    if (!this.config) {
+      throw new Error('LLM config not initialized');
+    }
+
+    switch (this.config.provider) {
+      case 'openai':
+        return new OpenAIProvider(this.config);
+      case 'anthropic':
+        return new AnthropicProvider(this.config);
+      case 'zai':
+        return new ZAIProvider(this.config);
+      default:
+        throw new Error(`Unknown LLM provider: ${this.config.provider}`);
+    }
+  }
+
+  getConfig(): Omit<LLMProviderConfig, 'apiKey'> {
+    if (!this.config) {
+      throw new Error('LLM config not initialized');
+    }
+
+    const { apiKey, ...safeConfig } = this.config;
+    return safeConfig;
+  }
+}
+
+export const llmService = LLMService.getInstance();

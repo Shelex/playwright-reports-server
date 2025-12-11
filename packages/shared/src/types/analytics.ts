@@ -5,7 +5,6 @@ export interface LLMConfig {
   apiKey: string;
   model: string;
   temperature: number;
-  maxTokens: number;
 }
 
 export interface LLMProvider {

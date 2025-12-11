@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from 'dotenv';
 import { cleanEnv, num, str } from 'envalid';
+import type { LLMProviderType } from '@/lib/llm/types';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
@@ -23,6 +24,7 @@ for (const envPath of envPaths) {
 export const env = cleanEnv(process.env, {
   PORT: num({ desc: 'Port to run the server on', default: 3001 }),
   HOST: str({ desc: 'Host to run the server on', default: '0.0.0.0' }),
+  API_BASE_PATH: str({ desc: 'Base path for the API', default: '' }),
   API_TOKEN: str({ desc: 'API token for authorization', default: undefined }),
   UI_AUTH_EXPIRE_HOURS: str({
     desc: 'How much hours are allowed to keep auth session valid',
@@ -30,6 +32,7 @@ export const env = cleanEnv(process.env, {
   }),
   AUTH_SECRET: str({ desc: 'Secret for JWT', default: undefined }),
   DATA_STORAGE: str({ desc: 'Where to store data', default: 'fs' }),
+  // s3
   S3_ENDPOINT: str({ desc: 'S3 endpoint', default: undefined }),
   S3_ACCESS_KEY: str({ desc: 'S3 access key', default: undefined }),
   S3_SECRET_KEY: str({ desc: 'S3 secret key', default: undefined }),
@@ -41,6 +44,7 @@ export const env = cleanEnv(process.env, {
     desc: 'S3 multipart upload chunk size in MB',
     default: 25,
   }),
+  // cleanup task
   RESULT_EXPIRE_DAYS: num({
     desc: 'How much days to keep results',
     default: undefined,
@@ -57,6 +61,7 @@ export const env = cleanEnv(process.env, {
     desc: 'Cron schedule for reports cleanup',
     default: '44 4 * * *',
   }),
+  // jira
   JIRA_BASE_URL: str({
     desc: 'Jira base URL (e.g., https://your-domain.atlassian.net)',
     default: undefined,
@@ -67,5 +72,18 @@ export const env = cleanEnv(process.env, {
     desc: 'Default Jira project key (optional)',
     default: undefined,
   }),
-  API_BASE_PATH: str({ desc: 'Base path for the API', default: '' }),
+  // LLM
+  LLM_ENABLED: str({ desc: 'Enable LLM features', default: 'false' }),
+  LLM_PROVIDER: str<LLMProviderType>({
+    desc: 'LLM provider (openai, anthropic, zai)',
+    default: 'openai',
+    choices: ['openai', 'anthropic', 'zai'],
+  }),
+  LLM_BASE_URL: str({ desc: 'LLM base URL', default: undefined }),
+  LLM_API_KEY: str({ desc: 'LLM API key', default: undefined }),
+  LLM_MODEL: str({
+    desc: 'LLM model name, by default will take some model from /models endpoint',
+    default: undefined,
+  }),
+  LLM_TEMPERATURE: num({ desc: 'LLM temperature (0-2)', default: undefined }),
 });

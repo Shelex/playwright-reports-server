@@ -1,0 +1,123 @@
+export type LLMProviderType = 'openai' | 'anthropic' | 'zai';
+
+export interface LLMMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+export interface LLMRequest {
+  model: string;
+  messages: LLMMessage[];
+  temperature?: number;
+  system?: string;
+}
+
+export interface LLMResponse {
+  content: string;
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens?: number;
+  };
+  model: string;
+  finishReason?: string;
+}
+
+export interface LLMModelError {
+  code: string;
+  message: string;
+  type:
+    | 'authentication'
+    | 'rate_limit'
+    | 'invalid_request'
+    | 'server_error'
+    | 'timeout'
+    | 'network';
+  statusCode?: number;
+}
+
+export interface LLMProviderConfig {
+  provider: LLMProviderType;
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  temperature: number;
+  requestTimeoutMs: number;
+  maxRetries: number;
+  retryDelayMs: number;
+}
+
+export abstract class BaseLLMProvider {
+  protected readonly config: LLMProviderConfig;
+
+  constructor(config: LLMProviderConfig) {
+    this.config = config;
+  }
+
+  abstract sendMessage(
+    prompt: string,
+    systemPrompt?: string
+  ): Promise<LLMResponse>;
+  abstract validateConfig(): Promise<boolean>;
+  abstract getAvailableModels(): Promise<string[]>;
+
+  protected abstract createRequest(prompt: string, systemPrompt?: string): LLMRequest;
+  protected abstract sendRequest(request: LLMRequest): Promise<Response>;
+  protected abstract parseResponse(response: Response): Promise<LLMResponse>;
+  protected abstract handleError(error: any): LLMProviderError;
+
+  protected async retryRequest<T>(
+    operation: () => Promise<T>,
+    maxRetries: number = this.config.maxRetries,
+    delayMs: number = this.config.retryDelayMs
+  ): Promise<T> {
+    let lastError: Error | undefined;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error as Error;
+
+        if (attempt === maxRetries) {
+          break;
+        }
+
+        if (error instanceof LLMProviderError) {
+          break;
+        }
+
+        // exponential backoff
+        const backoffDelay = delayMs * 2 ** attempt + Math.random() * 1000;
+        await new Promise((resolve) => setTimeout(resolve, backoffDelay));
+      }
+    }
+
+    throw lastError || new Error('Operation failed after retries');
+  }
+
+  protected async withTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number = this.config.requestTimeoutMs
+  ): Promise<T> {
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new LLMProviderError('Request timeout', 'timeout', 408));
+      }, timeoutMs);
+    });
+
+    return Promise.race([promise, timeoutPromise]);
+  }
+}
+
+export class LLMProviderError extends Error {
+  public readonly code: string;
+  public readonly statusCode?: number;
+
+  constructor(message: string, code: string = 'unknown', statusCode?: number) {
+    super(message);
+    this.name = 'LLMProviderError';
+    this.code = code;
+    this.statusCode = statusCode;
+  }
+}
