@@ -28,9 +28,10 @@ export class ConfigCache {
     const { result, error } = await storage.readConfigFile();
 
     if (error) {
-      console.error('[config cache] failed to read config file:', error);
-      console.warn('[config cache] using default config');
-
+      if (error.message.includes('Error: no config')) {
+        console.warn('[config cache] using default config');
+      }
+      console.error('[config cache] failed to read config file');
       return;
     }
 

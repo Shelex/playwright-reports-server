@@ -369,7 +369,7 @@ class Service {
 
     const { result, error } = await storage.readConfigFile();
 
-    if (error) console.error(`[service] getConfig | error: ${error.message}`);
+    if (error) console.warn(`[service] getConfig | error: ${error.message}`);
 
     return { ...defaultConfig, ...(result ?? {}) };
   }

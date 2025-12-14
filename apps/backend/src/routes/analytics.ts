@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
-import { withError } from '../lib/withError.js';
 import { llmService } from '../lib/llm/index.js';
 import { analyticsService } from '../lib/service/analytics.js';
+import { withError } from '../lib/withError.js';
 
 export async function registerAnalyticsRoutes(fastify: FastifyInstance) {
   fastify.get('/api/analytics/:reportId?', async (request, reply) => {
@@ -32,6 +32,14 @@ export async function registerAnalyticsRoutes(fastify: FastifyInstance) {
         prompt: string;
       };
 
+      if (!testId || !reportId || !prompt) {
+        reply.status(400);
+        return {
+          success: false,
+          error: 'Missing some of required parameters: testId, reportId, prompt',
+        };
+      }
+
       if (!llmService.isConfigured()) {
         reply.status(400);
         return {
@@ -40,21 +48,29 @@ export async function registerAnalyticsRoutes(fastify: FastifyInstance) {
         };
       }
 
-      try {
-        await llmService.initialize();
-      } catch (configError) {
+      const { error: llmInitError } = await withError(llmService.initialize());
+      if (llmInitError) {
         reply.status(400);
         return {
           success: false,
-          error: `LLM configuration error: ${configError instanceof Error ? configError.message : 'Unknown configuration error'}`,
+          error: `LLM initialization error: ${llmInitError instanceof Error ? llmInitError.message : 'Unknown initialization error'}`,
         };
       }
 
       console.log(`[llm] Fetching historical data for testId: ${testId}, reportId: ${reportId}`);
-      const trends = await analyticsService.getTestTrends(reportId, testId);
+      const { result: trends, error: testHistoryError } = await withError(
+        analyticsService.getTestTrends(testId)
+      );
+
+      if (testHistoryError) {
+        console.log(
+          `[llm] Failed to fetch historical data: ${testHistoryError instanceof Error ? testHistoryError.message : String(testHistoryError)}`
+        );
+      }
+
       console.log(
         `[llm] Historical data result:`,
-        trends ? `Found ${trends.runs.length} runs` : 'No historical data found'
+        trends ? `Found ${trends?.runs?.length} runs` : 'No historical data found'
       );
 
       const context: any = {};

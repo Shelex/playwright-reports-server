@@ -267,6 +267,32 @@ export class ReportDatabase {
     return row ? this.rowToReport(row) : undefined;
   }
 
+  public getReportHistoryByTestId(testId: string): ReportHistory[] {
+    const searchPattern = `%"testId":"${testId}"%`;
+    const rows = this.db
+      .prepare(
+        `
+      SELECT * FROM reports
+      WHERE metadata LIKE ?
+      ORDER BY createdAt DESC
+    `
+      )
+      .all(searchPattern) as {
+      reportID: string;
+      project: string;
+      title: string | null;
+      displayNumber: number | null;
+      createdAt: string;
+      reportUrl: string;
+      size: string | null;
+      sizeBytes: number;
+      stats: string | null;
+      metadata: string;
+    }[];
+
+    return rows.map(this.rowToReport);
+  }
+
   public getByProject(project?: string): ReportHistory[] {
     const stmt = project ? this.getByProjectStmt : this.getAllStmt;
 

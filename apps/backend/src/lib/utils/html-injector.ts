@@ -3,7 +3,7 @@ import { JSDOM } from 'jsdom';
 import type { ParsedTestUrl } from './url-parser.js';
 
 export async function injectTestAnalysis(html: string, testUrl: ParsedTestUrl): Promise<string> {
-  if (!testUrl.testId || !testUrl.reportId) {
+  if (!testUrl.reportId) {
     return html;
   }
 
@@ -12,7 +12,7 @@ export async function injectTestAnalysis(html: string, testUrl: ParsedTestUrl): 
     const document = dom.window.document;
     await injectClientSideScript(document, testUrl);
     console.log(
-      `[html-injector] Successfully injected client-side script for testId: ${testUrl.testId}`
+      `[html-injector] Successfully injected client-side script for testId: ${testUrl.reportId}`
     );
     return dom.serialize();
   } catch (error) {

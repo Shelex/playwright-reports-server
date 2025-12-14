@@ -39,7 +39,7 @@ function ReportDetailPage() {
   return (
     <>
       <h1 className={title()}>
-        {report?.title ?? (report?.displayNumber ? `#${report.displayNumber}` : report?.reportID)}
+        {report?.displayNumber ? `#${report.displayNumber} ` : ''}{' '}{report?.title ?? ''}
       </h1>
       {report?.createdAt && (
         <span className={`${subtitle()} mt-4 mb-6 text-right`}>

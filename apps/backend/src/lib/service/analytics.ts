@@ -6,7 +6,7 @@ import type {
   StepTimingTrend,
   TrendMetrics,
 } from '@playwright-reports/shared';
-import { type ReportFile, type ReportTest, ReportTestOutcome } from '../parser/types.js';
+import { ReportTestOutcome } from '../parser/types.js';
 import type { ReportHistory as BackendReportHistory } from '../storage/types.js';
 import { reportDb } from './db/reports.sqlite.js';
 
@@ -346,18 +346,8 @@ export class AnalyticsService {
     };
   }
 
-  async getTestTrends(reportId: string, testId: string): Promise<StepTimingTrend | null> {
-    const allReports = await this.getRecentReports();
-    const testReports = allReports.filter((report: BackendReportHistory) => {
-      const hasMatchingTest = report.files?.some((file: ReportFile) =>
-        file.tests?.some((test: ReportTest) => {
-          const currentTestId = test.testId || `${file.fileName}:${test.title}`;
-          const matches = currentTestId === testId;
-          return matches;
-        })
-      );
-      return hasMatchingTest;
-    });
+  async getTestTrends(testId: string): Promise<StepTimingTrend | null> {
+    const testReports = reportDb.getReportHistoryByTestId(testId);
 
     if (!testReports.length) {
       console.log(`[analytics] No historical data found for testId: ${testId}`);
