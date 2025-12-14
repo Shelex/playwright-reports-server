@@ -8,6 +8,7 @@ The Playwright Reports Server provides APIs for managing and generating reports 
 - Check web ui for report trends and test history
 - Basic api token authorization for backend and web ui, reports are secured as well
 - Create Jira tickets directly with attachments
+- Analyze test failure in playwright report with integrated LLM provider
 
 ## Demo
 
@@ -22,7 +23,10 @@ The Playwright Reports Server provides APIs for managing and generating reports 
     - [Prerequisites](#prerequisites)
     - [Installation](#installation)
     - [Running the Server](#running-the-server)
-    - [Configuration options](#configuration-options)
+  - [Configuration options](#configuration-options)
+    - [General](#general)
+    - [Jira](#jira)
+    - [LLM](#llm)
   - [API Routes](#api-routes)
   - [`/api/report/list` (GET):](#apireportlist-get)
   - [`/api/report/delete` (DELETE):](#apireportdelete-delete)
@@ -78,23 +82,56 @@ The Playwright Reports Server provides APIs for managing and generating reports 
    commands.
 
 2. The application will be accessible at `http://localhost:3000`.
-   All data will be stored at `/data/` folder. You can backup it, to keep your data safe.
+   All data will be stored at `/apps/backend/data/` folder. You can backup it, to keep your data safe.
 
-### Configuration options
+## Configuration options
 
+### General
 The app is configured with environment variables, so it could be specified as `.env` file as well, however there are no mandatory options.
 
-| Name                        | Description                                                                                 | Default |
-| --------------------------- | ------------------------------------------------------------------------------------------- | ------- |
-| `API_TOKEN`                 | API token for [Authorization](#authorization)                                               |         |
-| `AUTH_SECRET`               | Secret to encrypt JWT                                                                       |         |
-| `UI_AUTH_EXPIRE_HOURS`      | Duration of auth session                                                                    | `"2"`   |
-| `SERVER_CACHE_REFRESH_CRON` |                                                                                             |         |
-| `DATA_STORAGE`              | Where to store data, check for additional configuration [Storage Options](#storage-options) | `"fs"`  |
-| `JIRA_BASE_URL`             | Jira instance URL (e.g., https://your-domain.atlassian.net)                                 |         |
-| `JIRA_EMAIL`                | Jira account email address                                                                  |         |
-| `JIRA_API_TOKEN`            | Jira API token for authentication                                                           |         |
-| `JIRA_PROJECT_KEY`          | Default Jira project key for ticket creation                                                |         |
+| Name                   | Description                                                                                 | Default |
+|------------------------|---------------------------------------------------------------------------------------------|---------|
+| `API_TOKEN`            | API token for [Authorization](#authorization)                                               |         |
+| `AUTH_SECRET`          | Secret to encrypt JWT                                                                       |         |
+| `UI_AUTH_EXPIRE_HOURS` | Duration of auth session                                                                    | `"2"`   |
+| `DATA_STORAGE`         | Where to store data, check for additional configuration [Storage Options](#storage-options) | `"fs"`  |
+
+### Jira
+
+| Name               | Description                                                 | Default |
+|--------------------|-------------------------------------------------------------|---------|
+| `JIRA_BASE_URL`    | Jira instance URL (e.g., https://your-domain.atlassian.net) |         |
+| `JIRA_EMAIL`       | Jira account email address                                  |         |
+| `JIRA_API_TOKEN`   | Jira API token for authentication                           |         |
+| `JIRA_PROJECT_KEY` | Default Jira project key for ticket creation                |         |
+
+### S3 Compatible Storage
+
+If you want to persist reports and results on S3 compatible storage, you need to set `DATA_STORAGE` variable to `s3` and provide additional configuration:
+
+| Name                         | Description                           | Default                   |
+|------------------------------|---------------------------------------|---------------------------|
+| `S3_ENDPOINT`                | S3 endpoint URL (without https://)    |                           |
+| `S3_REGION`                  | S3 region                             |                           |
+| `S3_ACCESS_KEY`              | S3 access key                         |                           |
+| `S3_SECRET_KEY`              | S3 secret key                         |                           |
+| `S3_BUCKET`                  | S3 bucket name                        | playwright-reports-server |
+| `S3_PORT`                    | S3 custom port                        |                           |
+| `S3_BATCH_SIZE`              | Number of concurrent requests to S3   | 10                        |
+| `S3_MULTIPART_CHUNK_SIZE_MB` | Chunk size for multipart upload in MB | 25                        |
+
+### LLM
+
+Generated playwright report has button "Ask LLM" for failed tests that allows to analyze test failure with LLM provider.  
+It sends prompt provided in "Copy prompt" button along with some historical details.  
+
+| Name              | Description                                                          | Default                |
+|-------------------|----------------------------------------------------------------------|------------------------|
+| `LLM_PROVIDER`    | LLM provider to use for test failure analysis (openai\anthropic\zai) | openai                 |
+| `LLM_BASE_URL`    | Base URL for the LLM API                                             |                        |
+| `LLM_API_KEY`     | API key for the LLM provider                                         |                        |
+| `LLM_MODEL`       | Model to use for the LLM provider                                    | checks /model endpoint |
+| `LLM_TEMPERATURE` | Temperature setting for the LLM                                      | 0.3                    |
 
 ## API Routes
 
@@ -118,7 +155,7 @@ Response example:
       "createdAt": "2024-05-06T16:52:45.017Z",
       "project": "regression",
       "size": "6.97 MB",
-      "reportUrl": "/api/serve/regression/8e9af87d-1d10-4729-aefd-3e92ee64d06c/index.html"
+      "reportUrl": "/api/serve/8e9af87d-1d10-4729-aefd-3e92ee64d06c/index.html"
       //...parsed info
     },
     {
@@ -126,7 +163,7 @@ Response example:
       "createdAt": "2024-05-06T16:59:38.814Z",
       "project": "smoke",
       "size": "1.53 MB",
-      "reportUrl": "/api/serve/smoke/8fe427ed-783c-4fb9-aacc-ba6fbc5f5667/index.html"
+      "reportUrl": "/api/serve/8fe427ed-783c-4fb9-aacc-ba6fbc5f5667/index.html"
       //...parsed info
     }
   ],
@@ -205,7 +242,7 @@ Response example:
 {
   "project": "regression",
   "reportId": "8e9af87d-1d10-4729-aefd-3e92ee64d06c",
-  "reportUrl": "/api/serve/regression/8e9af87d-1d10-4729-aefd-3e92ee64d06c/index.html"
+  "reportUrl": "/api/serve/8e9af87d-1d10-4729-aefd-3e92ee64d06c/index.html"
 }
 ```
 
@@ -281,7 +318,7 @@ Response example:
     "size": "1.2 MB",
     "generatedReport": {
       "reportId": "e7ed1c2a-6b24-421a-abb6-095fb62f9957",
-      "reportUrl": "/api/serve/desktop/8e9af87d-1d10-4729-aefd-3e92ee64d06c/index.html",
+      "reportUrl": "/api/serve/8e9af87d-1d10-4729-aefd-3e92ee64d06c/index.html",
       "metadata": { "title": "title", "project": "desktop" }
     }
   },
@@ -384,15 +421,15 @@ The Playwright Reports Server uses local file system storage by default. However
 
 By default, all data is stored in the `data` folder.
 
-- `npm run start` - `/.next/standalone/data/`
-- `npm run dev` - `/data/`
+- `npm run start` - `/apps/backend/data/`
+- `npm run dev` - `/apps/backend/data/`
 - Docker image - `/app/data/`
 
 This includes both raw test results and generated reports. When using local file system:
 
 - Ensure the application has write permissions to the `/data/` directory.
 - For data persistence when using Docker image, mount a volume or host directory to `/app/data/`.
-- If you have own Docker setup, please note that by default it will be saved to `.next/standalone/data/` folder, as the executable will be in build resources.
+- If you have own Docker setup, please note that by default it will be saved to `/apps/backend/data/` folder, as the executable will be in build resources.
 
 Example Docker run command with a mounted volume:
 
@@ -417,6 +454,7 @@ To enable S3 storage:
    S3_BUCKET=<your-s3-bucket-name> # optional, by default "playwright-reports-server"
    S3_PORT=9000 # optional, specify if you have self-hosted instance exposed via custom port
    S3_BATCH_SIZE=10 # optional, a number of concurrent requests to s3
+   S3_MULTIPART_CHUNK_SIZE_MB=25 # optional, chunk size for multipart upload in MB
    ```
 
 2. Ensure your S3 provided credentials have read and write access to the bucket.
@@ -440,7 +478,7 @@ Feature is configurable via environment variables.
 If days variable is not specified - the task registration will be skipped.
 
 | Name                          | Description                       | Default                              |
-| ----------------------------- | --------------------------------- | ------------------------------------ |
+|-------------------------------|-----------------------------------|--------------------------------------|
 | `RESULT_EXPIRE_DAYS`          | How much days to keep results     |                                      |
 | `RESULT_EXPIRE_CRON_SCHEDULE` | Cron schedule for results cleanup | `"33 3 * * *"` (at 03:33, every day) |
 | `REPORT_EXPIRE_DAYS`          | How much days to keep reports     |                                      |
