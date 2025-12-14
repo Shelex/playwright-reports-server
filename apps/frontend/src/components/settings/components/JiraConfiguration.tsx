@@ -8,7 +8,7 @@ interface JiraConfigurationProps {
   config: ServerConfig;
   tempConfig: ServerConfig;
   jiraConfig?: JiraConfig;
-  editingSection: 'none' | 'server' | 'jira' | 'cron';
+  editingSection: string;
   isUpdating: boolean;
   onEdit: () => void;
   onSave: () => void;

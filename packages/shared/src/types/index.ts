@@ -1,5 +1,15 @@
 export type UUID = `${string}-${string}-${string}-${string}-${string}`;
 
+export type LLMProviderType = 'openai' | 'anthropic' | 'zai';
+
+export interface LLMConfig {
+  provider?: LLMProviderType;
+  baseUrl?: string;
+  apiKey?: string;
+  model?: string;
+  temperature?: number;
+}
+
 export type HeaderLinks = Record<string, string>;
 
 export type IconSvgProps = {
@@ -56,6 +66,7 @@ export interface SiteWhiteLabelConfig {
     reportExpireCronSchedule?: string;
   };
   jira?: JiraConfig;
+  llm?: LLMConfig;
 }
 
 export interface DatabaseStats {
@@ -234,6 +245,7 @@ export interface ServerDataInfo {
   resultsFolderSizeinMB: string;
   numOfReports: number;
   reportsFolderSizeinMB: string;
+  availableSizeinMB: string;
 }
 
 export interface ReportPath {
@@ -302,6 +314,7 @@ export interface ServerConfig {
     apiToken?: string;
     projectKey?: string;
   };
+  llm?: LLMConfig;
 }
 
 export * from './analytics.js';

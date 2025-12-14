@@ -8,7 +8,7 @@ import { defaultLinks } from '../../../config/site';
 interface ServerConfigurationProps {
   config: ServerConfig;
   tempConfig: ServerConfig;
-  editingSection: 'none' | 'server' | 'jira' | 'cron';
+  editingSection: string;
   isUpdating: boolean;
   onEdit: () => void;
   onSave: () => void;

@@ -3,7 +3,8 @@ import { join } from 'node:path';
 import type { SiteWhiteLabelConfig } from '@playwright-reports/shared';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { env } from '../config/env.js';
-import { cronService } from '../lib/service/cron.js';
+import { llmService } from '../lib/llm/index.js';
+import { CronService, cronService } from '../lib/service/cron.js';
 import { getDatabaseStats } from '../lib/service/db/index.js';
 import { service } from '../lib/service/index.js';
 import { JiraService } from '../lib/service/jira.js';
@@ -31,6 +32,11 @@ interface ConfigFormData {
   resultExpireCronSchedule?: string;
   reportExpireDays?: string;
   reportExpireCronSchedule?: string;
+  llmProvider?: string;
+  llmBaseUrl?: string;
+  llmApiKey?: string;
+  llmModel?: string;
+  llmTemperature?: string;
 }
 
 export async function registerConfigRoutes(fastify: FastifyInstance) {
@@ -49,7 +55,15 @@ export async function registerConfigRoutes(fastify: FastifyInstance) {
       s3Bucket: env.S3_BUCKET,
     };
 
-    return { ...config, ...envInfo };
+    const llmInfo = {
+      provider: env.LLM_PROVIDER,
+      baseUrl: env.LLM_BASE_URL,
+      apiKey: env.LLM_API_KEY,
+      model: env.LLM_MODEL,
+      temperature: env.LLM_TEMPERATURE,
+    };
+
+    return { ...config, ...envInfo, llm: llmInfo };
   });
 
   fastify.patch('/api/config', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -147,9 +161,7 @@ export async function registerConfigRoutes(fastify: FastifyInstance) {
         }
       }
 
-      if (!config.jira) {
-        config.jira = {};
-      }
+      config.jira ??= {};
 
       if (formData.jiraBaseUrl !== undefined) config.jira.baseUrl = formData.jiraBaseUrl;
       if (formData.jiraEmail !== undefined) config.jira.email = formData.jiraEmail;
@@ -165,9 +177,38 @@ export async function registerConfigRoutes(fastify: FastifyInstance) {
         JiraService.resetInstance();
       }
 
-      if (!config.cron) {
-        config.cron = {};
+      config.llm ??= {};
+
+      if (formData.llmProvider !== undefined) {
+        const provider = formData.llmProvider;
+        config.llm.provider = provider as any;
       }
+      if (formData.llmBaseUrl !== undefined) config.llm.baseUrl = formData.llmBaseUrl;
+      if (formData.llmApiKey !== undefined) config.llm.apiKey = formData.llmApiKey;
+      if (formData.llmModel !== undefined) config.llm.model = formData.llmModel;
+      if (formData.llmTemperature !== undefined) {
+        const temperature = Number.parseFloat(formData.llmTemperature);
+        if (Number.isNaN(temperature)) {
+          return reply.status(400).send({
+            error: 'LLM temperature must be a number between 0 and 2',
+          });
+        }
+        config.llm.temperature = temperature;
+      }
+
+      const llmConfigChanged = !!(
+        formData.llmProvider ||
+        formData.llmBaseUrl ||
+        formData.llmApiKey ||
+        formData.llmModel ||
+        formData.llmTemperature !== undefined
+      );
+
+      if (llmConfigChanged) {
+        await llmService.restart(config.llm);
+      }
+
+      config.cron ??= {};
 
       if (formData.resultExpireDays !== undefined) {
         config.cron.resultExpireDays = Number.parseInt(formData.resultExpireDays, 10);
@@ -180,6 +221,16 @@ export async function registerConfigRoutes(fastify: FastifyInstance) {
       }
       if (formData.reportExpireCronSchedule !== undefined) {
         config.cron.reportExpireCronSchedule = formData.reportExpireCronSchedule;
+      }
+
+      if (
+        formData.resultExpireDays ||
+        formData.resultExpireCronSchedule ||
+        formData.reportExpireDays ||
+        formData.reportExpireCronSchedule
+      ) {
+        const instance = CronService.getInstance();
+        await instance.restart();
       }
 
       const { error: saveConfigError } = await withError(service.updateConfig(config));
@@ -206,18 +257,6 @@ export async function registerConfigRoutes(fastify: FastifyInstance) {
         error: `config update failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       });
     }
-  });
-
-  fastify.post('/api/config', async (request, reply) => {
-    const { result, error } = await withError(
-      service.updateConfig(request.body as Partial<SiteWhiteLabelConfig>)
-    );
-
-    if (error) {
-      return reply.status(400).send({ error: error.message });
-    }
-
-    return result;
   });
 
   fastify.get('/api/info', async (_request, reply) => {

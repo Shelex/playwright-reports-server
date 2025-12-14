@@ -1,11 +1,14 @@
 'use client';
 
 import { Card, CardBody, CardHeader, Skeleton } from '@heroui/react';
+import type { ServerDataInfo } from '@playwright-reports/shared';
+import useQuery from '@/hooks/useQuery';
 import { useAuthConfig } from '../../../hooks/useAuthConfig';
 import DatabaseInfo from './DatabaseInfo';
 
 export default function EnvironmentInfo() {
   const { config: envInfo, isLoading } = useAuthConfig();
+  const { data: serverInfo } = useQuery<ServerDataInfo>('/api/info');
 
   return (
     <Card className="p-4">
@@ -47,6 +50,10 @@ export default function EnvironmentInfo() {
               <p className="text-sm text-gray-600">Bucket: {envInfo.s3Bucket}</p>
             </div>
           )}
+          <p className="text-sm text-gray-600">Total: {serverInfo?.dataFolderSizeinMB}</p>
+          <p className="text-sm text-gray-600">Reports: {serverInfo?.reportsFolderSizeinMB}</p>
+          <p className="text-sm text-gray-600">Results: {serverInfo?.resultsFolderSizeinMB}</p>
+          <p className="text-sm text-gray-600">Available: {serverInfo?.availableSizeinMB}</p>
         </div>
       </CardBody>
     </Card>

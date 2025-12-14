@@ -118,6 +118,18 @@ export class LLMService {
     const { apiKey, ...safeConfig } = this.config;
     return safeConfig;
   }
+
+  async restart(config?: Partial<LLMProviderConfig>): Promise<void> {
+    if (config) {
+      this.config = {
+        ...this.config,
+        ...config,
+      } as LLMProviderConfig;
+    }
+
+    this.provider = null;
+    await this.initialize();
+  }
 }
 
 export const llmService = LLMService.getInstance();

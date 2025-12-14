@@ -46,6 +46,14 @@ const getSizeInMb = async (dir: string) => {
   return bytesToString(sizeBytes);
 };
 
+async function getAvailableSize(dir: string) {
+  const stat = await fs.statfs(dir);
+
+  const availableSize = stat.bsize * stat.bavail;
+
+  return bytesToString(availableSize);
+}
+
 export async function getServerDataInfo(): Promise<ServerDataInfo> {
   await createDirectoriesIfMissing();
   const dataFolderSizeinMB = await getSizeInMb(DATA_FOLDER);
@@ -53,6 +61,7 @@ export async function getServerDataInfo(): Promise<ServerDataInfo> {
   const resultsFolderSizeinMB = await getSizeInMb(RESULTS_FOLDER);
   const { total: reportsCount } = await readReports();
   const reportsFolderSizeinMB = await getSizeInMb(REPORTS_FOLDER);
+  const availableSizeinMB = await getAvailableSize('./');
 
   return {
     dataFolderSizeinMB,
@@ -60,6 +69,7 @@ export async function getServerDataInfo(): Promise<ServerDataInfo> {
     resultsFolderSizeinMB,
     numOfReports: reportsCount,
     reportsFolderSizeinMB,
+    availableSizeinMB,
   };
 }
 

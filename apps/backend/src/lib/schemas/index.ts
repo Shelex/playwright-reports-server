@@ -126,6 +126,7 @@ export const ServerInfoSchema = z.object({
   resultsFolderSizeinMB: z.string(),
   numOfReports: z.number(),
   reportsFolderSizeinMB: z.string(),
+  availableSizeinMB: z.string(),
 });
 
 export const ConfigSchema = z.looseObject({

@@ -11,6 +11,7 @@ import AddLinkModal from '../components/settings/components/AddLinkModal';
 import CronConfiguration from '../components/settings/components/CronConfiguration';
 import EnvironmentInfo from '../components/settings/components/EnvironmentInfo';
 import JiraConfiguration from '../components/settings/components/JiraConfiguration';
+import LLMConfiguration from '../components/settings/components/LLMConfiguration';
 import ServerConfiguration from '../components/settings/components/ServerConfiguration';
 import { useAuth } from '../hooks/useAuth';
 
@@ -19,7 +20,9 @@ import useQuery from '../hooks/useQuery';
 export default function SettingsPage() {
   const session = useAuth();
   const [config, setConfig] = useState<ServerConfig>({});
-  const [editingSection, setEditingSection] = useState<'none' | 'server' | 'jira' | 'cron'>('none');
+  const [editingSection, setEditingSection] = useState<'none' | 'server' | 'jira' | 'cron' | 'llm'>(
+    'none'
+  );
   const [tempConfig, setTempConfig] = useState<ServerConfig>({});
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
   const [newLinkData, setNewLinkData] = useState({ name: '', url: '' });
@@ -37,11 +40,12 @@ export default function SettingsPage() {
       setTempConfig({
         ...serverConfig,
         jira: serverConfig.jira || {},
+        llm: serverConfig.llm || {},
       });
     }
   }, [serverConfig]);
 
-  const handleSave = async (section: 'server' | 'jira' | 'cron') => {
+  const handleSave = async (section: 'server' | 'jira' | 'cron' | 'llm') => {
     setIsUpdating(true);
 
     try {
@@ -109,6 +113,24 @@ export default function SettingsPage() {
             formData.append('reportExpireCronSchedule', tempConfig.cron.reportExpireCronSchedule);
           }
         }
+      } else if (section === 'llm') {
+        if (tempConfig.llm) {
+          if (tempConfig.llm.provider) {
+            formData.append('llmProvider', tempConfig.llm.provider);
+          }
+          if (tempConfig.llm.baseUrl) {
+            formData.append('llmBaseUrl', tempConfig.llm.baseUrl);
+          }
+          if (tempConfig.llm.apiKey) {
+            formData.append('llmApiKey', tempConfig.llm.apiKey);
+          }
+          if (tempConfig.llm.model) {
+            formData.append('llmModel', tempConfig.llm.model);
+          }
+          if (tempConfig.llm.temperature !== undefined) {
+            formData.append('llmTemperature', tempConfig.llm.temperature.toString());
+          }
+        }
       }
 
       const response = await fetch('/api/config', {
@@ -125,9 +147,13 @@ export default function SettingsPage() {
         throw new Error(errorText);
       }
 
-      toast.success(
-        `${section === 'server' ? 'Server' : section === 'jira' ? 'Jira' : 'Cron'} configuration updated successfully`
-      );
+      const sectionName = {
+        server: 'Server',
+        jira: 'Jira',
+        cron: 'Cron',
+        llm: 'LLM',
+      };
+      toast.success(`${sectionName[section]} configuration updated successfully`);
       setEditingSection('none');
       refetchConfig();
     } catch (error) {
@@ -143,6 +169,7 @@ export default function SettingsPage() {
     setTempConfig({
       ...config,
       jira: config?.jira || {},
+      llm: config?.llm || {},
     });
     setEditingSection('none');
   };
@@ -218,6 +245,17 @@ export default function SettingsPage() {
         onCancel={handleCancel}
         onEdit={() => setEditingSection('cron')}
         onSave={() => handleSave('cron')}
+        onUpdateTempConfig={updateTempConfig}
+      />
+
+      <LLMConfiguration
+        config={config}
+        editingSection={editingSection}
+        isUpdating={isUpdating}
+        tempConfig={tempConfig}
+        onCancel={handleCancel}
+        onEdit={() => setEditingSection('llm')}
+        onSave={() => handleSave('llm')}
         onUpdateTempConfig={updateTempConfig}
       />
 

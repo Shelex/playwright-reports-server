@@ -7,7 +7,7 @@ import type { ServerConfig } from '@playwright-reports/shared';
 interface CronConfigurationProps {
   config: ServerConfig;
   tempConfig: ServerConfig;
-  editingSection: 'none' | 'server' | 'jira' | 'cron';
+  editingSection: string;
   isUpdating: boolean;
   onEdit: () => void;
   onSave: () => void;

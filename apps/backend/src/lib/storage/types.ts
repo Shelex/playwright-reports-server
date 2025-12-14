@@ -112,4 +112,5 @@ export interface ServerDataInfo {
   resultsFolderSizeinMB: string;
   numOfReports: number;
   reportsFolderSizeinMB: string;
+  availableSizeinMB: string;
 }

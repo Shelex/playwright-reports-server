@@ -28,7 +28,6 @@ function injectAskLLMButton() {
       const prompt = globalThis.currentPrompt;
 
       if (prompt?.trim()) {
-        console.log(`got prompt from window`)
         showLLMAnalysis(prompt, askBtn, currentTestId);
         return;
       }

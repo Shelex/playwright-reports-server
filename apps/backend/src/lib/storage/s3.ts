@@ -277,6 +277,7 @@ export class S3 implements Storage {
     ]);
 
     const dataSize = results.size + reports.size;
+    const availableSizeinMB = 'Unlimited';
 
     return {
       dataFolderSizeinMB: bytesToString(dataSize),
@@ -284,6 +285,7 @@ export class S3 implements Storage {
       resultsFolderSizeinMB: bytesToString(results.size),
       numOfReports: reports.indexCount,
       reportsFolderSizeinMB: bytesToString(reports.size),
+      availableSizeinMB,
     };
   }
 

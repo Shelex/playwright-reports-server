@@ -7,7 +7,7 @@ import { defaultConfig } from '../config.js';
 import { serveReportRoute } from '../constants.js';
 import { isValidPlaywrightVersion } from '../pw.js';
 import { DEFAULT_STREAM_CHUNK_SIZE, TMP_FOLDER } from '../storage/constants.js';
-import { bytesToString, getUniqueProjectsList } from '../storage/format.js';
+import { getUniqueProjectsList } from '../storage/format.js';
 import {
   type ReadReportsInput,
   type ReadResultsInput,
@@ -337,23 +337,7 @@ class Service {
       return await storage.getServerDataInfo();
     }
 
-    const reports = reportDb.getAll();
-    const results = resultDb.getAll();
-
-    const getTotalSizeBytes = <T extends { sizeBytes: number }[]>(entity: T) =>
-      entity.reduce((total, item) => total + item.sizeBytes, 0);
-
-    const reportsFolderSize = getTotalSizeBytes(reports);
-    const resultsFolderSize = getTotalSizeBytes(results);
-    const dataFolderSize = reportsFolderSize + resultsFolderSize;
-
-    return {
-      dataFolderSizeinMB: bytesToString(dataFolderSize),
-      numOfResults: results.length,
-      resultsFolderSizeinMB: bytesToString(resultsFolderSize),
-      numOfReports: reports.length,
-      reportsFolderSizeinMB: bytesToString(reportsFolderSize),
-    };
+    return storage.getServerDataInfo();
   }
 
   public async getConfig() {
