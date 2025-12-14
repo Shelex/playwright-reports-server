@@ -24,6 +24,19 @@ function injectAskLLMButton() {
     const currentTestId = extractTestIdFromCurrentUrl();
 
     try {
+      copyPromptButton.click();
+      const prompt = globalThis.currentPrompt;
+
+      if (prompt?.trim()) {
+        console.log(`got prompt from window`)
+        showLLMAnalysis(prompt, askBtn, currentTestId);
+        return;
+      }
+    } catch {
+      // fallback to clipboard
+    }
+
+    try {
       const permission = await navigator.permissions.query({ name: 'clipboard-read' });
       if (permission.state === 'denied') {
         showLLMAnalysis(

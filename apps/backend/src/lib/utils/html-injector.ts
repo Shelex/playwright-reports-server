@@ -2,12 +2,13 @@ import fs from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import type { ParsedTestUrl } from './url-parser.js';
 
-export async function injectTestAnalysis(html: string, testUrl: ParsedTestUrl): Promise<string> {
+export async function injectTestAnalysis(source: string, testUrl: ParsedTestUrl): Promise<string> {
   if (!testUrl.reportId) {
-    return html;
+    return source;
   }
 
   try {
+    const html = await injectCopyPromptToWindow(source);
     const dom = new JSDOM(html);
     const document = dom.window.document;
     await injectClientSideScript(document, testUrl);
@@ -17,7 +18,7 @@ export async function injectTestAnalysis(html: string, testUrl: ParsedTestUrl): 
     return dom.serialize();
   } catch (error) {
     console.error('[html-injector] Error injecting HTML:', error);
-    return html;
+    return source;
   }
 }
 
@@ -94,12 +95,28 @@ async function injectClientSideScript(document: any, testUrl: ParsedTestUrl): Pr
       border-color: #10b981;
       background-color: #f0fdf4;
     }
-  `;
+    `;
   document.head.appendChild(style);
 
   const script = document.createElement('script');
   script.textContent = `
-  const reportId = '${testUrl.reportId}';
-  ${await fs.readFile('./src/lib/utils/llmButton.js', 'utf-8')}`;
+    const reportId = '${testUrl.reportId}';
+    ${await fs.readFile('./src/lib/utils/llmButton.js', 'utf-8')}`;
   document.body.appendChild(script);
+}
+
+async function injectCopyPromptToWindow(html: string): Promise<string> {
+  try {
+    const getPromptVariable = new RegExp(/await navigator.clipboard.writeText\((.*?)\)/);
+    const promptVariable = getPromptVariable.exec(html);
+    const promptVariableName = promptVariable?.at(1)?.trim();
+    if (promptVariableName) {
+      const addToWindow = `window.currentPrompt=${promptVariableName}`;
+      const copyToClipboard = 'await navigator.clipboard.writeText';
+      return html.replace(copyToClipboard, `${addToWindow};${copyToClipboard}`);
+    }
+    return html;
+  } catch (_) {
+    return html;
+  }
 }
