@@ -17,7 +17,7 @@ test("/api/report/generate for single result should generate report", async ({
 	expect(response.status()).toBe(200);
 	expect(newReport.reportId).toBeTruthy();
 	expect(newReport.reportUrl).toContain(
-		`/api/serve/test-project/${newReport.reportId}/`,
+		`/api/serve/${newReport.reportId}/index.html`,
 	);
 	expect(newReport.metadata?.project).toBe("test-project");
 });
@@ -46,7 +46,7 @@ test("/api/report/generate for multiple results should generate report", async (
 	expect(response.status()).toBe(200);
 	expect(newReport.reportId).toBeTruthy();
 	expect(newReport.reportUrl).toContain(
-		`/api/serve/test-project/${newReport.reportId}/`,
+		`/api/serve/${newReport.reportId}/index.html`,
 	);
 	expect(newReport.metadata?.project).toBe("test-project");
 });

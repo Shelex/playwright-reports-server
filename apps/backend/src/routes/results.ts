@@ -134,6 +134,12 @@ export async function registerResultRoutes(fastify: FastifyInstance) {
         let isComplete = false;
 
         const onAborted = () => {
+          if (!fileReceived) {
+            console.log(`[upload] client disconnected before file received`);
+            isComplete = true;
+            reject(new Error('No file received'));
+          }
+
           if (!isComplete) {
             console.log(`[upload] client disconnected, fileSize so far: ${fileSize} bytes`);
             if (!filePassThrough.destroyed) {
@@ -210,7 +216,11 @@ export async function registerResultRoutes(fastify: FastifyInstance) {
         })();
       });
 
-      await uploadPromise;
+      const { error } = await withError(uploadPromise);
+
+      if (error) {
+        return reply.status(400).send({ error: error.message });
+      }
 
       const { result: uploadResult, error: uploadResultDetailsError } = await withError(
         service.saveResultDetails(resultID, resultDetails, fileSize)
