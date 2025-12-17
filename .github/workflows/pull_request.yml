@@ -1,6 +1,12 @@
 name: Pull Request CI
 
-on: pull_request
+on:
+  pull_request:
+    paths:
+      - 'packages/shared/**'
+      - 'apps/frontend/**'
+      - 'apps/backend/**'
+      - '.github/workflows/pull_request.yml'
 
 jobs:
   prettier:

@@ -1,0 +1,38 @@
+{
+  "name": "@playwright-reports/reporter",
+  "version": "1.0.0",
+  "description": "Reporter that uploads your blob reports to playwright reports server",
+  "main": "dist/index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "test": "playwright test"
+  },
+  "author": "Oleksandr Khotemskyi <xotabu4@gmail.com>",
+  "license": "MIT",
+  "files": [
+    "dist/index.js",
+    "dist/index.d.ts",
+    "dist/index.js.map",
+    "readme.md",
+    "LICENSE",
+    "package.json",
+    "package-lock.json"
+  ],
+  "peerDependencies": {
+    "@playwright/test": "^1.37.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.46.0",
+    "@types/node": "^20.14.11"
+  },
+  "directories": {
+    "test": "tests"
+  },
+  "keywords": [
+    "playwright",
+    "reporter",
+    "playwright-reports-server"
+  ]
+}
