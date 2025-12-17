@@ -215,7 +215,9 @@ export default function ReportsTable({ onChange }: Readonly<ReportsTableProps>) 
                 <div className="flex flex-col">
                   <Link to={withBase(`/report/${item.reportID}`)}>
                     <div className="flex flex-row items-center">
-                      {item.displayNumber ? `#${item.displayNumber} ` : ''}{' | '}{item.title ?? ''}
+                      {item.displayNumber ? `#${item.displayNumber} ` : ''}
+                      {' | '}
+                      {item.title ?? ''}
                       <LinkIcon />
                     </div>
                   </Link>

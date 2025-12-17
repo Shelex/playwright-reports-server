@@ -52,12 +52,7 @@ export default function AnalyticsDashboard() {
     );
   }
 
-  const {
-    overviewStats,
-    runHealthMetrics = [],
-    trendMetrics,
-    perTestMetrics = []
-  } = analyticsData;
+  const { overviewStats, runHealthMetrics = [], trendMetrics, perTestMetrics = [] } = analyticsData;
 
   return (
     <div className="w-[min(100%, 1200px)] mx-auto space-y-6">

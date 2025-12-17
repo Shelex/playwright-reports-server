@@ -32,7 +32,7 @@ export class AnthropicProvider extends LLMProvider {
   }
 
   protected async parseResponse(response: Response): Promise<LLMResponse> {
-    const data = await response.json() as any;
+    const data = (await response.json()) as any;
 
     return {
       content: data.content?.[0]?.text || '',

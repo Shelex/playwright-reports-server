@@ -486,7 +486,7 @@ if (document.readyState === 'loading') {
   // handle case with internal playwright report redirects that are not tracked
   // so we can listen to clicks, and if it is a test sub-page - try injection
   document.addEventListener('click', (event) => {
-    console.log(event)
+    console.log(event);
     if (event?.target?.className?.includes('test-file-title')) {
       tryInjectAskLLMButton();
     }

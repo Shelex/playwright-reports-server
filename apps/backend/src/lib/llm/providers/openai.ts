@@ -25,7 +25,7 @@ export class OpenAIProvider extends LLMProvider {
   }
 
   protected async parseResponse(response: Response): Promise<LLMResponse> {
-    const data = await response.json() as any;
+    const data = (await response.json()) as any;
 
     return {
       content: data.choices?.[0]?.message?.content || '',

@@ -54,10 +54,7 @@ export abstract class BaseLLMProvider {
     this.config = config;
   }
 
-  abstract sendMessage(
-    prompt: string,
-    systemPrompt?: string
-  ): Promise<LLMResponse>;
+  abstract sendMessage(prompt: string, systemPrompt?: string): Promise<LLMResponse>;
   abstract validateConfig(): Promise<boolean>;
   abstract getAvailableModels(): Promise<string[]>;
 
