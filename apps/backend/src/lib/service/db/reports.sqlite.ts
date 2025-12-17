@@ -27,19 +27,6 @@ export class ReportDatabase {
       string,
     ]
   >;
-  private readonly updateStmt: Database.Statement<
-    [
-      string,
-      string | null,
-      number | null,
-      string,
-      string | null,
-      number,
-      string | null,
-      string,
-      string,
-    ]
-  >;
   private readonly deleteStmt: Database.Statement<[string]>;
   private readonly getByIDStmt: Database.Statement<[string]>;
   private readonly getAllStmt: Database.Statement<[]>;
@@ -50,12 +37,6 @@ export class ReportDatabase {
     this.insertStmt = this.db.prepare(`
       INSERT OR REPLACE INTO reports (reportID, project, title, displayNumber, createdAt, reportUrl, size, sizeBytes, stats, metadata, updatedAt)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    `);
-
-    this.updateStmt = this.db.prepare(`
-      UPDATE reports
-      SET project = ?, title = ?, displayNumber = ?, reportUrl = ?, size = ?, sizeBytes = ?, stats = ?, metadata = ?, updatedAt = CURRENT_TIMESTAMP
-      WHERE reportID = ?
     `);
 
     this.deleteStmt = this.db.prepare('DELETE FROM reports WHERE reportID = ?');
@@ -202,33 +183,6 @@ export class ReportDatabase {
     };
 
     this.insertReport(reportWithDisplayNumber);
-  }
-
-  public onUpdated(report: ReportHistory) {
-    console.log(`[report db] updating report ${report.reportID}`);
-    const {
-      reportID,
-      project,
-      title,
-      displayNumber,
-      reportUrl,
-      size,
-      sizeBytes,
-      stats,
-      ...metadata
-    } = report;
-
-    this.updateStmt.run(
-      project || '',
-      title || null,
-      displayNumber || null,
-      reportUrl,
-      size || null,
-      sizeBytes || 0,
-      stats ? JSON.stringify(stats) : null,
-      JSON.stringify(metadata),
-      reportID
-    );
   }
 
   public getAll(): ReportHistory[] {

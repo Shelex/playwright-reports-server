@@ -16,9 +16,6 @@ export class ResultDatabase {
   private readonly insertStmt: Database.Statement<
     [string, string, string | null, string, string | null, number, string]
   >;
-  private readonly updateStmt: Database.Statement<
-    [string, string | null, string | null, number, string, string]
-  >;
   private readonly deleteStmt: Database.Statement<[string]>;
   private readonly getByIDStmt: Database.Statement<[string]>;
   private readonly getAllStmt: Database.Statement<[]>;
@@ -29,12 +26,6 @@ export class ResultDatabase {
     this.insertStmt = this.db.prepare(`
       INSERT OR REPLACE INTO results (resultID, project, title, createdAt, size, sizeBytes, metadata, updatedAt)
       VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    `);
-
-    this.updateStmt = this.db.prepare(`
-      UPDATE results
-      SET project = ?, title = ?, size = ?, sizeBytes = ?, metadata = ?, updatedAt = CURRENT_TIMESTAMP
-      WHERE resultID = ?
     `);
 
     this.deleteStmt = this.db.prepare('DELETE FROM results WHERE resultID = ?');
@@ -124,20 +115,6 @@ export class ResultDatabase {
   public onCreated(result: Result) {
     console.log(`[result db] adding result ${result.resultID}`);
     this.insertResult(result);
-  }
-
-  public onUpdated(result: Result) {
-    console.log(`[result db] updating result ${result.resultID}`);
-    const { resultID, project, title, size, sizeBytes, ...metadata } = result;
-
-    this.updateStmt.run(
-      project || '',
-      title || null,
-      size || null,
-      sizeBytes || 0,
-      JSON.stringify(metadata),
-      resultID
-    );
   }
 
   public getAll(): Result[] {

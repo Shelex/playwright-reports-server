@@ -23,7 +23,7 @@
     "@heroui/switch": "2.2.13",
     "@heroui/system": "2.4.11",
     "@heroui/theme": "2.4.11",
-    "@playwright-reports/shared": "*",
+    "@playwright-reports/shared": "^1.0.0",
     "@react-aria/selection": "^3.12.1",
     "@react-aria/ssr": "^3.9.10",
     "@react-aria/utils": "^3.15.0",

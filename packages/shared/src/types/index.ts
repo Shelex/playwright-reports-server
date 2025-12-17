@@ -317,4 +317,4 @@ export interface ServerConfig {
   llm?: LLMConfig;
 }
 
-export * from './analytics.js';
+export * from './analytics';

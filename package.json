@@ -4,8 +4,8 @@
   "description": "Playwright Reports Server: Can be used to accept blobs, merge them, store and view Playwright reports",
   "type": "module",
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "scripts": {
     "dev": "concurrently --kill-others-on-fail --restart-tries=1 \"npm run dev:backend\" \"npm run dev:frontend\"",
