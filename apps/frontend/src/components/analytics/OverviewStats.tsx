@@ -13,6 +13,7 @@ export function OverviewStatsCard({ stats }: Readonly<OverviewStatsProps>) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         {new Array({ length: 5 }).map((_, index) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: that is just a placeholder for 5 elements
           <Card key={index} className="shadow-sm">
             <CardHeader className="pb-2">
               <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Loading...</h3>

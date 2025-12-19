@@ -1,6 +1,6 @@
 export interface LLMConfig {
   enabled: boolean;
-  provider: 'openai' | 'anthropic' | 'zai';
+  provider: 'openai' | 'anthropic';
   baseUrl: string;
   apiKey: string;
   model: string;

@@ -27,7 +27,6 @@ export abstract class LLMProvider extends BaseProvider {
         throw this.handleError({
           status: response.status,
           statusText: response.statusText,
-          url: response.url,
         });
       }
 
@@ -118,8 +117,8 @@ export abstract class LLMProvider extends BaseProvider {
     };
   }
 
-  protected abstract formatRequestBody(request: LLMRequest): any;
-  protected abstract extractModelIds(data: any): string[];
+  protected abstract formatRequestBody(request: LLMRequest): unknown;
+  protected abstract extractModelIds(data: unknown): string[];
 
   protected async getBestAvailableModel(): Promise<string | null> {
     try {
@@ -137,12 +136,22 @@ export abstract class LLMProvider extends BaseProvider {
     }
   }
 
-  protected handleError(error: any): LLMProviderError {
+  protected handleError(error: {
+    status?: number;
+    statusCode?: number;
+    message?: string;
+    statusText?: string;
+    code?: string;
+  }): LLMProviderError {
     const statusCode = error.status || error.statusCode;
 
     // Common error patterns
     if (statusCode === 401 || statusCode === 403) {
-      return new LLMProviderError(error, 'authentication', statusCode);
+      return new LLMProviderError(
+        error.message ?? error.statusText ?? 'Authentication failed',
+        'authentication',
+        statusCode
+      );
     }
 
     if (statusCode === 429) {
@@ -161,7 +170,7 @@ export abstract class LLMProvider extends BaseProvider {
       );
     }
 
-    if (statusCode >= 500) {
+    if (statusCode && statusCode >= 500) {
       return new LLMProviderError(
         `Server error: ${error.message || error.statusText}`,
         'server_error',
@@ -170,7 +179,7 @@ export abstract class LLMProvider extends BaseProvider {
     }
 
     if (error.code === 'ECONNRESET' || error.code === 'ENOTFOUND') {
-      return new LLMProviderError(`Network error: ${error.message}`, 'network', error.code);
+      return new LLMProviderError(`Network error: ${error.message}`, 'network');
     }
 
     return new LLMProviderError(

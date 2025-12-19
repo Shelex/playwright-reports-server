@@ -125,13 +125,13 @@ If you want to persist reports and results on S3 compatible storage, you need to
 Generated playwright report has button "Ask LLM" for failed tests that allows to analyze test failure with LLM provider.  
 It sends prompt provided in "Copy prompt" button along with some historical details.  
 
-| Name              | Description                                                          | Default                |
-|-------------------|----------------------------------------------------------------------|------------------------|
-| `LLM_PROVIDER`    | LLM provider to use for test failure analysis (openai\anthropic\zai) | openai                 |
-| `LLM_BASE_URL`    | Base URL for the LLM API                                             |                        |
-| `LLM_API_KEY`     | API key for the LLM provider                                         |                        |
-| `LLM_MODEL`       | Model to use for the LLM provider                                    | checks /model endpoint |
-| `LLM_TEMPERATURE` | Temperature setting for the LLM                                      | 0.3                    |
+| Name              | Description                                                      | Default                |
+|-------------------|------------------------------------------------------------------|------------------------|
+| `LLM_PROVIDER`    | LLM provider to use for test failure analysis (openai\anthropic) | openai                 |
+| `LLM_BASE_URL`    | Base URL for the LLM API                                         |                        |
+| `LLM_API_KEY`     | API key for the LLM provider                                     |                        |
+| `LLM_MODEL`       | Model to use for the LLM provider                                | checks /model endpoint |
+| `LLM_TEMPERATURE` | Temperature setting for the LLM                                  | 0.3                    |
 
 ## API Routes
 

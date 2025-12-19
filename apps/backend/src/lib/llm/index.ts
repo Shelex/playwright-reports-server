@@ -2,12 +2,11 @@ import { env } from '../../config/env.js';
 import { getCustomSystemPrompt, testFailedWithContext } from './prompts/index.js';
 import { AnthropicProvider } from './providers/anthropic.js';
 import { OpenAIProvider } from './providers/openai.js';
-import { ZAIProvider } from './providers/zai.js';
 import type { LLMProviderConfig } from './types/index.js';
 
 export class LLMService {
   private static instance: LLMService;
-  private provider: OpenAIProvider | AnthropicProvider | ZAIProvider | null = null;
+  private provider: OpenAIProvider | AnthropicProvider | null = null;
   private config: LLMProviderConfig | null = null;
 
   private constructor() {
@@ -93,7 +92,7 @@ export class LLMService {
     return this.provider.sendMessage(enhancedPrompt, finalSystemPrompt);
   }
 
-  private createProvider(): OpenAIProvider | AnthropicProvider | ZAIProvider {
+  private createProvider(): OpenAIProvider | AnthropicProvider {
     if (!this.config) {
       throw new Error('LLM config not initialized');
     }
@@ -103,8 +102,6 @@ export class LLMService {
         return new OpenAIProvider(this.config);
       case 'anthropic':
         return new AnthropicProvider(this.config);
-      case 'zai':
-        return new ZAIProvider(this.config);
       default:
         throw new Error(`Unknown LLM provider: ${this.config.provider}`);
     }
@@ -115,6 +112,7 @@ export class LLMService {
       throw new Error('LLM config not initialized');
     }
 
+    // biome-ignore lint/correctness/noUnusedVariables: apiKey is intentionally extracted to exclude from safe config
     const { apiKey, ...safeConfig } = this.config;
     return safeConfig;
   }

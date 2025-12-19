@@ -1,6 +1,6 @@
 export type UUID = `${string}-${string}-${string}-${string}-${string}`;
 
-export type LLMProviderType = 'openai' | 'anthropic' | 'zai';
+export type LLMProviderType = 'openai' | 'anthropic';
 
 export interface LLMConfig {
   provider?: LLMProviderType;
