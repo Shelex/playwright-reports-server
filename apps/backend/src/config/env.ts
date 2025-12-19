@@ -75,9 +75,9 @@ export const env = cleanEnv(process.env, {
   // LLM
   LLM_ENABLED: str({ desc: 'Enable LLM features', default: 'false' }),
   LLM_PROVIDER: str<LLMProviderType>({
-    desc: 'LLM provider (openai, anthropic, zai)',
+    desc: 'LLM provider (openai, anthropic)',
     default: 'openai',
-    choices: ['openai', 'anthropic', 'zai'],
+    choices: ['openai', 'anthropic'],
   }),
   LLM_BASE_URL: str({ desc: 'LLM base URL', default: undefined }),
   LLM_API_KEY: str({ desc: 'LLM API key', default: undefined }),
