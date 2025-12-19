@@ -166,7 +166,7 @@ export class AnalyticsService {
 
           if (test.duration) {
             existing.avgDuration =
-              existing.recentRuns.reduce((sum: number, run: any, index: number) => {
+              existing.recentRuns.reduce((sum: number, _, index: number) => {
                 const duration = index === 0 ? test.duration : existing.avgDuration;
                 return sum + duration;
               }, 0) / existing.recentRuns.length;
@@ -178,7 +178,7 @@ export class AnalyticsService {
     }
 
     const result: PerTestMetric[] = [];
-    for (const [testId, metric] of testMetrics.entries()) {
+    for (const [_, metric] of testMetrics.entries()) {
       const passedCount = metric.recentRuns.filter((run) => run.passed).length;
       const totalCount = metric.recentRuns.length;
 
@@ -329,25 +329,8 @@ export class AnalyticsService {
     return count;
   }
 
-  async getAnalyticsForReport(reportId: string): Promise<AnalyticsData> {
-    const report = await this.getReportById(reportId);
-    if (!report) {
-      throw new Error(`Report with ID ${reportId} not found`);
-    }
-
-    const reports = [report];
-    const allReports = await this.getRecentReports();
-
-    return {
-      overviewStats: await this.calculateOverviewStatsForSingleReport(report),
-      runHealthMetrics: await this.calculateRunHealthMetrics(reports),
-      trendMetrics: await this.calculateTrendMetricsForSingleReport(report, allReports),
-      perTestMetrics: await this.calculatePerTestMetricsForSingleReport(report),
-    };
-  }
-
-  async getTestTrends(testId: string): Promise<StepTimingTrend | null> {
-    const testReports = reportDb.getReportHistoryByTestId(testId);
+  async getTestTrends(testId: string, projectName?: string): Promise<StepTimingTrend | null> {
+    const testReports = reportDb.getReportHistoryByTestId(testId, projectName);
 
     if (!testReports.length) {
       console.log(`[analytics] No historical data found for testId: ${testId}`);

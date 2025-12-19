@@ -14,7 +14,8 @@
       "!**/coverage",
       "!**/*.min.js",
       "!**/*.d.ts",
-      "!**/packages/shared/dist"
+      "!**/packages/shared/dist",
+      "!**/memory"
     ]
   },
   "formatter": {

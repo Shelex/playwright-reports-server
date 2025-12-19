@@ -4,23 +4,18 @@ import { analyticsService } from '../lib/service/analytics.js';
 import { withError } from '../lib/withError.js';
 
 export async function registerAnalyticsRoutes(fastify: FastifyInstance) {
-  fastify.get('/api/analytics/:reportId?', async (request, reply) => {
+  fastify.get('/api/analytics', async (request, reply) => {
     try {
-      const { reportId } = request.params as { reportId?: string };
-      const { project } = request.query as { project?: string };
-
-      const analyticsData = reportId
-        ? await analyticsService.getAnalyticsForReport(reportId)
-        : await analyticsService.getAnalyticsData(project);
+      const { project = 'all' } = request.query as { project?: string };
+      const analyticsData = await analyticsService.getAnalyticsData(project);
 
       return { success: true, data: analyticsData };
     } catch (error) {
-      fastify.log.error({
-        error: 'Analytics error',
-        message: error instanceof Error ? error.message : String(error),
-      });
       reply.status(500);
-      return { success: false, error: 'Failed to fetch analytics data' };
+      return {
+        success: false,
+        error: `Failed to fetch analytics data: ${error instanceof Error ? error.message : String(error)}`,
+      };
     }
   });
 

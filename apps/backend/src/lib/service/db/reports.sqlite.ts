@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3';
+import { defaultProjectName } from '@/lib/constants.js';
 import { storage } from '../../storage/index.js';
 import type { ReadReportsInput, ReadReportsOutput, ReportHistory } from '../../storage/types.js';
 import { withError } from '../../withError.js';
@@ -58,7 +59,6 @@ export class ReportDatabase {
 
   public static getInstance(): ReportDatabase {
     instance[initiatedReportsDb] ??= new ReportDatabase();
-
     return instance[initiatedReportsDb];
   }
 
@@ -72,14 +72,12 @@ export class ReportDatabase {
 
     if (error) {
       console.error('[report db] failed to read reports:', error);
-
       return;
     }
 
     if (!result?.reports?.length) {
       console.log('[report db] no reports to store');
       this.initialized = true;
-
       return;
     }
 
@@ -221,17 +219,19 @@ export class ReportDatabase {
     return row ? this.rowToReport(row) : undefined;
   }
 
-  public getReportHistoryByTestId(testId: string): ReportHistory[] {
+  public getReportHistoryByTestId(testId: string, projectName?: string): ReportHistory[] {
     const searchPattern = `%"testId":"${testId}"%`;
+    const projectPattern =
+      projectName && projectName !== defaultProjectName ? `%"project":"${projectName}"%` : '%';
     const rows = this.db
       .prepare(
         `
-      SELECT * FROM reports
-      WHERE metadata LIKE ?
-      ORDER BY createdAt DESC
-    `
+        SELECT * FROM reports
+        WHERE metadata LIKE ? AND project LIKE ?
+        ORDER BY createdAt DESC
+      `
       )
-      .all(searchPattern) as {
+      .all(searchPattern, projectPattern) as {
       reportID: string;
       project: string;
       title: string | null;
@@ -248,9 +248,12 @@ export class ReportDatabase {
   }
 
   public getByProject(project?: string): ReportHistory[] {
-    const stmt = project ? this.getByProjectStmt : this.getAllStmt;
+    const stmt =
+      project && project !== defaultProjectName
+        ? this.getByProjectStmt.all(project ?? '')
+        : this.getAllStmt.all();
 
-    const rows = stmt.all(project ?? '') as Array<{
+    const rows = stmt as Array<{
       reportID: string;
       project: string;
       title: string | null;
@@ -312,7 +315,7 @@ export class ReportDatabase {
       params.push(...input.ids);
     }
 
-    if (input?.project) {
+    if (input?.project && input?.project !== defaultProjectName) {
       conditions.push('project = ?');
       params.push(input.project);
     }
