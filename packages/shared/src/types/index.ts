@@ -10,6 +10,14 @@ export interface LLMConfig {
   temperature?: number;
 }
 
+export interface TestManagementConfig {
+  quarantineThresholdPercentage?: number;
+  warningThresholdPercentage?: number;
+  autoQuarantineEnabled?: boolean;
+  flakinessMinRuns?: number;
+  flakinessEvaluationWindowDays?: number;
+}
+
 export type HeaderLinks = Record<string, string>;
 
 export type IconSvgProps = {
@@ -67,6 +75,7 @@ export interface SiteWhiteLabelConfig {
   };
   jira?: JiraConfig;
   llm?: LLMConfig;
+  testManagement?: TestManagementConfig;
 }
 
 export interface DatabaseStats {
@@ -124,8 +133,8 @@ export enum ReportTestOutcomeEnum {
 }
 
 export interface ReportTest {
-  testId?: string;
-  title?: string;
+  testId: string;
+  title: string;
   projectName?: string;
   project?: string;
   location?: {
@@ -133,9 +142,9 @@ export interface ReportTest {
     line: number;
     column: number;
   };
-  duration?: number;
-  outcome?: ReportTestOutcome;
-  ok?: boolean;
+  duration: number;
+  outcome: ReportTestOutcome;
+  ok: boolean;
   path?: string[];
   attachments?: Array<{
     name: string;
@@ -157,15 +166,19 @@ export interface ReportTest {
     description?: string;
   }>;
   createdAt?: string;
+  // test management fields
+  flakinessScore?: number;
+  quarantined?: boolean;
+  quarantineReason?: string;
 }
 
 export interface ReportFile {
-  name?: string;
-  fileId?: string;
-  fileName?: string;
-  path?: string;
-  stats?: ReportStats;
-  tests?: ReportTest[];
+  name: string;
+  fileId: string;
+  fileName: string;
+  path: string;
+  stats: ReportStats;
+  tests: ReportTest[];
 }
 
 export interface ReportStats {
@@ -317,4 +330,5 @@ export interface ServerConfig {
   llm?: LLMConfig;
 }
 
-export * from './analytics';
+export * from './analytics.js';
+export * from './test-management.js';

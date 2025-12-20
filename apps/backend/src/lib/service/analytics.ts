@@ -43,18 +43,18 @@ export class AnalyticsService {
 
     const flakyTests = await this.identifyFlakyTests(recentReports);
 
-    const stepDurations = await this.extractStepDurations(recentReports);
-    const averageStepDuration =
-      stepDurations.length > 0
-        ? stepDurations.reduce((sum, duration) => sum + duration, 0) / stepDurations.length
+    const testDurations = await this.extractTestDurations(recentReports);
+    const averageTestDuration =
+      testDurations.length > 0
+        ? testDurations.reduce((sum, duration) => sum + duration, 0) / testDurations.length
         : 0;
 
     const slowestSteps = await this.findSlowestSteps(recentReports, 10);
 
-    const testExecutionTime = recentReports.reduce(
+    const averageTestRunDuration = recentReports.reduce(
       (sum, report) => sum + (report.duration || 0),
       0
-    );
+    ) / recentReports.length
 
     const currentPassRate = passRate;
     const olderPassRate = await this.calculatePreviousPassRate(olderReports);
@@ -68,9 +68,9 @@ export class AnalyticsService {
       totalTests,
       passRate: Math.round(passRate * 100) / 100,
       flakyTests: flakyTests.length,
-      averageStepDuration: Math.round(averageStepDuration),
+      averageTestDuration: Math.round(averageTestDuration),
       slowestSteps,
-      testExecutionTime,
+      averageTestRunDuration,
       passRateTrend,
       flakyTestsTrend,
     };
@@ -228,7 +228,7 @@ export class AnalyticsService {
       .map(([testId]) => testId);
   }
 
-  private async extractStepDurations(reports: BackendReportHistory[]): Promise<number[]> {
+  private async extractTestDurations(reports: BackendReportHistory[]): Promise<number[]> {
     const durations: number[] = [];
 
     for (const report of reports) {
@@ -304,7 +304,7 @@ export class AnalyticsService {
   }
 
   private async calculateSlowThreshold(reports: BackendReportHistory[]): Promise<number> {
-    const durations = await this.extractStepDurations(reports);
+    const durations = await this.extractTestDurations(reports);
     if (durations.length === 0) return 1000; // Default 1 second
 
     durations.sort((a, b) => a - b);

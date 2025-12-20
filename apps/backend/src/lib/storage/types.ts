@@ -1,6 +1,10 @@
 import type { PassThrough } from 'node:stream';
-import type { SiteWhiteLabelConfig, UUID } from '@playwright-reports/shared';
-import type { ReportInfo, ReportTest } from '../parser/types.js';
+import type {
+  ReportInfo,
+  ReportTest,
+  SiteWhiteLabelConfig,
+  UUID,
+} from '@playwright-reports/shared';
 import type { Pagination } from './pagination.js';
 
 export interface Storage {
@@ -28,6 +32,7 @@ export interface Storage {
   saveConfigFile: (
     config: Partial<SiteWhiteLabelConfig>
   ) => Promise<{ result: SiteWhiteLabelConfig; error: Error | null }>;
+  updateMetadata: (reportIdentifier: string, updates: Partial<ReportInfo>) => Promise<ReportInfo>;
 }
 
 export interface ReportPath {

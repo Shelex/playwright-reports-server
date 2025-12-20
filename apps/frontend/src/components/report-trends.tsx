@@ -44,7 +44,7 @@ export default function ReportTrends() {
       <div>
         {(isFetching || isPending) && <Spinner className="flex justify-center items-center" />}
         <div className="flex justify-end my-2">
-          <ProjectSelect entity="report" onSelect={onProjectChange} />
+          <ProjectSelect entity="report" onSelect={onProjectChange} selectedProject={project} />
         </div>
         {!isFetching && !isPending && (!reports || reports.length === 0) && (
           <div className="flex flex-col items-center justify-center py-12 text-center">

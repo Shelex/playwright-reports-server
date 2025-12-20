@@ -16,6 +16,7 @@ export function TrendSparklines({ metrics }: Readonly<TrendSparklinesProps>) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         {new Array({ length: 3 }).map((_, index) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: placeholder until real data is loaded
           <div key={index} className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
             <h4 className="text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
               Loading...
@@ -59,7 +60,7 @@ export function TrendSparklines({ metrics }: Readonly<TrendSparklinesProps>) {
           Duration Trend
         </h4>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-          Average step execution time (ms)
+          Average test execution time (ms)
         </p>
         <div className="h-20">
           <ResponsiveContainer width="100%" height="100%">
@@ -107,7 +108,7 @@ export function TrendSparklines({ metrics }: Readonly<TrendSparklinesProps>) {
           Slow Count Trend
         </h4>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-          Steps slower than 95th percentile
+          Tests slower than 95th percentile
         </p>
         <div className="h-20">
           <ResponsiveContainer width="100%" height="100%">

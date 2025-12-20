@@ -49,7 +49,7 @@ export class LLMService {
       baseUrl: env.LLM_BASE_URL ?? '',
       apiKey: env.LLM_API_KEY ?? '',
       model: env.LLM_MODEL ?? '',
-      temperature: env.LLM_TEMPERATURE || 0.3,
+      temperature: env.LLM_TEMPERATURE ?? 0.3,
       requestTimeoutMs: 30 * 1000,
       maxRetries: 3,
       retryDelayMs: 1 * 1000,

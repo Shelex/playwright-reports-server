@@ -14,12 +14,13 @@ interface TablePaginationRowProps {
   onTagsChange?: (tags: string[]) => void;
   rowPerPageOptions?: number[];
   entity: 'report' | 'result';
+  selectedProject?: string;
 }
 
 const defaultRowPerPageOptions = [10, 20, 40];
 
 export default function TablePaginationOptions({
-  // total,
+  total,
   rowsPerPage,
   entity,
   rowPerPageOptions,
@@ -28,6 +29,7 @@ export default function TablePaginationOptions({
   onProjectChange,
   onSearchChange,
   onTagsChange,
+  selectedProject,
 }: Readonly<TablePaginationRowProps>) {
   const rowPerPageItems = rowPerPageOptions ?? defaultRowPerPageOptions;
 
@@ -43,7 +45,6 @@ export default function TablePaginationOptions({
 
   return (
     <div className="flex justify-between items-center pb-6">
-      {/* <span className="text-default-400 text-small">Total {total ?? 0}</span> */}
       <div className="flex flex-row gap-3 w-full items-end">
         <Input
           className="w-48 bg-transparent"
@@ -52,7 +53,11 @@ export default function TablePaginationOptions({
           variant="bordered"
           onChange={(e) => onSearchChange?.(e.target.value)}
         />
-        <ProjectSelect entity={entity} onSelect={onProjectChange} />
+        <ProjectSelect
+          entity={entity}
+          onSelect={onProjectChange}
+          selectedProject={selectedProject}
+        />
         {entity === 'result' && <TagSelect entity={entity} onSelect={onTagsChange} />}
         <Select
           disallowEmptySelection
@@ -69,6 +74,7 @@ export default function TablePaginationOptions({
             </SelectItem>
           ))}
         </Select>
+        <span className="text-default-500 min-w-24 text-center text-lg">Total: {total ?? 0}</span>
       </div>
     </div>
   );

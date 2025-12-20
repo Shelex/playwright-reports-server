@@ -6,23 +6,18 @@ import { toast } from 'sonner';
 import { useAnalyticsData } from '../../hooks/useAnalyticsData';
 import { defaultProjectName } from '../../lib/constants';
 import ProjectSelect from '../project-select';
+import TestManagementWidget from '../test-management/TestManagementWidget';
 import { HealthGrid } from './HealthGrid';
 import { OverviewStatsCard } from './OverviewStats';
-import { PerTestSparklines } from './PerTestSparklines';
 import { TrendSparklines } from './TrendSparklines';
 
 export default function AnalyticsDashboard() {
   const [project, setProject] = useState(defaultProjectName);
-  const [testFilter, setTestFilter] = useState<'all' | 'flaky' | 'failed'>('all');
 
   const { data: analyticsData, error, isFetching, isPending } = useAnalyticsData(project);
 
   const onProjectChange = useCallback((project: string) => {
     setProject(project);
-  }, []);
-
-  const onFilterChange = useCallback((filter: 'all' | 'flaky' | 'failed') => {
-    setTestFilter(filter);
   }, []);
 
   error && toast.error(error.message);
@@ -63,22 +58,26 @@ export default function AnalyticsDashboard() {
             Comprehensive insights into test performance and health
           </p>
         </div>
-        <div className="flex justify-end">
-          <ProjectSelect entity="report" onSelect={onProjectChange} />
+        <div className="flex justify-end w-150">
+          <ProjectSelect
+            label="Select project"
+            entity="report"
+            onSelect={onProjectChange}
+            labelPlacement="inside"
+            selectedProject={project}
+          />
         </div>
       </div>
 
       <OverviewStatsCard stats={overviewStats} />
       <TrendSparklines metrics={trendMetrics} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <HealthGrid metrics={runHealthMetrics} />
-        <PerTestSparklines
-          metrics={perTestMetrics}
-          onFilter={onFilterChange}
-          currentFilter={testFilter}
-        />
-      </div>
+      <HealthGrid metrics={runHealthMetrics} />
+      {/**
+       * TODO: investigate slowest tests table/graph
+       */}
+
+      <TestManagementWidget project={project} />
 
       {(runHealthMetrics.length === 0 || perTestMetrics.length === 0) && (
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6">

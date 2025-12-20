@@ -63,7 +63,15 @@ export async function registerConfigRoutes(fastify: FastifyInstance) {
       temperature: env.LLM_TEMPERATURE,
     };
 
-    return { ...config, ...envInfo, llm: llmInfo };
+    const testManagement = {
+      quarantineThresholdPercentage: env.TEST_FLAKINESS_QUARANTINE_THRESHOLD,
+      warningThresholdPercentage: env.TEST_FLAKINESS_WARNING_THRESHOLD,
+      autoQuarantineEnabled: env.TEST_FLAKINESS_AUTO_QUARANTINE === 'true',
+      flakinessMinRuns: env.TEST_FLAKINESS_MIN_RUNS,
+      flakinessEvaluationWindowDays: env.TEST_FLAKINESS_EVALUATION_WINDOW_DAYS,
+    };
+
+    return { ...config, ...envInfo, llm: llmInfo, testManagement };
   });
 
   fastify.patch('/api/config', async (request: FastifyRequest, reply: FastifyReply) => {

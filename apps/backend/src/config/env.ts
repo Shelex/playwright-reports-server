@@ -86,4 +86,26 @@ export const env = cleanEnv(process.env, {
     default: undefined,
   }),
   LLM_TEMPERATURE: num({ desc: 'LLM temperature (0-2)', default: undefined }),
+  // Test management
+  TEST_FLAKINESS_QUARANTINE_THRESHOLD: num({
+    desc: 'Flakiness percentage threshold for quarantine (default: 5%)',
+    default: 5,
+  }),
+  TEST_FLAKINESS_WARNING_THRESHOLD: num({
+    desc: 'Flakiness percentage threshold for warning (default: 2%)',
+    default: 2,
+  }),
+  TEST_FLAKINESS_AUTO_QUARANTINE: str({
+    desc: 'Enable automatic quarantine for flaky tests',
+    default: 'false',
+    choices: ['true', 'false'],
+  }),
+  TEST_FLAKINESS_MIN_RUNS: num({
+    desc: 'Minimum number of runs before calculating flakiness',
+    default: 1,
+  }),
+  TEST_FLAKINESS_EVALUATION_WINDOW_DAYS: num({
+    desc: 'Number of days to consider for flakiness calculation',
+    default: 30,
+  }),
 });

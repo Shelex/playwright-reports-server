@@ -1,7 +1,10 @@
 import { execSync } from 'node:child_process';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { FullConfig, Reporter } from '@playwright/test/reporter';
 import { ReportServerClient } from './client.js';
+import { DEFAULT_OPTIONS } from './config.js';
+import type { PublicReporterOptions, ReporterOptions } from './types.js';
 
 // reporter: [
 //   ['@playwright-reports/reporter', {
@@ -13,42 +16,6 @@ import { ReportServerClient } from './client.js';
 //       triggerReportGeneration: true
 //   }]
 // ]
-
-export type PublicReporterOptions = {
-  enabled?: boolean;
-  url: string;
-  reportPath: string;
-  token?: string;
-  requestTimeout?: number;
-  resultDetails?: Record<string, string>;
-  triggerReportGeneration?: boolean;
-  blobUploadTimeout?: number;
-  logProgress?: boolean;
-};
-
-/**
- * Used for proper internal typings after merging with default options
- */
-type ReporterOptions = {
-  enabled: boolean;
-  url: string;
-  reportPath: string;
-  token?: string;
-  requestTimeout?: number;
-  resultDetails: Record<string, string>;
-  triggerReportGeneration: boolean;
-  blobUploadTimeout?: number;
-  logProgress?: boolean;
-};
-
-const DEFAULT_OPTIONS: Omit<ReporterOptions, 'url' | 'reportPath'> = {
-  enabled: true,
-  resultDetails: {},
-  triggerReportGeneration: true,
-  requestTimeout: 60000,
-  blobUploadTimeout: 10 * 60000,
-  logProgress: false,
-};
 
 const getUsername = (): string => {
   const username = process.env.QA_USERNAME || '';
@@ -92,10 +59,31 @@ class ReporterPlaywrightReportsServer implements Reporter {
     });
   }
 
-  onBegin(config: FullConfig /*suite: Suite*/) {
+  async onBegin(config: FullConfig /*suite: Suite*/) {
     if (this.rpOptions.enabled === false) {
       return;
     }
+
+    if (this.rpOptions.skipQuarantinedTests) {
+      const tests = await this.client.getQuarantinedTests(this.rpOptions.resultDetails.project);
+      console.debug(`[ReporterPlaywrightReportsServer] got ${tests.length} quarantined tests`);
+      try {
+        await fs.writeFile(
+          this.rpOptions.quarantineFilePath,
+          JSON.stringify(tests, null, 2),
+          'utf-8'
+        );
+        console.debug(
+          `[ReporterPlaywrightReportsServer] quarantine file written to ${this.rpOptions.quarantineFilePath}`
+        );
+      } catch (e) {
+        console.error(
+          `[ReporterPlaywrightReportsServer] failed to write quarantine file:`,
+          e instanceof Error ? e.message : String(e)
+        );
+      }
+    }
+
     this.pwConfig = config;
   }
 
@@ -168,4 +156,5 @@ class ReporterPlaywrightReportsServer implements Reporter {
   }
 }
 
+export { expect, test } from './quarantineCheck.js';
 export default ReporterPlaywrightReportsServer;

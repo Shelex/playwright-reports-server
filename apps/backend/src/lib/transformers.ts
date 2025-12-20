@@ -1,4 +1,4 @@
-import type { ReportFile, ReportTest, ReportTestFilters } from './parser/index.js';
+import type { ReportFile, ReportTest, ReportTestFilters } from '@playwright-reports/shared';
 import type { ReportHistory } from './storage/types.js';
 
 const isTestMatchingFilters = (test: ReportTest, filters?: ReportTestFilters): boolean => {

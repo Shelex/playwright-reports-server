@@ -23,6 +23,7 @@ import { withError } from '../withError.js';
 import { configCache } from './cache/config.js';
 import { reportDb, resultDb } from './db/index.js';
 import { lifecycle } from './lifecycle.js';
+import { testManagementService } from './testManagement.js';
 
 class Service {
   private static instance: Service | null = null;
@@ -146,6 +147,7 @@ class Service {
     }
 
     reportDb.onCreated(report);
+    await testManagementService.processReport(report);
 
     const reportUrl = `${serveReportRoute}/${reportId}/index.html`;
 
@@ -179,9 +181,6 @@ class Service {
 
   public async getResults(input?: ReadResultsInput): Promise<ReadResultsOutput> {
     console.log(`[results service] getResults`);
-    console.log(`querying results:`);
-    console.log(JSON.stringify(input, null, 2));
-
     return resultDb.query(input);
   }
 

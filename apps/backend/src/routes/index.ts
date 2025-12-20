@@ -6,6 +6,7 @@ import { registerJiraRoutes } from './jira.js';
 import { registerReportRoutes } from './reports.js';
 import { registerResultRoutes } from './results.js';
 import { registerServeRoutes } from './serve.js';
+import { registerTestsRoutes } from './tests.js';
 
 export async function registerApiRoutes(fastify: FastifyInstance) {
   await registerAuthRoutes(fastify);
@@ -15,4 +16,5 @@ export async function registerApiRoutes(fastify: FastifyInstance) {
   await registerServeRoutes(fastify);
   await registerJiraRoutes(fastify);
   await registerAnalyticsRoutes(fastify);
+  await registerTestsRoutes(fastify);
 }

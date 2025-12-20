@@ -3,6 +3,7 @@
 import { Card, CardBody, CardHeader } from '@heroui/react';
 import type { OverviewStats } from '@playwright-reports/shared';
 import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
+import { parseMilliseconds } from '@/lib/time';
 
 interface OverviewStatsProps {
   stats: OverviewStats;
@@ -54,18 +55,12 @@ export function OverviewStatsCard({ stats }: Readonly<OverviewStatsProps>) {
     }
   };
 
-  const formatDuration = (ms: number) => {
-    if (ms < 1000) return `${ms}ms`;
-    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-    return `${(ms / 60000).toFixed(1)}m`;
-  };
-
   const {
     totalTests = 0,
     passRate = 0,
     flakyTests = 0,
-    averageStepDuration = 0,
-    testExecutionTime = 0,
+    averageTestDuration = 0,
+    averageTestRunDuration = 0,
     passRateTrend = 'stable' as const,
     flakyTestsTrend = 'stable' as const,
   } = stats;
@@ -91,14 +86,14 @@ export function OverviewStatsCard({ stats }: Readonly<OverviewStatsProps>) {
       iconColor: getTrendColor(flakyTestsTrend),
     },
     {
-      title: 'Avg Step Duration',
-      value: formatDuration(averageStepDuration),
+      title: 'Avg Test Duration',
+      value: parseMilliseconds(averageTestDuration),
       subtitle: 'Mean execution time',
     },
     {
-      title: 'Test Execution Time',
-      value: formatDuration(testExecutionTime),
-      subtitle: 'Total for latest run',
+      title: 'Average Run Time',
+      value: parseMilliseconds(averageTestRunDuration),
+      subtitle: 'Average for latest runs',
     },
   ];
 

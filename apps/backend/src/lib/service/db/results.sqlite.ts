@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3';
+import { defaultProjectName } from '../../constants.js';
 import { storage } from '../../storage/index.js';
 import type { ReadResultsInput, ReadResultsOutput, Result } from '../../storage/types.js';
 import { withError } from '../../withError.js';
@@ -199,7 +200,7 @@ export class ResultDatabase {
     const params: string[] = [];
     const conditions: string[] = [];
 
-    if (input?.project) {
+    if (input?.project && input.project !== defaultProjectName) {
       conditions.push('project = ?');
       params.push(input.project);
     }
