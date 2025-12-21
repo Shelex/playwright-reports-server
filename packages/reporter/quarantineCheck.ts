@@ -5,7 +5,7 @@ import { DEFAULT_OPTIONS } from './config';
 import type { PublicReporterOptions } from './types';
 
 interface QuarantinedTest {
-  testId: string;
+  id: string;
   reason: string;
 }
 
@@ -14,7 +14,6 @@ export const test = base.extend<{ checkQuarantine: void }>({
     // biome-ignore lint/correctness/noEmptyPattern: need an object
     async ({}, use, testInfo) => {
       console.log(`[skipQuarantinedTests] Checking quarantine for ${testInfo.testId}...`);
-      console.log(JSON.stringify(testInfo.config.reporter, null, 2));
       const reporter = testInfo.config.reporter.find((reporter) => {
         const reporterOptions = reporter?.at(1) as PublicReporterOptions;
         if (!reporterOptions) {
@@ -26,15 +25,13 @@ export const test = base.extend<{ checkQuarantine: void }>({
       });
 
       if (!reporter) {
-        await use();
-        return;
+        return await use();
       }
 
       const reporterOptions = reporter?.at(1) as PublicReporterOptions;
 
       if (!reporterOptions) {
-        await use();
-        return;
+        return await use();
       }
 
       const quarantineFilePath =
@@ -43,31 +40,29 @@ export const test = base.extend<{ checkQuarantine: void }>({
 
       if (!existsSync(absolutePath)) {
         console.warn(
-          `[skipQuarantinedTests] Quarantine file not found at ${absolutePath}, skipping...`
+          `[skipQuarantinedTests] Quarantine file not found at ${absolutePath}, proceeding without skipping tests.`
         );
-        await use();
-        return;
+        return await use();
       }
 
+      let quarantined: QuarantinedTest[] = [];
       try {
         const fileContent = readFileSync(absolutePath, 'utf-8');
-        const quarantined = JSON.parse(fileContent) as QuarantinedTest[];
-        console.log(`[skipQuarantinedTests] Loaded ${quarantined.length} quarantined tests`);
-
-        const quarantineRecord = quarantined.find((record) => record.testId === testInfo.testId);
-        if (quarantineRecord) {
-          console.log(`[skipQuarantinedTests] Test ${testInfo.testId} is quarantined, skipping...`);
-          testInfo.skip(true, quarantineRecord.reason);
-        }
+        quarantined = JSON.parse(fileContent) as QuarantinedTest[];
       } catch (error) {
-        console.error(
-          `[skipQuarantinedTests] Failed to read quarantine file:`,
-          error instanceof Error ? error.message : String(error)
-        );
+        console.error(`[skipQuarantinedTests] Failed to read or parse quarantine file:`, error);
+        return await use();
       }
 
-      console.log(`[skipQuarantinedTests] Test ${testInfo.testId} is not quarantined.`);
-      await use();
+      console.log(`[skipQuarantinedTests] Loaded ${quarantined.length} quarantined tests`);
+      const quarantineRecord = quarantined.find((record) => record.id === testInfo.testId);
+
+      if (quarantineRecord) {
+        console.log(`[skipQuarantinedTests] Test ${testInfo.testId} is quarantined, skipping...`);
+        testInfo.skip(true, quarantineRecord.reason);
+      }
+
+      return await use();
     },
     { auto: true },
   ],

@@ -28,6 +28,8 @@ export class TestManagementService {
             title: test.title || 'Unknown Test',
           });
 
+          const latestTestRun = testDb.getLatestTestRun(testId, fileId, report.project);
+
           const testRun = {
             runId: undefined,
             testId,
@@ -37,8 +39,8 @@ export class TestManagementService {
             outcome: test.outcome || 'unknown',
             duration: test.duration,
             createdAt: new Date().toISOString(),
-            quarantined: false,
-            quarantineReason: '',
+            quarantined: latestTestRun?.quarantined ?? false,
+            quarantineReason: latestTestRun?.quarantineReason ?? '',
             flakinessScore: this.calculateFlakiness(testId, fileId, report.project),
           };
 

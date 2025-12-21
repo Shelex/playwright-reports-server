@@ -51,10 +51,8 @@ export class AnalyticsService {
 
     const slowestSteps = await this.findSlowestSteps(recentReports, 10);
 
-    const averageTestRunDuration = recentReports.reduce(
-      (sum, report) => sum + (report.duration || 0),
-      0
-    ) / recentReports.length
+    const averageTestRunDuration =
+      recentReports.reduce((sum, report) => sum + (report.duration || 0), 0) / recentReports.length;
 
     const currentPassRate = passRate;
     const olderPassRate = await this.calculatePreviousPassRate(olderReports);

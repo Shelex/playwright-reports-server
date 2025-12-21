@@ -17,7 +17,12 @@
   "scripts": {
     "build": "tsc",
     "prepare": "npm run build",
-    "test": "playwright test"
+    "test": "playwright test",
+    "lint": "biome check src/",
+    "lint:fix": "biome check src/ --write",
+    "format": "biome format src/ --write",
+    "format:check": "biome format src/",
+    "clean": "rm -rf dist"
   },
   "author": "Oleksandr Khotemskyi <xotabu4@gmail.com>",
   "license": "MIT",

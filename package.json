@@ -25,7 +25,7 @@
     "test:e2e": "npx playwright test",
     "lint": "npm run lint --workspaces --if-present",
     "lint:fix": "npm run lint:fix --workspaces --if-present",
-    "lint:reporter": "npm run lint:check --workspace=@playwright-reports/reporter",
+    "lint:reporter": "npm run lint --workspace=@playwright-reports/reporter",
     "format": "npm run format --workspaces --if-present",
     "format:check": "npm run format:check --workspaces --if-present",
     "format:reporter": "npm run format:check --workspace=@playwright-reports/reporter",

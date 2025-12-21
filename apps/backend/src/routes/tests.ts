@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { withError } from '../lib/withError.js';
 import { testManagementService } from '../lib/service/testManagement.js';
+import { withError } from '../lib/withError.js';
 
 export async function registerTestsRoutes(fastify: FastifyInstance) {
   fastify.get('/api/tests', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -59,6 +59,7 @@ export async function registerTestsRoutes(fastify: FastifyInstance) {
   fastify.patch(
     '/api/test/:fileId/:testId',
     async (request: FastifyRequest, reply: FastifyReply) => {
+      // TODO: fix remove quarantine case
       const { fileId, testId } = request.params as { fileId: string; testId: string };
       const { project } = request.query as { project: string };
       const body = request.body as {
