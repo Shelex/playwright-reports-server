@@ -80,5 +80,4 @@ export interface AnalyticsData {
   overviewStats: OverviewStats;
   runHealthMetrics: RunHealthMetric[];
   trendMetrics: TrendMetrics;
-  perTestMetrics: PerTestMetric[];
 }

@@ -9,7 +9,7 @@ on:
       - '.github/workflows/pull_request.yml'
 
 jobs:
-  prettier:
+  biome-format:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -18,12 +18,13 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '20'
+          cache: 'npm'
       - name: Install dependencies
         run: npm ci
-      - name: Run prettier
+      - name: Run Biome format check
         run: npm run format:check
 
-  eslint:
+  biome-lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -32,9 +33,10 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '20'
+          cache: 'npm'
       - name: Install dependencies
         run: npm ci
-      - name: Run eslint
+      - name: Run Biome lint
         run: npm run lint
 
   # TODO: Add unit tests
@@ -53,11 +55,16 @@ jobs:
   #       run: npm run test:unit
 
   api-tests:
-    needs: [prettier, eslint]
+    needs: [biome-format, biome-lint]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'npm'
       - name: Install dependencies
         run: npm ci
       - name: Execute API tests

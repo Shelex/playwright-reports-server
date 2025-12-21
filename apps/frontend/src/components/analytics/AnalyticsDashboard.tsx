@@ -47,7 +47,7 @@ export default function AnalyticsDashboard() {
     );
   }
 
-  const { overviewStats, runHealthMetrics = [], trendMetrics, perTestMetrics = [] } = analyticsData;
+  const { overviewStats, runHealthMetrics = [], trendMetrics } = analyticsData;
 
   return (
     <div className="w-[min(100%, 1200px)] mx-auto space-y-6">
@@ -79,7 +79,7 @@ export default function AnalyticsDashboard() {
 
       <TestManagementWidget project={project} />
 
-      {(runHealthMetrics.length === 0 || perTestMetrics.length === 0) && (
+      {runHealthMetrics.length === 0 && (
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6">
           <div className="text-center">
             <div className="text-yellow-800 dark:text-yellow-200 font-medium mb-2">

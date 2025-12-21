@@ -304,8 +304,8 @@ export async function saveResultDetails(
     createdAt: new Date().toISOString(),
     project: resultDetails?.project ?? '',
     ...resultDetails,
-    size: bytesToString(size),
     sizeBytes: size,
+    size: bytesToString(size),
   };
 
   const { error: writeJsonError } = await withError(
@@ -376,12 +376,16 @@ async function parseReportMetadata(
 ): Promise<ReportMetadata> {
   const html = await fs.readFile(path.join(reportPath, 'index.html'), 'utf-8');
   const info = await parse(html as string);
+  const sizeBytes = await getFolderSize.loose(reportPath);
 
   const content = Object.assign(
     info,
     {
       reportID,
       createdAt: new Date().toISOString(),
+      sizeBytes: await getFolderSize.loose(reportPath).then(bytesToString),
+      size: bytesToString(sizeBytes),
+      reportUrl: `${serveReportRoute}/${reportID}/index.html`,
     },
     metadata ?? {}
   );

@@ -4,6 +4,13 @@ const SparklineChart = ({ recentRuns }: { recentRuns: Array<TestRun> }) => {
   const maxRuns = Math.min(recentRuns.length, 30);
   const recentRunsSlice = recentRuns.slice(-maxRuns);
 
+  const colorPerOutcome: Record<string, string> = {
+    [ReportTestOutcomeEnum.Expected]: 'bg-green-500',
+    [ReportTestOutcomeEnum.Unexpected]: 'bg-red-500',
+    [ReportTestOutcomeEnum.Flaky]: 'bg-orange-400',
+    default: 'bg-gray-400',
+  };
+
   return (
     <div className="flex items-end gap-px h-4">
       {recentRunsSlice.reverse().map((run) => {
@@ -11,7 +18,7 @@ const SparklineChart = ({ recentRuns }: { recentRuns: Array<TestRun> }) => {
         return (
           <div
             key={run.runId}
-            className={`w-1 rounded-sm ${isPassed ? 'bg-green-500' : 'bg-red-500'}`}
+            className={`w-1 rounded-sm ${colorPerOutcome[run.outcome] || colorPerOutcome.default}`}
             style={{ height: `${Math.max(2, (isPassed ? 0.8 : 1.0) * 16)}px` }}
             title={`${isPassed ? 'PASS' : 'FAIL'} - ${new Date(run.createdAt).toLocaleDateString()}`}
           />

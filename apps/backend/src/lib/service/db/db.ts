@@ -125,6 +125,7 @@ function initializeSchema(db: Database.Database): void {
       flakinessScore REAL DEFAULT 0 NOT NULL,
       quarantineReason TEXT,
       quarantined BOOLEAN DEFAULT FALSE NOT NULL,
+      fixedAt TEXT,
       FOREIGN KEY (testId, fileId, project)
         REFERENCES tests(testId, fileId, project)
     );

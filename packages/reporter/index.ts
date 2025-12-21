@@ -125,34 +125,6 @@ class ReporterPlaywrightReportsServer implements Reporter {
         `[ReporterPlaywrightReportsServer] 🎭 HTML Report is available at: ${baseUrl}${resultResponse.generatedReport.reportUrl}`
       );
     }
-
-    if (this.rpOptions.triggerReportGeneration) {
-      let report: { reportUrl?: string } | undefined;
-
-      const isShardedRun = shard ? shard.total > 1 : false;
-      const isLastShard = shard ? shard.current === shard.total - 1 : true;
-
-      if (isLastShard && resultResponse.generatedReport?.reportId) {
-        report = {
-          reportUrl: `/api/serve/${resultResponse.generatedReport.reportId}/index.html`,
-        };
-      }
-
-      // if we have single run without shards - trigger generation separately
-      if (!isShardedRun) {
-        report = await this.client.generateReport({
-          resultId: resultResponse.resultID,
-          details,
-          playwrightVersion: version,
-        });
-      }
-
-      if (report?.reportUrl) {
-        console.log(
-          `[ReporterPlaywrightReportsServer] 🎭 HTML Report is available at: ${baseUrl}${report.reportUrl}`
-        );
-      }
-    }
   }
 }
 

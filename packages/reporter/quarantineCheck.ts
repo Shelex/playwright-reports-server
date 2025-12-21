@@ -13,7 +13,7 @@ export const test = base.extend<{ checkQuarantine: void }>({
   checkQuarantine: [
     // biome-ignore lint/correctness/noEmptyPattern: need an object
     async ({}, use, testInfo) => {
-      console.log(`[skipQuarantinedTests] Checking quarantine for ${testInfo.testId}...`);
+      console.log(`[checkQuarantinedTests] Checking quarantine for ${testInfo.testId}...`);
       const reporter = testInfo.config.reporter.find((reporter) => {
         const reporterOptions = reporter?.at(1) as PublicReporterOptions;
         if (!reporterOptions) {
@@ -40,7 +40,7 @@ export const test = base.extend<{ checkQuarantine: void }>({
 
       if (!existsSync(absolutePath)) {
         console.warn(
-          `[skipQuarantinedTests] Quarantine file not found at ${absolutePath}, proceeding without skipping tests.`
+          `[checkQuarantinedTests] Quarantine file not found at ${absolutePath}, proceeding without skipping tests.`
         );
         return await use();
       }
@@ -50,15 +50,15 @@ export const test = base.extend<{ checkQuarantine: void }>({
         const fileContent = readFileSync(absolutePath, 'utf-8');
         quarantined = JSON.parse(fileContent) as QuarantinedTest[];
       } catch (error) {
-        console.error(`[skipQuarantinedTests] Failed to read or parse quarantine file:`, error);
+        console.error(`[checkQuarantinedTests] Failed to read or parse quarantine file:`, error);
         return await use();
       }
 
-      console.log(`[skipQuarantinedTests] Loaded ${quarantined.length} quarantined tests`);
+      console.log(`[checkQuarantinedTests] Loaded ${quarantined.length} quarantined tests`);
       const quarantineRecord = quarantined.find((record) => record.id === testInfo.testId);
 
       if (quarantineRecord) {
-        console.log(`[skipQuarantinedTests] Test ${testInfo.testId} is quarantined, skipping...`);
+        console.log(`[checkQuarantinedTests] Test ${testInfo.testId} is quarantined, skipping...`);
         testInfo.skip(true, quarantineRecord.reason);
       }
 

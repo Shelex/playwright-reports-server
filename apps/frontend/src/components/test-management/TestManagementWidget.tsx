@@ -235,7 +235,7 @@ export default function TestManagementWidget({ project }: Readonly<TestManagemen
                 <TableColumn>Is Flaky</TableColumn>
                 <TableColumn>Flakiness Score</TableColumn>
                 <TableColumn>Total Runs</TableColumn>
-                <TableColumn>History</TableColumn>
+                <TableColumn>History (first to last)</TableColumn>
                 <TableColumn>Duration (Avg)</TableColumn>
                 <TableColumn>Last Run</TableColumn>
                 <TableColumn>Actions</TableColumn>

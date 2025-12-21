@@ -59,7 +59,6 @@ export async function registerTestsRoutes(fastify: FastifyInstance) {
   fastify.patch(
     '/api/test/:fileId/:testId',
     async (request: FastifyRequest, reply: FastifyReply) => {
-      // TODO: fix remove quarantine case
       const { fileId, testId } = request.params as { fileId: string; testId: string };
       const { project } = request.query as { project: string };
       const body = request.body as {

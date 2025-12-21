@@ -9,6 +9,9 @@ import { testDb } from './db/tests.sqlite.js';
 
 export class TestManagementService {
   async processReport(report: ReportHistory): Promise<void> {
+    console.log(
+      `[testManagement] Processing report ${report.reportID} for project ${report.project}`
+    );
     if (!report.files) return;
 
     const transaction = () => {
@@ -30,6 +33,10 @@ export class TestManagementService {
 
           const latestTestRun = testDb.getLatestTestRun(testId, fileId, report.project);
 
+          const shouldQuarantineNextRun = latestTestRun
+            ? latestTestRun?.quarantined && !latestTestRun?.fixedAt
+            : false;
+
           const testRun = {
             runId: undefined,
             testId,
@@ -38,15 +45,16 @@ export class TestManagementService {
             reportId: report.reportID,
             outcome: test.outcome || 'unknown',
             duration: test.duration,
-            createdAt: new Date().toISOString(),
-            quarantined: latestTestRun?.quarantined ?? false,
+            createdAt: test.createdAt ?? new Date().toISOString(),
+            quarantined: shouldQuarantineNextRun,
             quarantineReason: latestTestRun?.quarantineReason ?? '',
             flakinessScore: this.calculateFlakiness(testId, fileId, report.project),
           };
 
           if (
             env.TEST_FLAKINESS_AUTO_QUARANTINE === 'true' &&
-            testRun.flakinessScore >= env.TEST_FLAKINESS_QUARANTINE_THRESHOLD
+            testRun.flakinessScore >= env.TEST_FLAKINESS_QUARANTINE_THRESHOLD &&
+            testRun.quarantined
           ) {
             console.log(
               `[testManagement] Auto-quarantining testId=${testId} due to flakinessScore=${testRun.flakinessScore.toFixed(1)}%`
@@ -86,10 +94,32 @@ export class TestManagementService {
 
     if (recentRuns.length < minRuns) return 0;
 
-    const flakyOutcomes = recentRuns.filter(
-      (r) => r.outcome === ReportTestOutcomeEnum.Flaky
-    ).length;
-    return (flakyOutcomes / recentRuns.length) * 100;
+    // we should treat 'Flaky' as 'Failed' for flakiness calculation
+    // for cases when there are tests with and without retries
+    // as playwright can set test as a 'Flaky' if it passed on retry only
+    const getCanonicalOutcome = (outcome: string) => {
+      if (outcome === ReportTestOutcomeEnum.Flaky) {
+        return ReportTestOutcomeEnum.Failed;
+      }
+      return outcome;
+    };
+
+    const testsWithCanonicalOutcomes = recentRuns.map((run) => getCanonicalOutcome(run.outcome));
+    const statusChangeCount = testsWithCanonicalOutcomes.reduce((count, outcome, index, arr) => {
+      if (index === 0) return count;
+      if (outcome !== arr[index - 1]) {
+        return count + 1;
+      }
+      return count;
+    }, 0);
+
+    if (!statusChangeCount) {
+      return 0;
+    }
+
+    const score = (statusChangeCount / (recentRuns.length - 1)) * 100;
+
+    return score;
   }
 
   async updateQuarantineStatus(

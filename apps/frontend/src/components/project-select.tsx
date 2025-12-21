@@ -37,30 +37,52 @@ export default function ProjectSelect({
   });
 
   const [localStorageProject, setLocalStorageProject] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
   const items = [defaultProjectName, ...(projects ?? [])];
   const localStorageKey = `selected-project`;
 
   useEffect(() => {
+    if (isInitialized) return;
+
     try {
       if (typeof globalThis !== 'undefined' && globalThis.localStorage) {
         const stored = localStorage.getItem(localStorageKey);
         if (!stored) {
+          setIsInitialized(true);
           return;
         }
 
-        if (items.includes(stored) || stored === defaultProjectName) {
-          setLocalStorageProject(stored);
-          return;
-        }
-
-        localStorage.removeItem(localStorageKey);
+        setLocalStorageProject(stored);
+        console.log(`[ProjectSelect] Loaded selected project from localStorage: ${stored}`);
       }
     } catch (error) {
       console.warn('Failed to read from localStorage:', error);
     }
-  }, [items.includes]);
+    setIsInitialized(true);
+  }, [isInitialized]);
+
+  useEffect(() => {
+    if (!isInitialized || !localStorageProject) return;
+
+    try {
+      if (
+        !items.includes(localStorageProject) &&
+        localStorageProject !== defaultProjectName &&
+        !isLoading
+      ) {
+        console.log(
+          `[ProjectSelect] localStorage project ${localStorageProject} is no longer valid, clearing it`
+        );
+        localStorage.removeItem(localStorageKey);
+        setLocalStorageProject(null);
+      }
+    } catch (error) {
+      console.warn('Failed to validate localStorage project:', error);
+    }
+  }, [localStorageProject, isInitialized, items.includes, isLoading]);
 
   const effectiveSelectedProject = localStorageProject || selectedProject || defaultProjectName;
+  onSelect?.(effectiveSelectedProject);
 
   const onChange = (keys: SharedSelection) => {
     if (keys instanceof Set) {

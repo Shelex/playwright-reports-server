@@ -68,7 +68,11 @@ export function HealthGrid({ metrics }: Readonly<HealthGridProps>) {
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={chartData.reverse()}>
+          <BarChart data={chartData.reverse()} onClick={(e) => {
+            const reportId = e.activePayload?.[0]?.payload?.runId;
+            window.open(`/report/${reportId}`, '_blank')
+            console.log(e)
+          }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
               dataKey="name"

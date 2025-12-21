@@ -5,6 +5,7 @@ import type { ReadReportsInput, ReadReportsOutput, ReportHistory } from '../../s
 import { withError } from '../../withError.js';
 import { testManagementService } from '../testManagement.js';
 import { getDatabase } from './db.js';
+import { testDb } from './tests.sqlite.js';
 
 const initiatedReportsDb = Symbol.for('playwright.reports.db.reports');
 const instance = globalThis as typeof globalThis & {
@@ -440,8 +441,10 @@ export class ReportDatabase {
   public async refresh(): Promise<void> {
     console.log('[report db] refreshing cache');
     this.clear();
+    testDb.clear();
     this.initialized = false;
     await this.init();
+    await this.populateTestRuns();
   }
 
   private rowToReport(row: {

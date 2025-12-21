@@ -49,7 +49,7 @@ export const ResultDetailsSchema = z.looseObject({
   triggerReportGeneration: z.coerce.boolean().optional(),
 });
 
-export const GenerateReportRequestSchema = z.object({
+export const GenerateReportRequestSchema = z.looseObject({
   resultsIds: z.array(z.string()).min(1),
   project: z.string().optional(),
   playwrightVersion: z.string().optional(),

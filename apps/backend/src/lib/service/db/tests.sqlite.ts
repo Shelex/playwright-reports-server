@@ -28,6 +28,7 @@ export interface TestRun {
   flakinessScore?: number;
   quarantineReason?: string;
   quarantined?: boolean;
+  fixedAt?: string;
 }
 
 export interface TestWithQuarantineInfo extends Test {
@@ -73,9 +74,8 @@ export class TestDatabase {
       number,
     ]
   >;
-  private readonly updateTestRunStmt: Database.Statement<
-    [number, string | null, string, string, string]
-  >;
+  private readonly quarantineTestRunStmt: Database.Statement<[number, string | null, string]>;
+  private readonly fixTestRunStmt: Database.Statement<[number, string]>;
   private readonly getTestRunsStmt: Database.Statement<[string, string, string]>;
   private readonly getLatestTestRunStmt: Database.Statement<[string, string, string]>;
   private readonly getRecentTestRunsStmt: Database.Statement<[string, string, string, string]>;
@@ -112,10 +112,16 @@ export class TestDatabase {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    this.updateTestRunStmt = this.db.prepare(`
+    this.quarantineTestRunStmt = this.db.prepare(`
       UPDATE test_runs
-      SET quarantined = ?, quarantineReason = ?
-      WHERE runId = (SELECT runId FROM test_runs WHERE testId = ? AND fileId = ? AND project = ? ORDER BY createdAt DESC LIMIT 1)
+      SET quarantined = ?, quarantineReason = ?, fixedAt = NULL
+      WHERE runId = ?
+    `);
+
+    this.fixTestRunStmt = this.db.prepare(`
+      UPDATE test_runs
+      SET quarantined = ?, fixedAt = CURRENT_TIMESTAMP
+      WHERE runId = ?
     `);
 
     this.getTestRunsStmt = this.db.prepare(`
@@ -265,13 +271,15 @@ export class TestDatabase {
     // Convert boolean to integer for SQLite compatibility
     const quarantinedInt = isQuarantined ? 1 : 0;
 
-    const result = this.updateTestRunStmt.run(
-      quarantinedInt,
-      quarantineReason || null,
-      testId,
-      fileId,
-      project
-    );
+    const latestRun = this.getLatestTestRun(testId, fileId, project);
+
+    if (!latestRun) {
+      throw new Error('No test run found for the specified test');
+    }
+
+    const result = isQuarantined
+      ? this.quarantineTestRunStmt.run(quarantinedInt, quarantineReason || null, latestRun.runId)
+      : this.fixTestRunStmt.run(quarantinedInt, latestRun.runId);
 
     return result.changes > 0;
   }

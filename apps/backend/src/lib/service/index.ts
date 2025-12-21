@@ -147,7 +147,13 @@ class Service {
     }
 
     reportDb.onCreated(report);
-    await testManagementService.processReport(report);
+
+    const { error: testsErr } = await withError(testManagementService.processReport(report));
+    if (testsErr) {
+      console.error(
+        `[service] generateReport - failed to process report tests: ${testsErr instanceof Error ? testsErr?.message : String(testsErr)}`
+      );
+    }
 
     const reportUrl = `${serveReportRoute}/${reportId}/index.html`;
 

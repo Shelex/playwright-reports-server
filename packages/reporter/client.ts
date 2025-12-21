@@ -106,47 +106,6 @@ export class ReportServerClient {
     }
   }
 
-  async generateReport(options: ReportGenerationOptions): Promise<{ reportUrl?: string }> {
-    const { resultId, details, playwrightVersion } = options;
-
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    if (this.options.token) {
-      headers['Authorization'] = this.options.token;
-    }
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.options.requestTimeout ?? 60_000);
-
-    try {
-      const resp = await fetch(`${this.baseUrl}/api/report/generate`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          resultsIds: [resultId],
-          ...details,
-          playwrightVersion,
-        }),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!resp.ok) {
-        const text = await resp.text().catch(() => '');
-        throw new Error(
-          `[ReportServerClient] Report generation failed ${resp.status}: ${text.slice(0, 500)}`
-        );
-      }
-
-      return (await resp.json()) as { reportUrl?: string };
-    } catch (err) {
-      clearTimeout(timeoutId);
-      throw err;
-    }
-  }
-
   async getQuarantinedTests(project?: string): Promise<Array<{ id: string; reason: string }>> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',

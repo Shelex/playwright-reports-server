@@ -12,7 +12,7 @@ on:
       - 'packages/reporter/**'
 
 jobs:
-  prettier:
+  biome-format:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -21,12 +21,13 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '20'
+          cache: 'npm'
       - name: Install dependencies
         run: npm ci
-      - name: Run prettier on reporter
+      - name: Run Biome format check on reporter
         run: npm run format:reporter
 
-  eslint:
+  biome-lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -35,9 +36,10 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '20'
+          cache: 'npm'
       - name: Install dependencies
         run: npm ci
-      - name: Run eslint on reporter
+      - name: Run Biome check on reporter
         run: npm run lint:reporter
 
   check-build:
@@ -49,12 +51,14 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '20'
+          cache: 'npm'
       - name: Install dependencies
         run: npm ci
       - name: Build reporter
         run: npm run build:reporter
 
   test:
+    needs: [biome-format, biome-lint, check-build]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -63,6 +67,7 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '20'
+          cache: 'npm'
       - name: Install dependencies
         run: npm ci
       - name: Install Playwright Browsers
