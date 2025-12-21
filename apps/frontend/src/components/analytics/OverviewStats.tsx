@@ -67,7 +67,8 @@ export function OverviewStatsCard({ stats }: Readonly<OverviewStatsProps>) {
 
   const statsCards = [
     {
-      title: 'Total Tests',
+      //TODO: calculate properly based on tests table
+      title: 'Total Tests (TBD)',
       value: totalTests.toLocaleString(),
       subtitle: 'Across all runs',
     },
@@ -79,7 +80,8 @@ export function OverviewStatsCard({ stats }: Readonly<OverviewStatsProps>) {
       iconColor: getTrendColor(passRateTrend),
     },
     {
-      title: 'Flaky Tests',
+      //TODO: calculate properly based on tests table
+      title: 'Flaky Tests (TBD)',
       value: flakyTests.toString(),
       subtitle: 'Failing intermittently',
       icon: getTrendIcon(flakyTestsTrend),

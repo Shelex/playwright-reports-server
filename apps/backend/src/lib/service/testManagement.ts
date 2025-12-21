@@ -52,6 +52,8 @@ export class TestManagementService {
           };
 
           if (
+            //TODO: test automatic quarantine feature\
+            // considering case when test is removed from quarantine but score is still high
             env.TEST_FLAKINESS_AUTO_QUARANTINE === 'true' &&
             testRun.flakinessScore >= env.TEST_FLAKINESS_QUARANTINE_THRESHOLD &&
             testRun.quarantined
