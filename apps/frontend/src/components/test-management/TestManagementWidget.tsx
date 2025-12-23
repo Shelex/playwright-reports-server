@@ -26,19 +26,19 @@ import {
   useDisclosure,
 } from '@heroui/react';
 import type {
-  QuarantineUpdateRequest,
   SiteWhiteLabelConfig,
   TestFilters,
   TestWithQuarantineInfo,
 } from '@playwright-reports/shared';
-import { useMutation, useQueryClient, useQuery as useTanStackQuery } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { Clock } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { parseMilliseconds } from '@/lib/time';
-import { withBase } from '../../config/url';
+import useMutation from '../../hooks/useMutation';
 import useQuery from '../../hooks/useQuery';
 import { defaultProjectName } from '../../lib/constants';
+import { invalidateCache } from '../../lib/query-cache';
 import { TrendSparklineHistory } from '../analytics/TrendSparklineHistory';
 import { exponentialMovingAverageDuration } from './calculations/ema';
 import { TestFilters as TestFiltersComponent } from './TestFilters';
@@ -69,9 +69,10 @@ export default function TestManagementWidget({ project }: Readonly<TestManagemen
   const warningThreshold = config?.testManagement?.warningThresholdPercentage ?? 10;
   const quarantineThreshold = config?.testManagement?.quarantineThresholdPercentage ?? 50;
 
-  const { data: testsResponse, isLoading: isLoadingTests } = useTanStackQuery({
-    queryKey: ['tests', filters],
-    queryFn: async () => {
+  const { data: testsResponse, isLoading: isLoadingTests } = useQuery<{
+    data: TestWithQuarantineInfo[];
+  }>(
+    (() => {
       const params = new URLSearchParams();
       if (filters.project && filters.project !== defaultProjectName) {
         params.append('project', filters.project);
@@ -85,57 +86,27 @@ export default function TestManagementWidget({ project }: Readonly<TestManagemen
       if (filters.flakinessMax !== undefined && filters.flakinessMax < 100) {
         params.append('flakinessMax', filters.flakinessMax.toString());
       }
+      const stringifiedParams = params.toString() ?? '';
+      return `/api/tests?${stringifiedParams}`;
+    })(),
+    { dependencies: [filters] }
+  );
 
-      const stringifiedParams = params.toString();
-      const queryString = stringifiedParams ? `?${stringifiedParams}` : '';
-      const response = await fetch(withBase(`/api/tests${queryString}`));
-      if (!response.ok) {
-        throw new Error('Failed to fetch tests');
-      }
-      return response.json();
-    },
-  });
-
-  const updateQuarantineMutation = useMutation({
-    mutationFn: async ({
-      test,
-      isQuarantined,
-      reason,
-    }: {
-      test: TestWithQuarantineInfo;
-      isQuarantined: boolean;
-      reason?: string;
-    }) => {
-      const response = await fetch(
-        withBase(`/api/test/${test.fileId}/${test.testId}?project=${test.project}`),
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ isQuarantined, reason } as QuarantineUpdateRequest),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to update quarantine status');
-      }
-      return response.json();
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['tests'] });
-      onQuarantineModalOpenChange();
-      setQuarantineReason('');
-      toast.success(
-        variables.test.isQuarantined
-          ? 'Test removed from quarantine'
-          : 'Test quarantined successfully'
-      );
-    },
-    onError: (error: any) => {
-      toast.error(`Error: ${error.message || 'Unknown error'}`);
-    },
-  });
+  const { mutate: updateQuarantineMutation, isPending: isUpdateQuarantinePending } = useMutation(
+    '/api/test',
+    {
+      method: 'PATCH',
+      onSuccess: (_, variables) => {
+        invalidateCache(queryClient, { predicate: '/api/tests' });
+        onQuarantineModalOpenChange();
+        setQuarantineReason('');
+        const test = (variables as { body: { test: TestWithQuarantineInfo } }).body.test;
+        toast.success(
+          test.isQuarantined ? 'Test removed from quarantine' : 'Test quarantined successfully'
+        );
+      },
+    }
+  );
 
   const tests = useMemo(() => testsResponse?.data || [], [testsResponse]);
 
@@ -193,18 +164,21 @@ export default function TestManagementWidget({ project }: Readonly<TestManagemen
   const handleQuarantineSubmit = () => {
     if (!quarantineTest) return;
 
-    const payload = {
-      test: quarantineTest,
-      isQuarantined: !quarantineTest.isQuarantined,
-      reason: quarantineReason,
-    };
+    const isQuarantined = !quarantineTest.isQuarantined;
 
-    if (payload.isQuarantined && !payload.reason?.trim()) {
+    if (isQuarantined && !quarantineReason?.trim()) {
       toast.error('Please provide a reason for quarantine');
       return;
     }
 
-    updateQuarantineMutation.mutate(payload);
+    updateQuarantineMutation({
+      body: {
+        test: quarantineTest,
+        isQuarantined,
+        reason: quarantineReason,
+      },
+      path: `/api/test/${quarantineTest.fileId}/${quarantineTest.testId}?project=${quarantineTest.project}`,
+    });
   };
 
   return (
@@ -365,14 +339,14 @@ export default function TestManagementWidget({ project }: Readonly<TestManagemen
                   color="default"
                   variant="light"
                   onPress={onClose}
-                  isDisabled={updateQuarantineMutation.isPending}
+                  isDisabled={isUpdateQuarantinePending}
                 >
                   Cancel
                 </Button>
                 <Button
                   color={quarantineTest?.isQuarantined ? 'success' : 'danger'}
                   onPress={handleQuarantineSubmit}
-                  isLoading={updateQuarantineMutation.isPending}
+                  isLoading={isUpdateQuarantinePending}
                 >
                   {quarantineTest?.isQuarantined ? 'Remove Quarantine' : 'Quarantine Test'}
                 </Button>

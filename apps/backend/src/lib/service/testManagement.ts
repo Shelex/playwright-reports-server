@@ -89,7 +89,7 @@ export class TestManagementService {
           };
 
           if (
-            //TODO: test automatic quarantine feature\
+            //TODO: test automatic quarantine feature
             // considering case when test is removed from quarantine but score is still high
             config.autoQuarantineEnabled &&
             testRun.flakinessScore >= (config.quarantineThresholdPercentage ?? 5) &&

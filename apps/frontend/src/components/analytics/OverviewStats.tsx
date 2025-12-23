@@ -1,16 +1,17 @@
 'use client';
 
 import { Card, CardBody, CardHeader } from '@heroui/react';
-import type { OverviewStats } from '@playwright-reports/shared';
+import type { OverviewStats, TestWithQuarantineInfo } from '@playwright-reports/shared';
 import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import { parseMilliseconds } from '@/lib/time';
 
 interface OverviewStatsProps {
   stats: OverviewStats;
+  testStats?: TestWithQuarantineInfo[] | null;
 }
 
-export function OverviewStatsCard({ stats }: Readonly<OverviewStatsProps>) {
-  if (!stats) {
+export function OverviewStatsCard({ stats, testStats }: Readonly<OverviewStatsProps>) {
+  if (!stats || !testStats) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         {new Array({ length: 5 }).map((_, index) => (
@@ -56,20 +57,19 @@ export function OverviewStatsCard({ stats }: Readonly<OverviewStatsProps>) {
   };
 
   const {
-    totalTests = 0,
     passRate = 0,
-    flakyTests = 0,
     averageTestDuration = 0,
     averageTestRunDuration = 0,
     passRateTrend = 'stable' as const,
     flakyTestsTrend = 'stable' as const,
   } = stats;
 
+  const flakyTestsCount = testStats.filter((test) => (test?.flakinessScore ?? 0) > 0).length;
+
   const statsCards = [
     {
-      //TODO: calculate properly based on tests table
-      title: 'Total Tests (TBD)',
-      value: totalTests.toLocaleString(),
+      title: 'Total Tests',
+      value: testStats.length.toLocaleString(),
       subtitle: 'Across all runs',
     },
     {
@@ -80,9 +80,8 @@ export function OverviewStatsCard({ stats }: Readonly<OverviewStatsProps>) {
       iconColor: getTrendColor(passRateTrend),
     },
     {
-      //TODO: calculate properly based on tests table
-      title: 'Flaky Tests (TBD)',
-      value: flakyTests.toString(),
+      title: 'Flaky Tests',
+      value: flakyTestsCount.toString(),
       subtitle: 'Failing intermittently',
       icon: getTrendIcon(flakyTestsTrend),
       iconColor: getTrendColor(flakyTestsTrend),

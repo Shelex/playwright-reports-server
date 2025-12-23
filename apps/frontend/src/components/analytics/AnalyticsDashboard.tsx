@@ -1,9 +1,11 @@
 'use client';
 
 import { Spinner } from '@heroui/react';
+import type { TestWithQuarantineInfo } from '@playwright-reports/shared';
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import { useAnalyticsData } from '../../hooks/useAnalyticsData';
+import useQuery from '../../hooks/useQuery';
 import { defaultProjectName } from '../../lib/constants';
 import ProjectSelect from '../project-select';
 import TestManagementWidget from '../test-management/TestManagementWidget';
@@ -22,7 +24,21 @@ export default function AnalyticsDashboard() {
 
   error && toast.error(error.message);
 
-  if (isPending || isFetching) {
+  const { data: testsResponse, isLoading: isLoadingTests } = useQuery<{
+    data: TestWithQuarantineInfo[];
+  }>(
+    (() => {
+      const params = new URLSearchParams();
+      if (project && project !== defaultProjectName) {
+        params.append('project', project);
+      }
+      const stringifiedParams = params.toString() ?? '';
+      return `/api/tests?${stringifiedParams}`;
+    })(),
+    { dependencies: [project] }
+  );
+
+  if (isPending || isFetching || isLoadingTests) {
     return (
       <div className="w-[min(100%, 1200px)] mx-auto">
         <div className="flex justify-center items-center py-12">
@@ -69,7 +85,7 @@ export default function AnalyticsDashboard() {
         </div>
       </div>
 
-      <OverviewStatsCard stats={overviewStats} />
+      <OverviewStatsCard stats={overviewStats} testStats={testsResponse?.data} />
       <TrendSparklines metrics={trendMetrics} />
 
       <HealthGrid metrics={runHealthMetrics} />
