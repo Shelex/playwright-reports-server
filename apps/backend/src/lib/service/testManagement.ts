@@ -1,18 +1,55 @@
+import type { TestManagementConfig } from '@playwright-reports/shared';
 import { ReportTestOutcomeEnum } from '@playwright-reports/shared';
-import { env } from '../../config/env.js';
+import { defaultConfig } from '../config.js';
 import { storage } from '../storage/index.js';
 import type { ReportHistory } from '../storage/types.js';
 import { convertTestRunToReportInfoUpdate } from '../storage/utils/deepMerge.js';
 import { withError } from '../withError.js';
 import type { Test, TestRun, TestWithQuarantineInfo } from './db/tests.sqlite.js';
 import { testDb } from './db/tests.sqlite.js';
+import { service } from './index.js';
 
 export class TestManagementService {
+  private config: TestManagementConfig | null = null;
+
+  private async getConfig(): Promise<TestManagementConfig> {
+    if (this.config) {
+      return this.config;
+    }
+
+    const cfg = await service.getConfig();
+    const testManagementCfg = cfg.testManagement || {};
+
+    this.config = {
+      quarantineThresholdPercentage: testManagementCfg.quarantineThresholdPercentage ?? 5,
+      warningThresholdPercentage: testManagementCfg.warningThresholdPercentage ?? 2,
+      autoQuarantineEnabled: testManagementCfg.autoQuarantineEnabled ?? false,
+      flakinessMinRuns: testManagementCfg.flakinessMinRuns ?? 1,
+      flakinessEvaluationWindowDays: testManagementCfg.flakinessEvaluationWindowDays ?? 30,
+    };
+
+    this.config.quarantineThresholdPercentage ??=
+      defaultConfig.testManagement?.quarantineThresholdPercentage;
+    this.config.warningThresholdPercentage ??=
+      defaultConfig.testManagement?.warningThresholdPercentage;
+    this.config.autoQuarantineEnabled ??= defaultConfig.testManagement?.autoQuarantineEnabled;
+    this.config.flakinessMinRuns ??= defaultConfig.testManagement?.flakinessMinRuns;
+    this.config.flakinessEvaluationWindowDays ??=
+      defaultConfig.testManagement?.flakinessEvaluationWindowDays;
+
+    return this.config;
+  }
+
+  public invalidateConfigCache(): void {
+    this.config = null;
+  }
   async processReport(report: ReportHistory): Promise<void> {
     console.log(
       `[testManagement] Processing report ${report.reportID} for project ${report.project}`
     );
     if (!report.files) return;
+
+    const config = await this.getConfig();
 
     const transaction = () => {
       for (const file of report.files!) {
@@ -48,21 +85,21 @@ export class TestManagementService {
             createdAt: test.createdAt ?? new Date().toISOString(),
             quarantined: shouldQuarantineNextRun,
             quarantineReason: latestTestRun?.quarantineReason ?? '',
-            flakinessScore: this.calculateFlakiness(testId, fileId, report.project),
+            flakinessScore: this.calculateFlakinessSync(testId, fileId, report.project, config),
           };
 
           if (
             //TODO: test automatic quarantine feature\
             // considering case when test is removed from quarantine but score is still high
-            env.TEST_FLAKINESS_AUTO_QUARANTINE === 'true' &&
-            testRun.flakinessScore >= env.TEST_FLAKINESS_QUARANTINE_THRESHOLD &&
+            config.autoQuarantineEnabled &&
+            testRun.flakinessScore >= (config.quarantineThresholdPercentage ?? 5) &&
             testRun.quarantined
           ) {
             console.log(
               `[testManagement] Auto-quarantining testId=${testId} due to flakinessScore=${testRun.flakinessScore.toFixed(1)}%`
             );
             testRun.quarantined = true;
-            testRun.quarantineReason = `Auto-quarantined due to ${testRun.flakinessScore.toFixed(1)}% flakiness over treshold ${env.TEST_FLAKINESS_QUARANTINE_THRESHOLD}%`;
+            testRun.quarantineReason = `Auto-quarantined due to ${testRun.flakinessScore.toFixed(1)}% flakiness over treshold ${config.quarantineThresholdPercentage ?? 5}%`;
           }
 
           testDb.createTestRun(testRun);
@@ -80,12 +117,19 @@ export class TestManagementService {
     }
   }
 
-  calculateFlakiness(testId: string, fileId: string, project: string): number {
-    const windowDays = env.TEST_FLAKINESS_EVALUATION_WINDOW_DAYS;
-    const minRuns = env.TEST_FLAKINESS_MIN_RUNS;
+  private calculateFlakinessSync(
+    testId: string,
+    fileId: string,
+    project: string,
+    config: TestManagementConfig
+  ): number {
+    const windowDays =
+      config.flakinessEvaluationWindowDays ??
+      defaultConfig.testManagement?.flakinessEvaluationWindowDays;
+    const minRuns = config.flakinessMinRuns ?? defaultConfig.testManagement?.flakinessMinRuns;
 
     const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - windowDays);
+    cutoffDate.setDate(cutoffDate.getDate() - windowDays!);
 
     const recentRuns = testDb.getRecentTestRunsForFlakiness(
       testId,
@@ -94,7 +138,7 @@ export class TestManagementService {
       cutoffDate.toISOString()
     );
 
-    if (recentRuns.length < minRuns) return 0;
+    if (recentRuns.length < minRuns!) return 0;
 
     // we should treat 'Flaky' as 'Failed' for flakiness calculation
     // for cases when there are tests with and without retries

@@ -13,6 +13,7 @@ import EnvironmentInfo from '../components/settings/components/EnvironmentInfo';
 import JiraConfiguration from '../components/settings/components/JiraConfiguration';
 import LLMConfiguration from '../components/settings/components/LLMConfiguration';
 import ServerConfiguration from '../components/settings/components/ServerConfiguration';
+import TestManagementSettings from '../components/settings/components/TestManagementSettings';
 import { useAuth } from '../hooks/useAuth';
 
 import useQuery from '../hooks/useQuery';
@@ -20,9 +21,9 @@ import useQuery from '../hooks/useQuery';
 export default function SettingsPage() {
   const session = useAuth();
   const [config, setConfig] = useState<ServerConfig>({});
-  const [editingSection, setEditingSection] = useState<'none' | 'server' | 'jira' | 'cron' | 'llm'>(
-    'none'
-  );
+  const [editingSection, setEditingSection] = useState<
+    'none' | 'server' | 'jira' | 'cron' | 'llm' | 'testManagement'
+  >('none');
   const [tempConfig, setTempConfig] = useState<ServerConfig>({});
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
   const [newLinkData, setNewLinkData] = useState({ name: '', url: '' });
@@ -41,11 +42,12 @@ export default function SettingsPage() {
         ...serverConfig,
         jira: serverConfig.jira || {},
         llm: serverConfig.llm || {},
+        testManagement: serverConfig.testManagement || {},
       });
     }
   }, [serverConfig]);
 
-  const handleSave = async (section: 'server' | 'jira' | 'cron' | 'llm') => {
+  const handleSave = async (section: 'server' | 'jira' | 'cron' | 'llm' | 'testManagement') => {
     setIsUpdating(true);
 
     try {
@@ -57,7 +59,7 @@ export default function SettingsPage() {
         if (tempConfig.logoPath && tempConfig.logoPath !== config.logoPath) {
           const logoInput = document.getElementById('logo-upload') as HTMLInputElement;
 
-          if (logoInput && logoInput.files && logoInput.files[0]) {
+          if (logoInput?.files?.[0]) {
             formData.append('logo', logoInput.files[0]);
           } else {
             formData.append('logoPath', tempConfig.logoPath);
@@ -67,7 +69,7 @@ export default function SettingsPage() {
         if (tempConfig.faviconPath && tempConfig.faviconPath !== config.faviconPath) {
           const faviconInput = document.getElementById('favicon-upload') as HTMLInputElement;
 
-          if (faviconInput && faviconInput.files && faviconInput.files[0]) {
+          if (faviconInput?.files?.[0]) {
             formData.append('favicon', faviconInput.files[0]);
           } else {
             formData.append('faviconPath', tempConfig.faviconPath);
@@ -131,6 +133,39 @@ export default function SettingsPage() {
             formData.append('llmTemperature', tempConfig.llm.temperature.toString());
           }
         }
+      } else if (section === 'testManagement') {
+        if (tempConfig.testManagement) {
+          if (tempConfig.testManagement.quarantineThresholdPercentage !== undefined) {
+            formData.append(
+              'testManagementQuarantineThresholdPercentage',
+              tempConfig.testManagement.quarantineThresholdPercentage.toString()
+            );
+          }
+          if (tempConfig.testManagement.warningThresholdPercentage !== undefined) {
+            formData.append(
+              'testManagementWarningThresholdPercentage',
+              tempConfig.testManagement.warningThresholdPercentage.toString()
+            );
+          }
+          if (tempConfig.testManagement.autoQuarantineEnabled !== undefined) {
+            formData.append(
+              'testManagementAutoQuarantineEnabled',
+              tempConfig.testManagement.autoQuarantineEnabled.toString()
+            );
+          }
+          if (tempConfig.testManagement.flakinessMinRuns !== undefined) {
+            formData.append(
+              'testManagementFlakinessMinRuns',
+              tempConfig.testManagement.flakinessMinRuns.toString()
+            );
+          }
+          if (tempConfig.testManagement.flakinessEvaluationWindowDays !== undefined) {
+            formData.append(
+              'testManagementFlakinessEvaluationWindowDays',
+              tempConfig.testManagement.flakinessEvaluationWindowDays.toString()
+            );
+          }
+        }
       }
 
       const response = await fetch('/api/config', {
@@ -152,6 +187,7 @@ export default function SettingsPage() {
         jira: 'Jira',
         cron: 'Cron',
         llm: 'LLM',
+        testManagement: 'Test Management',
       };
       toast.success(`${sectionName[section]} configuration updated successfully`);
       setEditingSection('none');
@@ -170,6 +206,7 @@ export default function SettingsPage() {
       ...config,
       jira: config?.jira || {},
       llm: config?.llm || {},
+      testManagement: config?.testManagement || {},
     });
     setEditingSection('none');
   };
@@ -256,6 +293,17 @@ export default function SettingsPage() {
         onCancel={handleCancel}
         onEdit={() => setEditingSection('llm')}
         onSave={() => handleSave('llm')}
+        onUpdateTempConfig={updateTempConfig}
+      />
+
+      <TestManagementSettings
+        config={config}
+        editingSection={editingSection}
+        isUpdating={isUpdating}
+        tempConfig={tempConfig}
+        onCancel={handleCancel}
+        onEdit={() => setEditingSection('testManagement')}
+        onSave={() => handleSave('testManagement')}
         onUpdateTempConfig={updateTempConfig}
       />
 

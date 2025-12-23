@@ -27,15 +27,17 @@ import {
 } from '@heroui/react';
 import type {
   QuarantineUpdateRequest,
+  SiteWhiteLabelConfig,
   TestFilters,
   TestWithQuarantineInfo,
 } from '@playwright-reports/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery as useTanStackQuery } from '@tanstack/react-query';
 import { Clock } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { parseMilliseconds } from '@/lib/time';
 import { withBase } from '../../config/url';
+import useQuery from '../../hooks/useQuery';
 import { defaultProjectName } from '../../lib/constants';
 import { TrendSparklineHistory } from '../analytics/TrendSparklineHistory';
 import { exponentialMovingAverageDuration } from './calculations/ema';
@@ -62,7 +64,12 @@ export default function TestManagementWidget({ project }: Readonly<TestManagemen
 
   const queryClient = useQueryClient();
 
-  const { data: testsResponse, isLoading: isLoadingTests } = useQuery({
+  const { data: config } = useQuery<SiteWhiteLabelConfig>('/api/config');
+
+  const warningThreshold = config?.testManagement?.warningThresholdPercentage ?? 10;
+  const quarantineThreshold = config?.testManagement?.quarantineThresholdPercentage ?? 50;
+
+  const { data: testsResponse, isLoading: isLoadingTests } = useTanStackQuery({
     queryKey: ['tests', filters],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -133,15 +140,13 @@ export default function TestManagementWidget({ project }: Readonly<TestManagemen
   const tests = useMemo(() => testsResponse?.data || [], [testsResponse]);
 
   const getFlakinessColor = (score?: number) => {
-    // TODO: use config values for thresholds
     if (!score) return 'default';
-    if (score < 10) return 'success';
-    if (score < 50) return 'warning';
+    if (score < warningThreshold) return 'success';
+    if (score < quarantineThreshold) return 'warning';
     return 'danger';
   };
 
   const getStatusBadge = (test: TestWithQuarantineInfo) => {
-    // TODO: use config values for thresholds
     if (test.isQuarantined) {
       return (
         <Badge color="danger" variant="flat">
@@ -156,14 +161,14 @@ export default function TestManagementWidget({ project }: Readonly<TestManagemen
         </Badge>
       );
     }
-    if (test.flakinessScore < 10) {
+    if (test.flakinessScore < warningThreshold) {
       return (
         <Badge color="success" variant="flat">
           ✅ Stable
         </Badge>
       );
     }
-    if (test.flakinessScore < 50) {
+    if (test.flakinessScore < quarantineThreshold) {
       return (
         <Badge color="warning" variant="flat">
           ⚠️ Flaky

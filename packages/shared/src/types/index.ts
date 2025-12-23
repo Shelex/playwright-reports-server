@@ -328,6 +328,7 @@ export interface ServerConfig {
     projectKey?: string;
   };
   llm?: LLMConfig;
+  testManagement?: TestManagementConfig;
 }
 
 export * from './analytics.js';
