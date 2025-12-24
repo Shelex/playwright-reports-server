@@ -1,7 +1,7 @@
 'use client';
 
 import { Accordion, AccordionItem, Alert, Spinner } from '@heroui/react';
-import type { ReportHistory, ReportStats } from '@playwright-reports/shared';
+import type { ReportHistory } from '@playwright-reports/shared';
 import { type FC, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import InlineStatsCircle from '@/components/inline-stats-circle';
