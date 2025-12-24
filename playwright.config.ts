@@ -26,7 +26,6 @@ export default defineConfig({
           testsType: 'API',
           project: 'Backend Tests',
         },
-        skipQuarantinedTests: true,
       },
     ],
     ['list', { printSteps: true }],
