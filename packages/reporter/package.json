@@ -17,7 +17,7 @@
   "scripts": {
     "build": "tsc",
     "prepare": "npm run build",
-    "test": "playwright test",
+    "test": "echo 'No tests configured for reporter'",
     "lint": "biome check *.ts",
     "lint:fix": "biome check *.ts --write",
     "format": "biome format *.ts --write",

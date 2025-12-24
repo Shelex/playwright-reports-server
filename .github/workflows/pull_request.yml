@@ -3,10 +3,10 @@ name: Pull Request CI
 on:
   pull_request:
     paths:
-      - 'packages/shared/**'
-      - 'apps/frontend/**'
-      - 'apps/backend/**'
-      - '.github/workflows/pull_request.yml'
+      - "packages/shared/**"
+      - "apps/frontend/**"
+      - "apps/backend/**"
+      - ".github/workflows/pull_request.yml"
 
 jobs:
   biome-format:
@@ -17,8 +17,8 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version: "22"
+          cache: "npm"
       - name: Install dependencies
         run: npm ci
       - name: Install Biome platform binary (fixes npm optional dependencies bug)
@@ -34,8 +34,8 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version: "22"
+          cache: "npm"
       - name: Install dependencies
         run: npm ci
       - name: Install Biome platform binary (fixes npm optional dependencies bug)
@@ -67,11 +67,11 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version: "22"
+          cache: "npm"
       - name: Install dependencies
         run: npm ci
       - name: Install Rollup platform binary (fixes npm optional dependencies bug)
         run: npm install --no-save @rollup/rollup-linux-x64-gnu || echo "Rollup binary already available"
-      - name: Execute API tests
-        run: npm run test:api
+      - name: Execute E2E tests
+        run: npm run test:e2e
