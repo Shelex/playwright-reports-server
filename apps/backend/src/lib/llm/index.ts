@@ -12,14 +12,10 @@ export class LLMService {
   private constructor() {
     const provider = env.LLM_PROVIDER ?? 'openai';
 
-    if (!env.LLM_API_KEY) {
-      throw new Error('LLM_API_KEY environment variable is required when LLM_ENABLED is true');
-    }
-
     this.config = {
       provider,
       baseUrl: env.LLM_BASE_URL ?? '',
-      apiKey: env.LLM_API_KEY,
+      apiKey: env.LLM_API_KEY ?? '',
       model: env.LLM_MODEL ?? '',
       temperature: env.LLM_TEMPERATURE ?? 0.3,
       requestTimeoutMs: 30 * 1000,
@@ -107,9 +103,9 @@ export class LLMService {
     }
   }
 
-  getConfig(): Omit<LLMProviderConfig, 'apiKey'> {
-    if (!this.config) {
-      throw new Error('LLM config not initialized');
+  getConfig(): Omit<LLMProviderConfig, 'apiKey'> | Record<string, never> {
+    if (!this.config || !this.isConfigured()) {
+      return {};
     }
 
     // biome-ignore lint/correctness/noUnusedVariables: apiKey is intentionally extracted to exclude from safe config
