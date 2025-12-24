@@ -73,5 +73,7 @@ jobs:
         run: npm ci
       - name: Install Rollup platform binary (fixes npm optional dependencies bug)
         run: npm install --no-save @rollup/rollup-linux-x64-gnu || echo "Rollup binary already available"
+      - name: Build shared package (required for backend imports)
+        run: npm run build:shared
       - name: Execute E2E tests
         run: npm run test:e2e
