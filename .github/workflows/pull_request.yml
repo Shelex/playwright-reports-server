@@ -21,6 +21,8 @@ jobs:
           cache: 'npm'
       - name: Install dependencies
         run: npm ci
+      - name: Install Biome platform binary (fixes npm optional dependencies bug)
+        run: npm install --no-save @biomejs/cli-linux-x64 || echo "Biome binary already available"
       - name: Run Biome format check
         run: npm run format:check
 
@@ -36,6 +38,8 @@ jobs:
           cache: 'npm'
       - name: Install dependencies
         run: npm ci
+      - name: Install Biome platform binary (fixes npm optional dependencies bug)
+        run: npm install --no-save @biomejs/cli-linux-x64 || echo "Biome binary already available"
       - name: Run Biome lint
         run: npm run lint
 
@@ -67,5 +71,7 @@ jobs:
           cache: 'npm'
       - name: Install dependencies
         run: npm ci
+      - name: Install Rollup platform binary (fixes npm optional dependencies bug)
+        run: npm install --no-save @rollup/rollup-linux-x64-gnu || echo "Rollup binary already available"
       - name: Execute API tests
         run: npm run test:api
