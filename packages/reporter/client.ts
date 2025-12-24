@@ -73,7 +73,7 @@ export class ReportServerClient {
       'Content-Type': `multipart/form-data; boundary=${boundary}`,
     };
     if (this.options.token) {
-      headers['Authorization'] = this.options.token;
+      headers.Authorization = this.options.token;
     }
 
     const totalTimeout =

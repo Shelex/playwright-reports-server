@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 
 export function makeBoundary() {
-  return '----pwreporter-' + Math.random().toString(16).slice(2) + Date.now().toString(16);
+  return `----pwreporter-${Math.random().toString(16).slice(2)}${Date.now().toString(16)}`;
 }
 
 function fieldPart(boundary: string, name: string, value: string): Buffer {

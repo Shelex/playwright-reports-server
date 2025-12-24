@@ -36,11 +36,19 @@ export function TrendSparklines({ metrics }: Readonly<TrendSparklinesProps>) {
 
   const { durationTrend = [], flakyCountTrend = [], slowCountTrend = [] } = metrics;
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({
+    active,
+    payload,
+    label,
+  }: {
+    active?: boolean;
+    payload?: Array<{ name: string; value: number; dataKey: string }>;
+    label?: string;
+  }) => {
     if (active && payload?.length) {
       return (
         <div className="bg-white dark:bg-gray-800 p-2 rounded shadow-lg border text-xs">
-          <p className="font-medium">{new Date(label).toLocaleDateString()}</p>
+          <p className="font-medium">{new Date(label ?? '').toLocaleDateString()}</p>
           <p>
             {payload[0].name}:{' '}
             {payload[0].dataKey === 'duration'

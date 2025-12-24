@@ -74,7 +74,7 @@ export default function CronConfiguration({
                   onUpdateTempConfig({
                     cron: {
                       ...tempConfig.cron,
-                      resultExpireDays: parseInt(e.target.value) || undefined,
+                      resultExpireDays: Number.parseInt(e.target.value, 10) || undefined,
                     },
                   });
                 }
@@ -134,7 +134,7 @@ export default function CronConfiguration({
                   onUpdateTempConfig({
                     cron: {
                       ...tempConfig.cron,
-                      reportExpireDays: parseInt(e.target.value) || undefined,
+                      reportExpireDays: Number.parseInt(e.target.value, 10) || undefined,
                     },
                   });
                 }

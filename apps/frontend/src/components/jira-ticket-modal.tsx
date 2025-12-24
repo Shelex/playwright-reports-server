@@ -197,8 +197,10 @@ export default function JiraTicketModal({
                 <div className="text-center py-8">
                   <div className="text-red-500 mb-4">
                     <svg
+                      aria-label="Warning icon"
                       className="w-12 h-12 mx-auto mb-2"
                       fill="none"
+                      role="img"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
                     >
@@ -278,8 +280,10 @@ export default function JiraTicketModal({
                     <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                       <div className="text-blue-600">
                         <svg
+                          aria-label="Attachment icon"
                           className="w-5 h-5"
                           fill="none"
+                          role="img"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
                         >

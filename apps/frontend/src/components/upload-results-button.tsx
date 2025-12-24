@@ -129,7 +129,7 @@ export default function UploadResultsButton({
 
     if (value.includes(':') && !value.includes(': ')) {
       const colonIndex = value.indexOf(':');
-      const newValue = value.slice(0, colonIndex + 1) + ' ' + value.slice(colonIndex + 1);
+      const newValue = `${value.slice(0, colonIndex + 1)} ${value.slice(colonIndex + 1)}`;
 
       setCurrentTag(newValue);
     } else {

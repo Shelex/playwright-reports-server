@@ -24,7 +24,22 @@ export function HealthGrid({ metrics }: Readonly<HealthGridProps>) {
     duration: metric.duration,
   }));
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({
+    active,
+    payload,
+  }: {
+    active?: boolean;
+    payload?: Array<{
+      payload: {
+        name: string;
+        runId: string;
+        passed: number;
+        failed: number;
+        flaky: number;
+        total: number;
+      };
+    }>;
+  }) => {
     if (active && payload?.length) {
       const data = payload[0].payload;
       return (
