@@ -3,7 +3,10 @@ FROM node:22-alpine AS base
 # Install all dependencies for monorepo
 FROM base AS deps
 WORKDIR /app
+# Copy package files for all workspaces FIRST
 COPY package.json package-lock.json* ./
+# Copy workspace packages so npm can resolve local dependencies
+COPY packages/ ./packages/
 RUN npm ci
 # Install Biome native dependency for Alpine Linux
 # Fixes the npm optional dependencies issue: https://github.com/npm/cli/issues/4828
@@ -86,9 +89,6 @@ COPY --from=frontend-builder --chown=appuser:nodejs /app/apps/frontend/dist ./ap
 
 # Copy shared build
 COPY --from=shared-builder --chown=appuser:nodejs /app/packages/shared/dist ./packages/shared/dist
-
-# Copy public assets
-COPY --from=frontend-builder --chown=appuser:nodejs /app/apps/frontend/public ./frontend/public
 
 # Copy environment configuration (for default values)
 COPY --chown=appuser:nodejs .env.example /app/.env.example

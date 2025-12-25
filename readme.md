@@ -56,8 +56,8 @@ The Playwright Reports Server provides APIs for managing and generating reports 
 
 ### Prerequisites
 
-- Node.js (v20 or higher)
-- npm (v10 or higher)
+- Node.js (v22 or higher)
+- pnpm (v9 or higher)
 
 ### Installation
 
@@ -70,7 +70,7 @@ The Playwright Reports Server provides APIs for managing and generating reports 
 
 2. Install dependencies:
    ```
-   npm install
+   pnpm install
    ```
 
 ### Running the Server
@@ -78,7 +78,7 @@ The Playwright Reports Server provides APIs for managing and generating reports 
 1. Build and start the server:
 
    ```
-   npm run build && npm run start
+   pnpm run build && pnpm run start
    ```
 
    The `start` script uses a small Node.js utility to copy the build assets
@@ -401,7 +401,7 @@ For UI it is also recommended to specify `AUTH_SECRET` as jwt token is generated
 
 ```bash
 # You can generate a new secret on the command line with:
-npm exec auth secret
+pnpm dlx auth secret
 # OR
 openssl rand -base64 32
 ```
@@ -487,8 +487,8 @@ The Playwright Reports Server uses local file system storage by default. However
 
 By default, all data is stored in the `data` folder.
 
-- `npm run start` - `/apps/backend/data/`
-- `npm run dev` - `/apps/backend/data/`
+- `pnpm run start` - `/apps/backend/data/`
+- `pnpm run dev` - `/apps/backend/data/`
 - Docker image - `/app/data/`
 
 This includes both raw test results and generated reports. When using local file system:

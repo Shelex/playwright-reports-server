@@ -14,34 +14,60 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: "22"
-          cache: "npm"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
       - name: Install dependencies
-        run: npm ci
-      - name: Install Biome platform binary (fixes npm optional dependencies bug)
-        run: npm install --no-save @biomejs/cli-linux-x64 || echo "Biome binary already available"
+        run: pnpm install
       - name: Run Biome format check
-        run: npm run format:check
+        run: pnpm run format:check
 
   biome-lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: "22"
-          cache: "npm"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
       - name: Install dependencies
-        run: npm ci
-      - name: Install Biome platform binary (fixes npm optional dependencies bug)
-        run: npm install --no-save @biomejs/cli-linux-x64 || echo "Biome binary already available"
+        run: pnpm install
       - name: Run Biome lint
-        run: npm run lint
+        run: pnpm run lint
 
   # TODO: Add unit tests
   # unit-tests:
@@ -49,14 +75,18 @@ jobs:
   #   steps:
   #     - name: Checkout repository
   #       uses: actions/checkout@v5
-  #     - name: Set up Node.js
+  #     - name: Setup Node.js
   #       uses: actions/setup-node@v6
   #       with:
   #         node-version: '20'
+  #     - name: Install pnpm
+  #       uses: pnpm/action-setup@v4
+  #       with:
+  #         version: 9
   #     - name: Install dependencies
-  #       run: npm ci
+  #       run: pnpm install
   #     - name: Run unit tests
-  #       run: npm run test:unit
+  #       run: pnpm run test:unit
 
   api-tests:
     needs: [biome-format, biome-lint]
@@ -64,16 +94,29 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: "22"
-          cache: "npm"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
       - name: Install dependencies
-        run: npm ci
-      - name: Install Rollup platform binary (fixes npm optional dependencies bug)
-        run: npm install --no-save @rollup/rollup-linux-x64-gnu || echo "Rollup binary already available"
+        run: pnpm install
       - name: Build shared package (required for backend imports)
-        run: npm run build:shared
+        run: pnpm --filter @playwright-reports/shared build
       - name: Execute E2E tests
-        run: npm run test:e2e
+        run: pnpm run test:e2e

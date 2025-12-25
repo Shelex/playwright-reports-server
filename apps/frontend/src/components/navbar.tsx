@@ -6,8 +6,8 @@ import {
   NavbarMenu,
   NavbarMenuToggle,
   Navbar as NextUINavbar,
-} from '@heroui/navbar';
-import { Skeleton } from '@heroui/skeleton';
+  Skeleton,
+} from '@heroui/react';
 import type { SiteWhiteLabelConfig } from '@playwright-reports/shared';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
