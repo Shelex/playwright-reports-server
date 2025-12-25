@@ -14,9 +14,6 @@
       "default": "./dist/quarantineCheck.js"
     }
   },
-  "publishConfig": {
-    "name": "@shelex/playwright-reporter"
-  },
   "scripts": {
     "build": "tsc",
     "prepare": "npm run build",

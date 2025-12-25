@@ -51,7 +51,19 @@ jobs:
       - name: Update package.json version
         run: pnpm --filter @playwright-reports/reporter version ${{ steps.version.outputs.VERSION }} --no-git-tag-version --allow-same-version
 
+      - name: Update package name for publish
+        run: |
+          ORIGINAL_NAME=$(pnpm --filter @playwright-reports/reporter exec -- node -p "require('./package.json').name")
+          echo "ORIGINAL_NAME=$ORIGINAL_NAME" >> $GITHUB_ENV
+          pnpm --filter @playwright-reports/reporter exec -- node -e "const pkg=require('./package.json'); pkg.name='@shelex/playwright-reporter'; require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2));"
+
       - name: Publish to npm
         run: pnpm --filter @playwright-reports/reporter publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Restore original package name
+        if: always()
+        run: pnpm --filter @playwright-reports/reporter exec -- node -e "const pkg=require('./package.json'); pkg.name='${{ env.ORIGINAL_NAME }}'; require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2));"
+        env:
+          ORIGINAL_NAME: ${{ env.ORIGINAL_NAME }}
