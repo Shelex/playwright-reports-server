@@ -1,12 +1,11 @@
 import type {
   AnalyticsData,
   OverviewStats,
-  PerTestMetric,
   RunHealthMetric,
   StepTimingTrend,
   TrendMetrics,
 } from '@playwright-reports/shared';
-import { ReportTestOutcome } from '../parser/types.js';
+import { ReportTestOutcomeEnum } from '@playwright-reports/shared';
 import type { ReportHistory as BackendReportHistory } from '../storage/types.js';
 import { reportDb } from './db/reports.sqlite.js';
 
@@ -18,7 +17,6 @@ export class AnalyticsService {
       overviewStats: await this.calculateOverviewStats(reports),
       runHealthMetrics: await this.calculateRunHealthMetrics(reports),
       trendMetrics: await this.calculateTrendMetrics(reports),
-      perTestMetrics: await this.calculatePerTestMetrics(reports),
     };
   }
 
@@ -30,6 +28,7 @@ export class AnalyticsService {
   }
 
   private async calculateOverviewStats(reports: BackendReportHistory[]): Promise<OverviewStats> {
+    // TODO: properly calculate metrics, including data from tests table with runs
     const recentReports = reports.slice(0, 30); // Last 30 runs
     const olderReports = reports.slice(30, 60); // Previous 30 runs for comparison
 
@@ -43,18 +42,16 @@ export class AnalyticsService {
 
     const flakyTests = await this.identifyFlakyTests(recentReports);
 
-    const stepDurations = await this.extractStepDurations(recentReports);
-    const averageStepDuration =
-      stepDurations.length > 0
-        ? stepDurations.reduce((sum, duration) => sum + duration, 0) / stepDurations.length
+    const testDurations = await this.extractTestDurations(recentReports);
+    const averageTestDuration =
+      testDurations.length > 0
+        ? testDurations.reduce((sum, duration) => sum + duration, 0) / testDurations.length
         : 0;
 
     const slowestSteps = await this.findSlowestSteps(recentReports, 10);
 
-    const testExecutionTime = recentReports.reduce(
-      (sum, report) => sum + (report.duration || 0),
-      0
-    );
+    const averageTestRunDuration =
+      recentReports.reduce((sum, report) => sum + (report.duration || 0), 0) / recentReports.length;
 
     const currentPassRate = passRate;
     const olderPassRate = await this.calculatePreviousPassRate(olderReports);
@@ -68,9 +65,9 @@ export class AnalyticsService {
       totalTests,
       passRate: Math.round(passRate * 100) / 100,
       flakyTests: flakyTests.length,
-      averageStepDuration: Math.round(averageStepDuration),
+      averageTestDuration: Math.round(averageTestDuration),
       slowestSteps,
-      testExecutionTime,
+      averageTestRunDuration,
       passRateTrend,
       flakyTestsTrend,
     };
@@ -131,69 +128,6 @@ export class AnalyticsService {
     };
   }
 
-  private async calculatePerTestMetrics(reports: BackendReportHistory[]): Promise<PerTestMetric[]> {
-    const testMetrics = new Map<string, PerTestMetric>();
-
-    for (const report of reports.slice(0, 30)) {
-      if (!report.files) continue;
-
-      for (const file of report.files) {
-        if (!file.tests) continue;
-
-        for (const test of file.tests) {
-          const testId = test.testId || `${file.fileName}:${test.title}`;
-          const existing = testMetrics.get(testId) || {
-            testId,
-            testName: test.title || 'Unknown Test',
-            passRate: 0,
-            isFlaky: false,
-            recentRuns: [],
-            avgDuration: 0,
-            file: test.location?.file || file.fileName || 'unknown',
-            line: test.location?.line || 0,
-            latestReportId: report.reportID,
-          };
-
-          existing.latestReportId = report.reportID;
-
-          const newRun = {
-            date: new Date(report.createdAt).toISOString(),
-            passed: test.outcome === ReportTestOutcome.Expected,
-          };
-          (existing.recentRuns as Array<{ date: string; passed: boolean }>).unshift(newRun);
-
-          existing.recentRuns = existing.recentRuns.slice(0, 30);
-
-          if (test.duration) {
-            existing.avgDuration =
-              existing.recentRuns.reduce((sum: number, run: any, index: number) => {
-                const duration = index === 0 ? test.duration : existing.avgDuration;
-                return sum + duration;
-              }, 0) / existing.recentRuns.length;
-          }
-
-          testMetrics.set(testId, existing);
-        }
-      }
-    }
-
-    const result: PerTestMetric[] = [];
-    for (const [testId, metric] of testMetrics.entries()) {
-      const passedCount = metric.recentRuns.filter((run) => run.passed).length;
-      const totalCount = metric.recentRuns.length;
-
-      if (totalCount > 0) {
-        metric.passRate = (passedCount / totalCount) * 100;
-        // flaky if it fails in 20-80% of runs and has at least 5 runs
-        metric.isFlaky = totalCount >= 5 && metric.passRate >= 20 && metric.passRate <= 80;
-
-        result.push(metric);
-      }
-    }
-
-    return result.sort((a, b) => b.passRate - a.passRate);
-  }
-
   private async identifyFlakyTests(reports: BackendReportHistory[]): Promise<string[]> {
     const testResults = new Map<string, { passed: number; failed: number }>();
 
@@ -207,7 +141,7 @@ export class AnalyticsService {
           const testId = test.testId || `${file.fileName}:${test.title}`;
           const results = testResults.get(testId) || { passed: 0, failed: 0 };
 
-          const isPassed = test.outcome === ReportTestOutcome.Expected;
+          const isPassed = test.outcome === ReportTestOutcomeEnum.Expected;
           if (isPassed) {
             results.passed++;
           } else {
@@ -228,7 +162,7 @@ export class AnalyticsService {
       .map(([testId]) => testId);
   }
 
-  private async extractStepDurations(reports: BackendReportHistory[]): Promise<number[]> {
+  private async extractTestDurations(reports: BackendReportHistory[]): Promise<number[]> {
     const durations: number[] = [];
 
     for (const report of reports) {
@@ -304,7 +238,7 @@ export class AnalyticsService {
   }
 
   private async calculateSlowThreshold(reports: BackendReportHistory[]): Promise<number> {
-    const durations = await this.extractStepDurations(reports);
+    const durations = await this.extractTestDurations(reports);
     if (durations.length === 0) return 1000; // Default 1 second
 
     durations.sort((a, b) => a - b);
@@ -329,25 +263,8 @@ export class AnalyticsService {
     return count;
   }
 
-  async getAnalyticsForReport(reportId: string): Promise<AnalyticsData> {
-    const report = await this.getReportById(reportId);
-    if (!report) {
-      throw new Error(`Report with ID ${reportId} not found`);
-    }
-
-    const reports = [report];
-    const allReports = await this.getRecentReports();
-
-    return {
-      overviewStats: await this.calculateOverviewStatsForSingleReport(report),
-      runHealthMetrics: await this.calculateRunHealthMetrics(reports),
-      trendMetrics: await this.calculateTrendMetricsForSingleReport(report, allReports),
-      perTestMetrics: await this.calculatePerTestMetricsForSingleReport(report),
-    };
-  }
-
-  async getTestTrends(testId: string): Promise<StepTimingTrend | null> {
-    const testReports = reportDb.getReportHistoryByTestId(testId);
+  async getTestTrends(testId: string, projectName?: string): Promise<StepTimingTrend | null> {
+    const testReports = reportDb.getReportHistoryByTestId(testId, projectName);
 
     if (!testReports.length) {
       console.log(`[analytics] No historical data found for testId: ${testId}`);
@@ -426,119 +343,6 @@ export class AnalyticsService {
         p99: durations[p99Index] || 0,
       },
     };
-  }
-
-  private async getReportById(reportId: string): Promise<BackendReportHistory | undefined> {
-    try {
-      return reportDb.getByID(reportId);
-    } catch (error) {
-      console.error(`Failed to get report ${reportId}:`, error);
-      return undefined;
-    }
-  }
-
-  private async calculateOverviewStatsForSingleReport(
-    report: BackendReportHistory
-  ): Promise<OverviewStats> {
-    const stats = report.stats;
-    const totalTests = stats?.total || 0;
-    const passed = stats?.expected || 0;
-    const passRate = totalTests > 0 ? (passed / totalTests) * 100 : 0;
-
-    const flakyTests = stats?.flaky || 0;
-
-    const stepDurations = await this.extractStepDurations([report]);
-    const averageStepDuration =
-      stepDurations.length > 0
-        ? stepDurations.reduce((sum, duration) => sum + duration, 0) / stepDurations.length
-        : 0;
-
-    const slowestSteps = await this.findSlowestSteps([report], 10);
-
-    const testExecutionTime = report.duration || 0;
-
-    return {
-      totalTests,
-      passRate: Math.round(passRate * 100) / 100,
-      flakyTests,
-      averageStepDuration: Math.round(averageStepDuration),
-      slowestSteps,
-      testExecutionTime,
-      passRateTrend: 'stable',
-      flakyTestsTrend: 'stable',
-    };
-  }
-
-  private async calculateTrendMetricsForSingleReport(
-    report: BackendReportHistory,
-    allReports: BackendReportHistory[]
-  ): Promise<TrendMetrics> {
-    const reportDate = new Date(report.createdAt).toISOString();
-    const durationTrend = [
-      {
-        date: reportDate,
-        duration: report.duration || 0,
-      },
-    ];
-
-    const flakyCountTrend = [
-      {
-        date: reportDate,
-        count: report.stats?.flaky || 0,
-      },
-    ];
-
-    const slowThreshold = await this.calculateSlowThreshold(allReports);
-    const slowCount = await this.countSlowTests(report, slowThreshold);
-
-    const slowCountTrend = [
-      {
-        date: reportDate,
-        count: slowCount,
-      },
-    ];
-
-    return {
-      durationTrend,
-      flakyCountTrend,
-      slowCountTrend,
-    };
-  }
-
-  private async calculatePerTestMetricsForSingleReport(
-    report: BackendReportHistory
-  ): Promise<PerTestMetric[]> {
-    const testMetrics: PerTestMetric[] = [];
-
-    if (!report.files) return testMetrics;
-
-    for (const file of report.files) {
-      if (!file.tests) continue;
-
-      for (const test of file.tests) {
-        const testId = test.testId || `${file.fileName}:${test.title}`;
-        const passed = test.outcome === ReportTestOutcome.Expected;
-
-        testMetrics.push({
-          testId,
-          testName: test.title || 'Unknown Test',
-          passRate: passed ? 100 : 0,
-          isFlaky: test.outcome === 'flaky',
-          recentRuns: [
-            {
-              date: new Date(report.createdAt).toISOString(),
-              passed,
-            },
-          ],
-          avgDuration: test.duration || 0,
-          file: test.location?.file || file.fileName || 'unknown',
-          line: test.location?.line || 0,
-          latestReportId: report.reportID,
-        });
-      }
-    }
-
-    return testMetrics.sort((a, b) => b.passRate - a.passRate);
   }
 }
 

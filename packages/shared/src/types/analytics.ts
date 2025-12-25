@@ -1,6 +1,6 @@
 export interface LLMConfig {
   enabled: boolean;
-  provider: 'openai' | 'anthropic' | 'zai';
+  provider: 'openai' | 'anthropic';
   baseUrl: string;
   apiKey: string;
   model: string;
@@ -21,9 +21,9 @@ export interface OverviewStats {
   totalTests: number;
   passRate: number;
   flakyTests: number;
-  averageStepDuration: number;
+  averageTestDuration: number;
   slowestSteps: Array<{ step: string; duration: number; testId: string }>;
-  testExecutionTime: number;
+  averageTestRunDuration: number;
   passRateTrend: 'up' | 'down' | 'stable';
   flakyTestsTrend: 'up' | 'down' | 'stable';
 }
@@ -80,5 +80,4 @@ export interface AnalyticsData {
   overviewStats: OverviewStats;
   runHealthMetrics: RunHealthMetric[];
   trendMetrics: TrendMetrics;
-  perTestMetrics: PerTestMetric[];
 }

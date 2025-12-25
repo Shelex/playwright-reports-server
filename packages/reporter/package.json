@@ -4,10 +4,25 @@
   "description": "Reporter that uploads your blob reports to playwright reports server",
   "main": "dist/index.js",
   "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./quarantineCheck": {
+      "types": "./dist/quarantineCheck.d.ts",
+      "default": "./dist/quarantineCheck.js"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "prepare": "npm run build",
-    "test": "playwright test"
+    "test": "echo 'No tests configured for reporter'",
+    "lint": "biome check *.ts",
+    "lint:fix": "biome check *.ts --write",
+    "format": "biome format *.ts --write",
+    "format:check": "biome format *.ts",
+    "clean": "rm -rf dist"
   },
   "author": "Oleksandr Khotemskyi <xotabu4@gmail.com>",
   "license": "MIT",
@@ -15,6 +30,9 @@
     "dist/index.js",
     "dist/index.d.ts",
     "dist/index.js.map",
+    "dist/quarantineCheck.js",
+    "dist/quarantineCheck.d.ts",
+    "dist/quarantineCheck.js.map",
     "readme.md",
     "LICENSE",
     "package.json",

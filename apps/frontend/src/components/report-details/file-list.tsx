@@ -27,7 +27,9 @@ const FileList: FC<FileListProps> = ({ report, highlightTestId }) => {
     dependencies: [report?.reportID],
   });
 
-  const [filteredTests, setFilteredTests] = useState<ReportHistory | undefined>(report!);
+  const [filteredTests, setFilteredTests] = useState<ReportHistory | undefined>(
+    report ?? undefined
+  );
   const [defaultExpandedKeys, setDefaultExpandedKeys] = useState<string[] | undefined>();
 
   useEffect(() => {
@@ -39,7 +41,7 @@ const FileList: FC<FileListProps> = ({ report, highlightTestId }) => {
   useEffect(() => {
     if (highlightTestId && filteredTests?.files) {
       const fileWithTest = filteredTests.files.find((file) =>
-        file.tests?.some((test: any) => test.testId === highlightTestId)
+        file.tests?.some((test) => test.testId === highlightTestId)
       );
       if (fileWithTest?.fileId) {
         setDefaultExpandedKeys([fileWithTest.fileId]);
@@ -57,18 +59,16 @@ const FileList: FC<FileListProps> = ({ report, highlightTestId }) => {
     <div>
       <div className="flex flex-row justify-between">
         <h2 className={subtitle()}>File list</h2>
-        <ReportFilters report={report!} onChangeFilters={setFilteredTests} />
+        <ReportFilters report={report} onChangeFilters={setFilteredTests} />
       </div>
-      {!filteredTests?.files?.length ? (
-        <Alert color="warning" title={`No files found`} />
-      ) : (
+      {filteredTests?.files?.length ? (
         <Accordion
           isCompact={true}
           variant="bordered"
           defaultExpandedKeys={defaultExpandedKeys}
           selectedKeys={defaultExpandedKeys}
         >
-          {(filteredTests?.files ?? []).map((file: any) => (
+          {(filteredTests?.files ?? []).map((file) => (
             <AccordionItem
               key={file.fileId}
               aria-label={file.fileName}
@@ -92,6 +92,8 @@ const FileList: FC<FileListProps> = ({ report, highlightTestId }) => {
             </AccordionItem>
           ))}
         </Accordion>
+      ) : (
+        <Alert color="warning" title={`No files found`} />
       )}
     </div>
   );

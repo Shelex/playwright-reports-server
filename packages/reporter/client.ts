@@ -23,6 +23,10 @@ export class ReportServerClient {
     this.options = options;
   }
 
+  private get baseUrl(): string {
+    return this.options.url.endsWith('/') ? this.options.url.slice(0, -1) : this.options.url;
+  }
+
   async uploadBlob(
     blobPath: string,
     { fileName = 'blob.zip', fields = {}, logProgress = false }
@@ -63,16 +67,13 @@ export class ReportServerClient {
       logProgress,
     });
 
-    const baseUrl = this.options.url.endsWith('/')
-      ? this.options.url.slice(0, -1)
-      : this.options.url;
-    const uploadUrl = `${baseUrl}/api/result/upload?fileContentLength=${zipSize}`;
+    const uploadUrl = `${this.baseUrl}/api/result/upload?fileContentLength=${zipSize}`;
 
     const headers: Record<string, string> = {
       'Content-Type': `multipart/form-data; boundary=${boundary}`,
     };
     if (this.options.token) {
-      headers['Authorization'] = this.options.token;
+      headers.Authorization = this.options.token;
     }
 
     const totalTimeout =
@@ -105,32 +106,25 @@ export class ReportServerClient {
     }
   }
 
-  async generateReport(options: ReportGenerationOptions): Promise<{ reportUrl?: string }> {
-    const { resultId, details, playwrightVersion } = options;
-
-    const baseUrl = this.options.url.endsWith('/')
-      ? this.options.url.slice(0, -1)
-      : this.options.url;
-
+  async getQuarantinedTests(project?: string): Promise<Array<{ id: string; reason: string }>> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
     if (this.options.token) {
-      headers['Authorization'] = this.options.token;
+      headers.Authorization = this.options.token;
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.options.requestTimeout ?? 60_000);
+    const timeoutId = setTimeout(() => controller.abort(), this.options.requestTimeout ?? 30_000);
+
+    const params = new URLSearchParams();
+    if (project) params.set('project', project);
+    params.set('status', 'quarantined');
 
     try {
-      const resp = await fetch(`${baseUrl}/api/report/generate`, {
-        method: 'POST',
+      const resp = await fetch(`${this.baseUrl}/api/tests?${params}`, {
+        method: 'GET',
         headers,
-        body: JSON.stringify({
-          resultsIds: [resultId],
-          ...details,
-          playwrightVersion,
-        }),
         signal: controller.signal,
       });
 
@@ -139,11 +133,18 @@ export class ReportServerClient {
       if (!resp.ok) {
         const text = await resp.text().catch(() => '');
         throw new Error(
-          `[ReportServerClient] Report generation failed ${resp.status}: ${text.slice(0, 500)}`
+          `[ReportServerClient] Failed to get list of quarantined tests ${resp.status}: ${text.slice(0, 500)}`
         );
       }
 
-      return (await resp.json()) as { reportUrl?: string };
+      const tests = (await resp.json()) as {
+        data: Array<{ testId: string; quarantineReason: string }>;
+      };
+
+      return tests.data.map((test) => ({
+        id: test.testId,
+        reason: test.quarantineReason,
+      }));
     } catch (err) {
       clearTimeout(timeoutId);
       throw err;

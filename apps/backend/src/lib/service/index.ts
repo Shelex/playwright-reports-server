@@ -23,6 +23,7 @@ import { withError } from '../withError.js';
 import { configCache } from './cache/config.js';
 import { reportDb, resultDb } from './db/index.js';
 import { lifecycle } from './lifecycle.js';
+import { testManagementService } from './testManagement.js';
 
 class Service {
   private static instance: Service | null = null;
@@ -147,6 +148,13 @@ class Service {
 
     reportDb.onCreated(report);
 
+    const { error: testsErr } = await withError(testManagementService.processReport(report));
+    if (testsErr) {
+      console.error(
+        `[service] generateReport - failed to process report tests: ${testsErr instanceof Error ? testsErr?.message : String(testsErr)}`
+      );
+    }
+
     const reportUrl = `${serveReportRoute}/${reportId}/index.html`;
 
     return { reportId, reportUrl, metadata: metadataWithVersion };
@@ -179,9 +187,6 @@ class Service {
 
   public async getResults(input?: ReadResultsInput): Promise<ReadResultsOutput> {
     console.log(`[results service] getResults`);
-    console.log(`querying results:`);
-    console.log(JSON.stringify(input, null, 2));
-
     return resultDb.query(input);
   }
 

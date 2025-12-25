@@ -22,6 +22,13 @@ export const defaultConfig: SiteWhiteLabelConfig = {
     apiToken: process.env.JIRA_API_TOKEN ?? '',
     projectKey: process.env.JIRA_PROJECT_KEY ?? '',
   },
+  testManagement: {
+    quarantineThresholdPercentage: Number(process.env.TEST_FLAKINESS_QUARANTINE_THRESHOLD ?? 5),
+    warningThresholdPercentage: Number(process.env.TEST_FLAKINESS_WARNING_THRESHOLD ?? 2),
+    autoQuarantineEnabled: process.env.TEST_FLAKINESS_AUTO_QUARANTINE === 'true',
+    flakinessMinRuns: Number(process.env.TEST_FLAKINESS_MIN_RUNS ?? 1),
+    flakinessEvaluationWindowDays: Number(process.env.TEST_FLAKINESS_EVALUATION_WINDOW_DAYS ?? 30),
+  },
 };
 
 export const noConfigErr = 'no config';

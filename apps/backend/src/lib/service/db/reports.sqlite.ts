@@ -1,8 +1,11 @@
 import type Database from 'better-sqlite3';
+import { defaultProjectName } from '../../constants.js';
 import { storage } from '../../storage/index.js';
 import type { ReadReportsInput, ReadReportsOutput, ReportHistory } from '../../storage/types.js';
 import { withError } from '../../withError.js';
+import { testManagementService } from '../testManagement.js';
 import { getDatabase } from './db.js';
+import { testDb } from './tests.sqlite.js';
 
 const initiatedReportsDb = Symbol.for('playwright.reports.db.reports');
 const instance = globalThis as typeof globalThis & {
@@ -58,7 +61,6 @@ export class ReportDatabase {
 
   public static getInstance(): ReportDatabase {
     instance[initiatedReportsDb] ??= new ReportDatabase();
-
     return instance[initiatedReportsDb];
   }
 
@@ -72,26 +74,24 @@ export class ReportDatabase {
 
     if (error) {
       console.error('[report db] failed to read reports:', error);
-
       return;
     }
 
     if (!result?.reports?.length) {
       console.log('[report db] no reports to store');
       this.initialized = true;
-
       return;
     }
 
     console.log(`[report db] caching ${result.reports.length} reports`);
 
-    const existingDisplayNumbersSet = new Set(
-      (
-        this.db
-          .prepare('SELECT displayNumber FROM reports WHERE displayNumber IS NOT NULL')
-          .all() as Array<{ displayNumber: number }>
-      ).map((row) => row.displayNumber)
-    );
+    const existingReports = this.getAll();
+    const displayNumbersInUse = new Set<number>();
+    for (const report of existingReports) {
+      if (report.displayNumber) {
+        displayNumbersInUse.add(report.displayNumber);
+      }
+    }
 
     const insertMany = this.db.transaction((reports: ReportHistory[]) => {
       const sortedReports = reports.sort(
@@ -101,14 +101,17 @@ export class ReportDatabase {
       let nextDisplayNumber = 1;
 
       for (const report of sortedReports) {
+        if (existingReports.some((existing) => existing.reportID === report.reportID)) {
+          continue;
+        }
         let displayNumber = report.displayNumber;
 
         if (!displayNumber) {
-          while (existingDisplayNumbersSet.has(nextDisplayNumber)) {
+          while (displayNumbersInUse.has(nextDisplayNumber)) {
             nextDisplayNumber++;
           }
           displayNumber = nextDisplayNumber;
-          existingDisplayNumbersSet.add(displayNumber);
+          displayNumbersInUse.add(displayNumber);
           nextDisplayNumber++;
         }
 
@@ -127,6 +130,64 @@ export class ReportDatabase {
     console.log('[report db] initialization complete');
   }
 
+  public async populateTestRuns(): Promise<void> {
+    if (!this.initialized) {
+      console.warn('[report db] Reports database not initialized, skipping processing');
+      return;
+    }
+
+    console.log('[report db] Processing existing reports into tests and test runs');
+
+    try {
+      const reports = this.getAll();
+
+      if (!reports.length) {
+        console.log('[report db] No reports to process');
+        return;
+      }
+
+      console.log(`[report db] Found ${reports.length} reports to parse`);
+
+      const existingReportIds = this.db
+        .prepare('SELECT DISTINCT reportId FROM test_runs')
+        .all() as Array<{ reportId: string }>;
+
+      const existingReportIdSet = new Set(existingReportIds.map((row) => row.reportId));
+
+      const unprocessedReports = reports.filter(
+        (report) => !existingReportIdSet.has(report.reportID)
+      );
+
+      if (!unprocessedReports.length) {
+        console.log('[report db] All reports have already been parsed');
+        return;
+      }
+
+      console.log(`[report db] Processing ${unprocessedReports.length} unprocessed reports`);
+
+      let processedCount = 0;
+      let errorCount = 0;
+
+      for (const report of unprocessedReports) {
+        const { error } = await withError(testManagementService.processReport(report));
+
+        if (error) {
+          console.error(`[report db] Error processing report ${report.reportID}:`, error);
+          errorCount++;
+        }
+
+        processedCount++;
+      }
+
+      console.log(
+        `[report db] Processing complete: ${processedCount} reports processed, ${errorCount} errors`
+      );
+    } catch (error) {
+      console.error('[report db] Failed to process existing reports:', error);
+      throw error;
+    }
+  }
+
   private insertReport(report: ReportHistory): void {
     const {
       reportID,
@@ -141,12 +202,14 @@ export class ReportDatabase {
       ...metadata
     } = report;
 
-    const createdAtStr =
-      createdAt instanceof Date
-        ? createdAt.toDateString()
-        : typeof createdAt === 'string'
-          ? createdAt
-          : String(createdAt);
+    let createdAtStr: string;
+    if (createdAt instanceof Date) {
+      createdAtStr = createdAt.toDateString();
+    } else if (typeof createdAt === 'string') {
+      createdAtStr = createdAt;
+    } else {
+      createdAtStr = String(createdAt);
+    }
 
     this.insertStmt.run(
       reportID,
@@ -221,17 +284,19 @@ export class ReportDatabase {
     return row ? this.rowToReport(row) : undefined;
   }
 
-  public getReportHistoryByTestId(testId: string): ReportHistory[] {
+  public getReportHistoryByTestId(testId: string, projectName?: string): ReportHistory[] {
     const searchPattern = `%"testId":"${testId}"%`;
+    const projectPattern =
+      projectName && projectName !== defaultProjectName ? `%"project":"${projectName}"%` : '%';
     const rows = this.db
       .prepare(
         `
-      SELECT * FROM reports
-      WHERE metadata LIKE ?
-      ORDER BY createdAt DESC
-    `
+        SELECT * FROM reports
+        WHERE metadata LIKE ? AND project LIKE ?
+        ORDER BY createdAt DESC
+      `
       )
-      .all(searchPattern) as {
+      .all(searchPattern, projectPattern) as {
       reportID: string;
       project: string;
       title: string | null;
@@ -248,9 +313,12 @@ export class ReportDatabase {
   }
 
   public getByProject(project?: string): ReportHistory[] {
-    const stmt = project ? this.getByProjectStmt : this.getAllStmt;
+    const stmt =
+      project && project !== defaultProjectName
+        ? this.getByProjectStmt.all(project ?? '')
+        : this.getAllStmt.all();
 
-    const rows = stmt.all(project ?? '') as Array<{
+    const rows = stmt as Array<{
       reportID: string;
       project: string;
       title: string | null;
@@ -312,7 +380,7 @@ export class ReportDatabase {
       params.push(...input.ids);
     }
 
-    if (input?.project) {
+    if (input?.project && input?.project !== defaultProjectName) {
       conditions.push('project = ?');
       params.push(input.project);
     }
@@ -373,8 +441,10 @@ export class ReportDatabase {
   public async refresh(): Promise<void> {
     console.log('[report db] refreshing cache');
     this.clear();
+    testDb.clear();
     this.initialized = false;
     await this.init();
+    await this.populateTestRuns();
   }
 
   private rowToReport(row: {

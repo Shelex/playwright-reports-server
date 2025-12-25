@@ -48,7 +48,7 @@ export default function LoginForm() {
       .catch(() => {
         setIsAutoSigningIn(false);
       });
-  }, []);
+  }, [navigate, callbackUrl, session.status]);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();

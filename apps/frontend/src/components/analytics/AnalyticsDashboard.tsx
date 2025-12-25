@@ -1,19 +1,20 @@
 'use client';
 
 import { Spinner } from '@heroui/react';
+import type { TestWithQuarantineInfo } from '@playwright-reports/shared';
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import { useAnalyticsData } from '../../hooks/useAnalyticsData';
+import useQuery from '../../hooks/useQuery';
 import { defaultProjectName } from '../../lib/constants';
 import ProjectSelect from '../project-select';
+import TestManagementWidget from '../test-management/TestManagementWidget';
 import { HealthGrid } from './HealthGrid';
 import { OverviewStatsCard } from './OverviewStats';
-import { PerTestSparklines } from './PerTestSparklines';
 import { TrendSparklines } from './TrendSparklines';
 
 export default function AnalyticsDashboard() {
   const [project, setProject] = useState(defaultProjectName);
-  const [testFilter, setTestFilter] = useState<'all' | 'flaky' | 'failed'>('all');
 
   const { data: analyticsData, error, isFetching, isPending } = useAnalyticsData(project);
 
@@ -21,13 +22,23 @@ export default function AnalyticsDashboard() {
     setProject(project);
   }, []);
 
-  const onFilterChange = useCallback((filter: 'all' | 'flaky' | 'failed') => {
-    setTestFilter(filter);
-  }, []);
-
   error && toast.error(error.message);
 
-  if (isPending || isFetching) {
+  const { data: testsResponse, isLoading: isLoadingTests } = useQuery<{
+    data: TestWithQuarantineInfo[];
+  }>(
+    (() => {
+      const params = new URLSearchParams();
+      if (project && project !== defaultProjectName) {
+        params.append('project', project);
+      }
+      const stringifiedParams = params.toString() ?? '';
+      return `/api/tests?${stringifiedParams}`;
+    })(),
+    { dependencies: [project] }
+  );
+
+  if (isPending || isFetching || isLoadingTests) {
     return (
       <div className="w-[min(100%, 1200px)] mx-auto">
         <div className="flex justify-center items-center py-12">
@@ -52,7 +63,7 @@ export default function AnalyticsDashboard() {
     );
   }
 
-  const { overviewStats, runHealthMetrics = [], trendMetrics, perTestMetrics = [] } = analyticsData;
+  const { overviewStats, runHealthMetrics = [], trendMetrics } = analyticsData;
 
   return (
     <div className="w-[min(100%, 1200px)] mx-auto space-y-6">
@@ -63,24 +74,28 @@ export default function AnalyticsDashboard() {
             Comprehensive insights into test performance and health
           </p>
         </div>
-        <div className="flex justify-end">
-          <ProjectSelect entity="report" onSelect={onProjectChange} />
+        <div className="flex justify-end w-150">
+          <ProjectSelect
+            label="Select project"
+            entity="report"
+            onSelect={onProjectChange}
+            labelPlacement="inside"
+            selectedProject={project}
+          />
         </div>
       </div>
 
-      <OverviewStatsCard stats={overviewStats} />
+      <OverviewStatsCard stats={overviewStats} testStats={testsResponse?.data} />
       <TrendSparklines metrics={trendMetrics} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <HealthGrid metrics={runHealthMetrics} />
-        <PerTestSparklines
-          metrics={perTestMetrics}
-          onFilter={onFilterChange}
-          currentFilter={testFilter}
-        />
-      </div>
+      <HealthGrid metrics={runHealthMetrics} />
+      {/**
+       * TODO: investigate slowest tests table/graph
+       */}
 
-      {(runHealthMetrics.length === 0 || perTestMetrics.length === 0) && (
+      <TestManagementWidget project={project} />
+
+      {runHealthMetrics.length === 0 && (
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6">
           <div className="text-center">
             <div className="text-yellow-800 dark:text-yellow-200 font-medium mb-2">

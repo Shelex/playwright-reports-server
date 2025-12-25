@@ -19,5 +19,5 @@ test('/api/result/upload without file should fail', async ({ request }) => {
   });
   expect(resp.status()).toBe(400);
   const body = await resp.json();
-  expect(body.error).toBe('No file received');
+  expect(body.error).toBe('upload result failed: No file received');
 });

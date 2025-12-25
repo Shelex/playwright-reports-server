@@ -40,7 +40,7 @@ export default function TagSelect({
 
   return (
     <Select
-      className="w-36 min-w-36 bg-transparent"
+      className="w-48 min-w-48 bg-transparent"
       isDisabled={!tags?.length}
       isLoading={isLoading}
       label="Tags"

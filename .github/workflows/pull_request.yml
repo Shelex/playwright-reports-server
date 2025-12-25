@@ -3,13 +3,13 @@ name: Pull Request CI
 on:
   pull_request:
     paths:
-      - 'packages/shared/**'
-      - 'apps/frontend/**'
-      - 'apps/backend/**'
-      - '.github/workflows/pull_request.yml'
+      - "packages/shared/**"
+      - "apps/frontend/**"
+      - "apps/backend/**"
+      - ".github/workflows/pull_request.yml"
 
 jobs:
-  prettier:
+  biome-format:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -17,13 +17,16 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: "22"
+          cache: "npm"
       - name: Install dependencies
         run: npm ci
-      - name: Run prettier
+      - name: Install Biome platform binary (fixes npm optional dependencies bug)
+        run: npm install --no-save @biomejs/cli-linux-x64 || echo "Biome binary already available"
+      - name: Run Biome format check
         run: npm run format:check
 
-  eslint:
+  biome-lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -31,10 +34,13 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: "22"
+          cache: "npm"
       - name: Install dependencies
         run: npm ci
-      - name: Run eslint
+      - name: Install Biome platform binary (fixes npm optional dependencies bug)
+        run: npm install --no-save @biomejs/cli-linux-x64 || echo "Biome binary already available"
+      - name: Run Biome lint
         run: npm run lint
 
   # TODO: Add unit tests
@@ -53,12 +59,21 @@ jobs:
   #       run: npm run test:unit
 
   api-tests:
-    needs: [prettier, eslint]
+    needs: [biome-format, biome-lint]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: "npm"
       - name: Install dependencies
         run: npm ci
-      - name: Execute API tests
-        run: npm run test:api
+      - name: Install Rollup platform binary (fixes npm optional dependencies bug)
+        run: npm install --no-save @rollup/rollup-linux-x64-gnu || echo "Rollup binary already available"
+      - name: Build shared package (required for backend imports)
+        run: npm run build:shared
+      - name: Execute E2E tests
+        run: npm run test:e2e

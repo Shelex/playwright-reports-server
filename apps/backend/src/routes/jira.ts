@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { service } from '../lib/service/index.js';
+import type { JiraIssueType } from '../lib/service/jira.js';
 import { JiraService } from '../lib/service/jira.js';
 import { withError } from '../lib/withError.js';
 import { type AuthRequest, authenticate } from './auth.js';
@@ -43,7 +44,7 @@ export async function registerJiraRoutes(fastify: FastifyInstance) {
 
       const jiraService = JiraService.getInstance(jiraConfig);
 
-      let issueTypes = [];
+      let issueTypes: JiraIssueType[] = [];
 
       if (jiraConfig?.projectKey) {
         try {
@@ -62,7 +63,7 @@ export async function registerJiraRoutes(fastify: FastifyInstance) {
         configured: true,
         baseUrl: jiraConfig.baseUrl,
         defaultProjectKey: jiraConfig.projectKey,
-        issueTypes: issueTypes.map((type: any) => ({
+        issueTypes: issueTypes.map((type: JiraIssueType) => ({
           id: type.id,
           name: type.name,
           description: type.description,

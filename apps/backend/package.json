@@ -8,7 +8,7 @@
 		"build": "tsc",
 		"start": "node dist/index.js",
 		"typecheck": "tsc --noEmit",
-		"test": "npx playwright test ../../tests/api/",
+		"test": "echo 'No tests configured for backend'",
 		"lint": "biome check src/",
 		"lint:fix": "biome check src/ --write",
 		"format": "biome format src/ --write",

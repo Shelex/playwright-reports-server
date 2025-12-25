@@ -9,6 +9,7 @@ The Playwright Reports Server provides APIs for managing and generating reports 
 - Basic api token authorization for backend and web ui, reports are secured as well
 - Create Jira tickets directly with attachments
 - Analyze test failure in playwright report with integrated LLM provider
+- Track test flakiness and quarantine unstable tests
 
 ## Demo
 
@@ -27,6 +28,7 @@ The Playwright Reports Server provides APIs for managing and generating reports 
     - [General](#general)
     - [Jira](#jira)
     - [LLM](#llm)
+    - [Test Management](#test-management)
   - [API Routes](#api-routes)
   - [`/api/report/list` (GET):](#apireportlist-get)
   - [`/api/report/delete` (DELETE):](#apireportdelete-delete)
@@ -38,6 +40,8 @@ The Playwright Reports Server provides APIs for managing and generating reports 
   - [`/api/ping` (GET)](#apiping-get)
   - [Authorization](#authorization)
   - [Jira Integration](#jira-integration)
+  - [Test Quarantine](#test-quarantine)
+  - [Reporter Integration](#reporter-integration)
   - [Storage Options](#storage-options)
     - [Local File System Storage](#local-file-system-storage)
     - [S3-Compatible Object Storage](#s3-compatible-object-storage)
@@ -122,16 +126,28 @@ If you want to persist reports and results on S3 compatible storage, you need to
 
 ### LLM
 
-Generated playwright report has button "Ask LLM" for failed tests that allows to analyze test failure with LLM provider.  
-It sends prompt provided in "Copy prompt" button along with some historical details.  
+Generated playwright report has button "Ask LLM" for failed tests that allows to analyze test failure with LLM provider.
+It sends prompt provided in "Copy prompt" button along with some historical details.
 
-| Name              | Description                                                          | Default                |
-|-------------------|----------------------------------------------------------------------|------------------------|
-| `LLM_PROVIDER`    | LLM provider to use for test failure analysis (openai\anthropic\zai) | openai                 |
-| `LLM_BASE_URL`    | Base URL for the LLM API                                             |                        |
-| `LLM_API_KEY`     | API key for the LLM provider                                         |                        |
-| `LLM_MODEL`       | Model to use for the LLM provider                                    | checks /model endpoint |
-| `LLM_TEMPERATURE` | Temperature setting for the LLM                                      | 0.3                    |
+| Name              | Description                                                      | Default                |
+|-------------------|------------------------------------------------------------------|------------------------|
+| `LLM_PROVIDER`    | LLM provider to use for test failure analysis (openai\anthropic) | openai                 |
+| `LLM_BASE_URL`    | Base URL for the LLM API                                         |                        |
+| `LLM_API_KEY`     | API key for the LLM provider                                     |                        |
+| `LLM_MODEL`       | Model to use for the LLM provider                                | checks /model endpoint |
+| `LLM_TEMPERATURE` | Temperature setting for the LLM                                  | 0.3                    |
+
+### Test Management
+
+The Test Management feature is configured via the Settings page in the web UI. These settings control how test flakiness is calculated and when tests are automatically quarantined. Configuration is stored in the server's config file and persisted across restarts.
+
+| Setting                     | Description                                                                    | Default |
+|-----------------------------|--------------------------------------------------------------------------------|---------|
+| Warning Threshold (%)       | Flakiness score above which tests are marked as "Flaky"                        | 2       |
+| Quarantine Threshold (%)    | Flakiness score above which tests are marked as "Critical" or auto-quarantined | 5       |
+| Auto-Quarantine Tests       | Automatically quarantine tests exceeding the quarantine threshold              | false   |
+| Minimum Runs for Evaluation | Minimum test runs before calculating flakiness score                           | 1       |
+| Evaluation Window (Days)    | Number of days to look back when calculating flakiness                         | 30      |
 
 ## API Routes
 
@@ -412,6 +428,56 @@ JIRA_PROJECT_KEY=YOUR_PROJECT_KEY (optional)
 1. **From Test Reports**: Navigate to any test in the web UI and click "Create Jira Ticket"
 2. **Customize Ticket**: Modify the summary, description, issue type, and project key as needed
 3. **Submit**: The ticket will be created in Jira with all test information and attachments
+
+## Test Quarantine
+
+The Test Quarantine feature helps you manage flaky tests by tracking test stability over time and allowing you to temporarily isolate unreliable tests from your test runs. This feature is particularly useful for large test suites where intermittent failures can block CI/CD pipelines.
+
+### Why Use Test Quarantine?
+
+Flaky tests are tests that produce inconsistent results - passing sometimes and failing other times, without any changes to the code. They cause several problems:
+
+- **Wasted Time**: You investigate failures that turn out to be false positives
+- **Slower CI/CD**: You (and especially your colleagues) lose trust in test results and stop caring about test failures
+- **Hidden Real Issues**: Genuine bugs may be ignored behind retries among the noise of flaky test failures
+- **Resource Drain**: Rerunning tests consumes compute resources and time
+
+The Quarantine system addresses these issues by:
+1. **Tracking Flakiness**: Calculating a flakiness score based on test result history
+2. **Visualization**: Test table is showing test health, score and current statuses
+3. **Manual Quarantine**: Allowing you to isolate problematic tests with a reason
+4. **Automatic Quarantine** (optional): Automatically quarantining tests that exceed a threshold if you are sure in the correctness of your metric tresholds. The method of calculation is generic, each project is unique with various stages and update frequency, so you can tune it as you need and enable automatic quarantine later or just handle with web interface.
+5. **Skip Execution**: Quarantined tests can be automatically skipped in subsequent runs
+
+### How Flakiness is Calculated
+
+The flakiness score represents how unstable a test is, based on its execution history. The app checks how often the status was changed:
+
+- **Score 0%**: Test always passes or always fails (100% consistent)
+- **Higher Score**: More frequent status changes between passes and failures
+- **Score 100%**: Maximum instability (status changes on every run)
+
+The calculation considers:
+1. Only runs within the configured **Evaluation Window** (default: 30 days)
+2. Tests must have at least **Minimum Runs** (default: 1) to be evaluated
+3. "Flaky" outcomes from Playwright are treated as failures
+
+### Flakiness Tiers
+
+Tests are categorized into three tiers based on their flakiness score:
+
+| Tier     | Flakiness Range       | Badge Color | Description                                  |
+|----------|-----------------------|-------------|----------------------------------------------|
+| Stable   | 0% to Warning         | Green       | Tests with consistent results                |
+| Flaky    | Warning to Quarantine | Yellow      | Tests showing some instability               |
+| Critical | Quarantine+           | Red         | Highly unstable tests, should be quarantined |
+
+### Skipping Quarantined Tests
+
+To automatically skip quarantined tests during test execution: 
+
+- enable feature in the app
+- configure the reporter and use the extended `test` fixture from the reporter package
 
 ## Storage Options
 

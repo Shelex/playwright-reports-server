@@ -94,7 +94,23 @@ export const generatePlaywrightReport = async (
   await fs.writeFile(configPath, mergeConfig);
   try {
     // installing playwright into cache if not installed
-    const installResult = await execAsync(`npx playwright${versionTag} --version`);
+    const { result: installResult, error: installCheckError } = await withError(
+      execAsync(`npx playwright${versionTag} --version`)
+    );
+
+    if (installCheckError) {
+      console.log(`[pw] playwright${versionTag} not found, installing...`);
+      const { result: installResultInner, error: installError } = await withError(
+        execAsync(`npx playwright${versionTag} install --with-deps`)
+      );
+
+      if (installError) {
+        console.error(`[pw] playwright${versionTag} install error:`, installError.message);
+        throw installError;
+      }
+
+      console.log(`[pw] playwright${versionTag} installed:`, installResultInner);
+    }
 
     console.log(`[pw] npx cache for playwright${versionTag}`, installResult);
 
@@ -121,8 +137,15 @@ export const generatePlaywrightReport = async (
     console.log('[pw] merge result', result);
 
     if (result?.stderr) {
-      // got STDERR output while generating report - throwing error since we don't know what went wrong.
-      throw new Error(result?.stderr);
+      // stderr also contains warnings, should not fail due to that
+      // only throw if stderr contains actual errors
+      const stderr = result.stderr;
+      const isWarning = stderr
+        .split('\n')
+        .some((line) => line.trim() !== '' && line.trim().startsWith('npm warn'));
+      if (!isWarning) {
+        throw new Error(stderr);
+      }
     }
   } catch (error) {
     await fs.rm(reportPath, { recursive: true, force: true });

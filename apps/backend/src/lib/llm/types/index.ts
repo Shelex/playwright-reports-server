@@ -1,4 +1,4 @@
-export type LLMProviderType = 'openai' | 'anthropic' | 'zai';
+export type LLMProviderType = 'openai' | 'anthropic';
 
 export interface LLMMessage {
   role: 'system' | 'user' | 'assistant';
@@ -61,7 +61,7 @@ export abstract class BaseLLMProvider {
   protected abstract createRequest(prompt: string, systemPrompt?: string): LLMRequest;
   protected abstract sendRequest(request: LLMRequest): Promise<Response>;
   protected abstract parseResponse(response: Response): Promise<LLMResponse>;
-  protected abstract handleError(error: any): LLMProviderError;
+  protected abstract handleError(error: unknown): LLMProviderError;
 
   protected async retryRequest<T>(
     operation: () => Promise<T>,

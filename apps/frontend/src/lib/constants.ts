@@ -1,1 +1,1 @@
-export const defaultProjectName = '';
+export const defaultProjectName = 'all';

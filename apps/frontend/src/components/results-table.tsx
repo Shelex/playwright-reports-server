@@ -134,6 +134,7 @@ export default function ResultsTable({
         onProjectChange={onProjectChange}
         onSearchChange={onSearchChange}
         onTagsChange={onTagsChange}
+        selectedProject={project}
       />
       <Table
         aria-label="Results"

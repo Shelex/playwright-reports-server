@@ -1,5 +1,6 @@
-import type { LLMProviderConfig, LLMResponse } from '../types/index.js';
+import type { LLMRequest, LLMResponse } from '../types/index.js';
 import { LLMProvider } from './base.js';
+import type { OpenAIModelList, OpenAIRequest, OpenAIResponse } from './types.js';
 
 export class OpenAIProvider extends LLMProvider {
   protected getApiEndpoint(): string {
@@ -16,16 +17,17 @@ export class OpenAIProvider extends LLMProvider {
     };
   }
 
-  protected formatRequestBody(request: any): any {
+  protected formatRequestBody(request: LLMRequest): OpenAIRequest {
     return {
       model: request.model,
       messages: request.messages,
       temperature: request.temperature,
-    };
+      max_tokens: 8000,
+    } as OpenAIRequest;
   }
 
   protected async parseResponse(response: Response): Promise<LLMResponse> {
-    const data = (await response.json()) as any;
+    const data = (await response.json()) as OpenAIResponse;
 
     return {
       content: data.choices?.[0]?.message?.content || '',
@@ -39,7 +41,7 @@ export class OpenAIProvider extends LLMProvider {
     };
   }
 
-  protected extractModelIds(data: any): string[] {
-    return data.data?.map((model: any) => model.id) || [];
+  protected extractModelIds(data: OpenAIModelList): string[] {
+    return data.data?.map((model) => model.id) || [];
   }
 }

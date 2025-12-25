@@ -3,7 +3,14 @@ import type { FC } from 'react';
 
 export const DiscordIcon: FC<IconSvgProps> = ({ size = 40, width, height, ...props }) => {
   return (
-    <svg height={size || height} viewBox="0 0 24 24" width={size || width} {...props}>
+    <svg
+      aria-label="Discord icon"
+      height={size || height}
+      role="img"
+      viewBox="0 0 24 24"
+      width={size || width}
+      {...props}
+    >
       <path
         d="M14.82 4.26a10.14 10.14 0 0 0-.53 1.1 14.66 14.66 0 0 0-4.58 0 10.14 10.14 0 0 0-.53-1.1 16 16 0 0 0-4.13 1.3 17.33 17.33 0 0 0-3 11.59 16.6 16.6 0 0 0 5.07 2.59A12.89 12.89 0 0 0 8.23 18a9.65 9.65 0 0 1-1.71-.83 3.39 3.39 0 0 0 .42-.33 11.66 11.66 0 0 0 10.12 0q.21.18.42.33a10.84 10.84 0 0 1-1.71.84 12.41 12.41 0 0 0 1.08 1.78 16.44 16.44 0 0 0 5.06-2.59 17.22 17.22 0 0 0-3-11.59 16.09 16.09 0 0 0-4.09-1.35zM8.68 14.81a1.94 1.94 0 0 1-1.8-2 1.93 1.93 0 0 1 1.8-2 1.93 1.93 0 0 1 1.8 2 1.93 1.93 0 0 1-1.8 2zm6.64 0a1.94 1.94 0 0 1-1.8-2 1.93 1.93 0 0 1 1.8-2 1.92 1.92 0 0 1 1.8 2 1.92 1.92 0 0 1-1.8 2z"
         fill="currentColor"
@@ -14,7 +21,14 @@ export const DiscordIcon: FC<IconSvgProps> = ({ size = 40, width, height, ...pro
 
 export const GithubIcon: FC<IconSvgProps> = ({ size = 40, width, height, ...props }) => {
   return (
-    <svg height={size || height} viewBox="0 0 24 24" width={size || width} {...props}>
+    <svg
+      aria-label="GitHub icon"
+      height={size || height}
+      role="img"
+      viewBox="0 0 24 24"
+      width={size || width}
+      {...props}
+    >
       <path
         clipRule="evenodd"
         d="M12.026 2c-5.509 0-9.974 4.465-9.974 9.974 0 4.406 2.857 8.145 6.821 9.465.499.09.679-.217.679-.481 0-.237-.008-.865-.011-1.696-2.775.602-3.361-1.338-3.361-1.338-.452-1.152-1.107-1.459-1.107-1.459-.905-.619.069-.605.069-.605 1.002.07 1.527 1.028 1.527 1.028.89 1.524 2.336 1.084 2.902.829.091-.645.351-1.085.635-1.334-2.214-.251-4.542-1.107-4.542-4.93 0-1.087.389-1.979 1.024-2.675-.101-.253-.446-1.268.099-2.64 0 0 .837-.269 2.742 1.021a9.582 9.582 0 0 1 2.496-.336 9.554 9.554 0 0 1 2.496.336c1.906-1.291 2.742-1.021 2.742-1.021.545 1.372.203 2.387.099 2.64.64.696 1.024 1.587 1.024 2.675 0 3.833-2.33 4.675-4.552 4.922.355.308.675.916.675 1.846 0 1.334-.012 2.41-.012 2.737 0 .267.178.577.687.479C19.146 20.115 22 16.379 22 11.974 22 6.465 17.535 2 12.026 2z"
@@ -27,8 +41,10 @@ export const GithubIcon: FC<IconSvgProps> = ({ size = 40, width, height, ...prop
 
 export const SlackIcon: FC<IconSvgProps> = ({ size = 40, width, height, ...props }) => (
   <svg
+    aria-label="Slack icon"
     fill="none"
     height={size || height}
+    role="img"
     stroke="currentColor"
     viewBox="0 0 24 24"
     width={size || width}
@@ -45,8 +61,10 @@ export const SlackIcon: FC<IconSvgProps> = ({ size = 40, width, height, ...props
 export const BitbucketIcon: FC<IconSvgProps> = ({ size = 40, width, height, ...props }) => {
   return (
     <svg
+      aria-label="Bitbucket icon"
       fill="currentColor"
       height={size || height}
+      role="img"
       viewBox="0 0 56 56"
       width={size || width}
       xmlns="http://www.w3.org/2000/svg"
@@ -64,8 +82,10 @@ export const BitbucketIcon: FC<IconSvgProps> = ({ size = 40, width, height, ...p
 export const CyborgTestIcon: FC<IconSvgProps> = ({ size = 40, width, height, ...props }) => {
   return (
     <svg
+      aria-label="Cyborg Test icon"
       fill="currentColor"
       height={size || height}
+      role="img"
       viewBox="0 0 32 32"
       width={size || width}
       {...props}
@@ -79,7 +99,15 @@ export const CyborgTestIcon: FC<IconSvgProps> = ({ size = 40, width, height, ...
 
 export const TelegramIcon: FC<IconSvgProps> = ({ size = 40, width, height, ...props }) => {
   return (
-    <svg fill="none" height={size || height} viewBox="0 0 24 24" width={size || width} {...props}>
+    <svg
+      aria-label="Telegram icon"
+      fill="none"
+      height={size || height}
+      role="img"
+      viewBox="0 0 24 24"
+      width={size || width}
+      {...props}
+    >
       <path
         clipRule="evenodd"
         d="M23.1117 4.49449C23.4296 2.94472 21.9074 1.65683 20.4317 2.227L2.3425 9.21601C0.694517 9.85273 0.621087 12.1572 2.22518 12.8975L6.1645 14.7157L8.03849 21.2746C8.13583 21.6153 8.40618 21.8791 8.74917 21.968C9.09216 22.0568 9.45658 21.9576 9.70712 21.707L12.5938 18.8203L16.6375 21.8531C17.8113 22.7334 19.5019 22.0922 19.7967 20.6549L23.1117 4.49449ZM3.0633 11.0816L21.1525 4.0926L17.8375 20.2531L13.1 16.6999C12.7019 16.4013 12.1448 16.4409 11.7929 16.7928L10.5565 18.0292L10.928 15.9861L18.2071 8.70703C18.5614 8.35278 18.5988 7.79106 18.2947 7.39293C17.9906 6.99479 17.4389 6.88312 17.0039 7.13168L6.95124 12.876L3.0633 11.0816ZM8.17695 14.4791L8.78333 16.6015L9.01614 15.321C9.05253 15.1209 9.14908 14.9366 9.29291 14.7928L11.5128 12.573L8.17695 14.4791Z"
@@ -126,7 +154,15 @@ export const SunFilledIcon = ({ size = 40, width, height, ...props }: IconSvgPro
 
 export const LinkIcon: FC<IconSvgProps> = ({ width, height, ...props }) => {
   return (
-    <svg fill="none" height={height ?? 18} viewBox="0 0 24 24" width={width ?? 18} {...props}>
+    <svg
+      aria-label="Link icon"
+      fill="none"
+      height={height ?? 18}
+      role="img"
+      viewBox="0 0 24 24"
+      width={width ?? 18}
+      {...props}
+    >
       <path
         d="M15.197 3.35462C16.8703 1.67483 19.4476 1.53865 20.9536 3.05046C22.4596 4.56228 22.3239 7.14956 20.6506 8.82935L18.2268 11.2626M10.0464 14C8.54044 12.4882 8.67609 9.90087 10.3494 8.22108L12.5 6.06212"
         stroke="currentColor"
@@ -146,8 +182,10 @@ export const LinkIcon: FC<IconSvgProps> = ({ width, height, ...props }) => {
 export const ReportIcon: FC<IconSvgProps> = ({ size = 40, width, height, ...props }) => {
   return (
     <svg
+      aria-label="Report icon"
       height={size || height}
       id="Layer_1"
+      role="img"
       version="1.1"
       viewBox="0 0 96.17 122.88"
       width={size || width}
@@ -168,8 +206,10 @@ export const ReportIcon: FC<IconSvgProps> = ({ size = 40, width, height, ...prop
 export const ResultIcon: FC<IconSvgProps> = ({ size = 40, width, height, ...props }) => {
   return (
     <svg
+      aria-label="Result icon"
       height={size || height}
       id="Layer_1"
+      role="img"
       version="1.1"
       viewBox="0 0 97.88 122.88"
       width={size || width}
@@ -190,9 +230,11 @@ export const ResultIcon: FC<IconSvgProps> = ({ size = 40, width, height, ...prop
 export const TrendIcon: FC<IconSvgProps> = ({ size = 40, width, height, ...props }) => {
   return (
     <svg
+      aria-label="Trend icon"
       className="fill-black dark:fill-white p-0.5"
       height={size || height}
       id="Capa_1"
+      role="img"
       viewBox="0 0 30.462 30.461"
       width={size || width}
       {...props}
@@ -287,7 +329,15 @@ export const SearchIcon: FC<IconSvgProps> = (props) => (
 
 export const BranchIcon: FC<IconSvgProps> = ({ width, height, ...props }) => {
   return (
-    <svg fill="none" height={height ?? 14} viewBox="0 0 24 24" width={width ?? 14} {...props}>
+    <svg
+      aria-label="Branch icon"
+      fill="none"
+      height={height ?? 14}
+      role="img"
+      viewBox="0 0 24 24"
+      width={width ?? 14}
+      {...props}
+    >
       <path
         d="M7 4a3 3 0 0 1 6 0c0 1.11-.6 2.08-1.5 2.61l-.5.33v2.12a4 4 0 0 1 4 3.94v1a3 3 0 1 1-2 0v-1a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v1a3 3 0 1 1-2 0v-1a4 4 0 0 1 4-3.94V7.94l-.5-.33A3 3 0 0 1 7 4z"
         stroke="currentColor"
@@ -301,7 +351,15 @@ export const BranchIcon: FC<IconSvgProps> = ({ width, height, ...props }) => {
 
 export const FolderIcon: FC<IconSvgProps> = ({ width, height, ...props }) => {
   return (
-    <svg fill="none" height={height ?? 14} viewBox="0 0 24 24" width={width ?? 14} {...props}>
+    <svg
+      aria-label="Folder icon"
+      fill="none"
+      height={height ?? 14}
+      role="img"
+      viewBox="0 0 24 24"
+      width={width ?? 14}
+      {...props}
+    >
       <path
         d="M10 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V8a2 2 0 00-2-2h-8l-2-2z"
         stroke="currentColor"
@@ -315,7 +373,15 @@ export const FolderIcon: FC<IconSvgProps> = ({ width, height, ...props }) => {
 
 export const SettingsIcon: FC<IconSvgProps> = ({ size = 24, width, height, ...props }) => {
   return (
-    <svg fill="none" height={size || height} viewBox="0 0 24 24" width={size || width} {...props}>
+    <svg
+      aria-label="Settings icon"
+      fill="none"
+      height={size || height}
+      role="img"
+      viewBox="0 0 24 24"
+      width={size || width}
+      {...props}
+    >
       <path
         className="stroke-black dark:stroke-white"
         d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z"

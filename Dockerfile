@@ -5,6 +5,9 @@ FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
+# Install Biome native dependency for Alpine Linux
+# Fixes the npm optional dependencies issue: https://github.com/npm/cli/issues/4828
+RUN npm install --no-save @biomejs/cli-linux-x64 || echo "Biome binary already available"
 
 # Install dependencies for backend
 FROM base AS backend-deps
@@ -31,8 +34,9 @@ RUN npm install
 # Create symlink for shared package in node_modules for TypeScript resolution
 RUN mkdir -p ./node_modules/@playwright-reports && \
     ln -sf ../../packages/shared ./node_modules/@playwright-reports/shared
-# Install missing rollup native dependency if needed
-RUN npm install @rollup/rollup-linux-arm64-musl --no-save || true
+# Install Rollup native dependency for Alpine Linux (x64-musl)
+# Fixes the npm optional dependencies issue: https://github.com/npm/cli/issues/4828
+RUN npm install @rollup/rollup-linux-x64-musl --no-save || echo "Rollup binary already available"
 # Skip TypeScript checks and just build with Vite
 ENV DOCKER_BUILD=true
 RUN npm run build:vite

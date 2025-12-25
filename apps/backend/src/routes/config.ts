@@ -1,6 +1,5 @@
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { SiteWhiteLabelConfig } from '@playwright-reports/shared';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { env } from '../config/env.js';
 import { llmService } from '../lib/llm/index.js';
@@ -8,6 +7,7 @@ import { CronService, cronService } from '../lib/service/cron.js';
 import { getDatabaseStats } from '../lib/service/db/index.js';
 import { service } from '../lib/service/index.js';
 import { JiraService } from '../lib/service/jira.js';
+import { testManagementService } from '../lib/service/testManagement.js';
 import { DATA_FOLDER } from '../lib/storage/constants.js';
 import { withError } from '../lib/withError.js';
 import { type AuthRequest, authenticate } from './auth.js';
@@ -37,6 +37,11 @@ interface ConfigFormData {
   llmApiKey?: string;
   llmModel?: string;
   llmTemperature?: string;
+  testManagementQuarantineThresholdPercentage?: string;
+  testManagementWarningThresholdPercentage?: string;
+  testManagementAutoQuarantineEnabled?: string;
+  testManagementFlakinessMinRuns?: string;
+  testManagementFlakinessEvaluationWindowDays?: string;
 }
 
 export async function registerConfigRoutes(fastify: FastifyInstance) {
@@ -233,12 +238,74 @@ export async function registerConfigRoutes(fastify: FastifyInstance) {
         await instance.restart();
       }
 
+      config.testManagement ??= {};
+
+      if (formData.testManagementQuarantineThresholdPercentage !== undefined) {
+        const threshold = Number.parseInt(formData.testManagementQuarantineThresholdPercentage, 10);
+        if (Number.isNaN(threshold) || threshold < 0 || threshold > 100) {
+          return reply.status(400).send({
+            error: 'Test management quarantine threshold must be a number between 0 and 100',
+          });
+        }
+        config.testManagement.quarantineThresholdPercentage = threshold;
+      }
+
+      if (formData.testManagementWarningThresholdPercentage !== undefined) {
+        const threshold = Number.parseInt(formData.testManagementWarningThresholdPercentage, 10);
+        if (Number.isNaN(threshold) || threshold < 0 || threshold > 100) {
+          return reply.status(400).send({
+            error: 'Test management warning threshold must be a number between 0 and 100',
+          });
+        }
+        config.testManagement.warningThresholdPercentage = threshold;
+      }
+
+      if (formData.testManagementAutoQuarantineEnabled !== undefined) {
+        config.testManagement.autoQuarantineEnabled =
+          formData.testManagementAutoQuarantineEnabled === 'true';
+      }
+
+      if (formData.testManagementFlakinessMinRuns !== undefined) {
+        const minRuns = Number.parseInt(formData.testManagementFlakinessMinRuns, 10);
+        if (Number.isNaN(minRuns) || minRuns < 1) {
+          return reply.status(400).send({
+            error: 'Test management minimum runs must be a number greater than 0',
+          });
+        }
+        config.testManagement.flakinessMinRuns = minRuns;
+      }
+
+      if (formData.testManagementFlakinessEvaluationWindowDays !== undefined) {
+        const windowDays = Number.parseInt(
+          formData.testManagementFlakinessEvaluationWindowDays,
+          10
+        );
+        if (Number.isNaN(windowDays) || windowDays < 1) {
+          return reply.status(400).send({
+            error: 'Test management evaluation window must be a number of days greater than 0',
+          });
+        }
+        config.testManagement.flakinessEvaluationWindowDays = windowDays;
+      }
+
       const { error: saveConfigError } = await withError(service.updateConfig(config));
 
       if (saveConfigError) {
         return reply.status(500).send({
           error: `failed to save config: ${saveConfigError.message}`,
         });
+      }
+
+      const testManagementConfigChanged = !!(
+        formData.testManagementQuarantineThresholdPercentage ||
+        formData.testManagementWarningThresholdPercentage ||
+        formData.testManagementAutoQuarantineEnabled !== undefined ||
+        formData.testManagementFlakinessMinRuns ||
+        formData.testManagementFlakinessEvaluationWindowDays
+      );
+
+      if (testManagementConfigChanged) {
+        testManagementService.invalidateConfigCache();
       }
 
       if (

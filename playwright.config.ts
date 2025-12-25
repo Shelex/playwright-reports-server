@@ -24,6 +24,7 @@ export default defineConfig({
         reportPath: 'test-results/blob.zip',
         resultDetails: {
           testsType: 'API',
+          project: 'Backend Tests',
         },
       },
     ],
@@ -42,7 +43,7 @@ export default defineConfig({
   ],
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'npm run build && npm run start',
+    command: 'npm run dev:backend',
     url: 'http://localhost:3001/api/info',
     reuseExistingServer: true,
     timeout: 120000,

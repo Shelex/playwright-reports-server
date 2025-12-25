@@ -36,6 +36,42 @@ export interface JiraErrorResponse {
   errors: Record<string, string>;
 }
 
+export interface JiraIssueType {
+  id: string;
+  name: string;
+  description?: string;
+  avatarId?: number;
+  entityType?: string;
+  hierarchyLevel?: number;
+}
+
+export interface JiraProject {
+  id: string;
+  key: string;
+  name: string;
+  projectTypeKey: string;
+  simplified?: boolean;
+  style?: string;
+  issueTypes?: JiraIssueType[];
+}
+
+export interface JiraAttachment {
+  id: string;
+  self: string;
+  filename: string;
+  author: {
+    id: string;
+    emailAddress: string;
+    displayName: string;
+    active: boolean;
+  };
+  created: string;
+  size: number;
+  mimeType: string;
+  content: string;
+  thumbnail?: string;
+}
+
 const initiatedJira = Symbol.for('playwright.reports.jira');
 const _instance = globalThis as typeof globalThis & {
   [initiatedJira]?: JiraService;
@@ -79,7 +115,7 @@ export class JiraService {
   private async makeRequest<T>(
     endpoint: string,
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
-    body?: any
+    body?: Record<string, unknown>
   ): Promise<T> {
     const url = `${this.baseUrl}/rest/api/3${endpoint}`;
 
@@ -150,11 +186,11 @@ export class JiraService {
       );
     }
 
-    const issueTypeObj = availableIssueTypes.find((it: any) => it.name === issueType);
+    const issueTypeObj = availableIssueTypes.find((it: JiraIssueType) => it.name === issueType);
 
     if (!issueTypeObj) {
       throw new Error(
-        `Issue type '${issueType}' not found. Available issue types: ${availableIssueTypes.map((it: any) => it.name).join(', ')}`
+        `Issue type '${issueType}' not found. Available issue types: ${availableIssueTypes.map((it: JiraIssueType) => it.name).join(', ')}`
       );
     }
 
@@ -207,7 +243,7 @@ export class JiraService {
     const issueResponse = await this.makeRequest<JiraCreateIssueResponse>(
       '/issue',
       'POST',
-      requestBody
+      requestBody as unknown as Record<string, unknown>
     );
 
     if (attachments && attachments.length > 0) {
@@ -219,11 +255,11 @@ export class JiraService {
     return issueResponse;
   }
 
-  public async getProject(projectKey: string): Promise<any> {
+  public async getProject(projectKey: string): Promise<JiraProject> {
     return this.makeRequest(`/project/${projectKey}`);
   }
 
-  public async getIssueTypes(projectKey: string): Promise<any> {
+  public async getIssueTypes(projectKey: string): Promise<JiraIssueType[]> {
     return this.makeRequest(`/project/${projectKey}`);
   }
 
@@ -234,7 +270,7 @@ export class JiraService {
       path: string;
       contentType: string;
     }
-  ): Promise<any> {
+  ): Promise<JiraAttachment[]> {
     try {
       const { storage } = await import('../storage/index.js');
 

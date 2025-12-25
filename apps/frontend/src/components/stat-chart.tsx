@@ -1,5 +1,5 @@
+import type { ReportStats } from '@playwright-reports/shared';
 import { Label, Pie, PieChart } from 'recharts';
-
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from './ui/chart';
 
 const chartConfig = {
@@ -24,18 +24,7 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-interface StatChartProps {
-  stats: {
-    total: number;
-    expected: number;
-    unexpected: number;
-    flaky: number;
-    skipped: number;
-    ok: boolean;
-  };
-}
-
-export function StatChart({ stats }: Readonly<StatChartProps>) {
+export function StatChart({ stats }: Readonly<{ stats: ReportStats }>) {
   const chartData = [
     {
       count: stats.expected,
@@ -70,7 +59,7 @@ export function StatChart({ stats }: Readonly<StatChartProps>) {
                       x={viewBox.cx}
                       y={viewBox.cy}
                     >
-                      {`${Math.round((stats.expected / (stats.total - stats.skipped)) * 100)}%`}
+                      {`${Math.round(((stats?.expected ?? 0) / (stats.total - (stats?.skipped ?? 0))) * 100)}%`}
                     </tspan>
                     <tspan className="fill-foreground" x={viewBox.cx} y={(viewBox.cy ?? 0) + 24}>
                       Passed

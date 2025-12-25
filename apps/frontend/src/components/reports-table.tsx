@@ -169,6 +169,7 @@ export default function ReportsTable({ onChange }: Readonly<ReportsTableProps>) 
         total={total}
         onProjectChange={onProjectChange}
         onSearchChange={onSearchChange}
+        selectedProject={project}
       />
       <Table
         aria-label="Reports"

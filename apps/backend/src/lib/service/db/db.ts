@@ -96,6 +96,51 @@ function initializeSchema(db: Database.Database): void {
     );
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS tests (
+      testId TEXT NOT NULL,
+      fileId TEXT NOT NULL,
+      filePath TEXT NOT NULL,
+      project TEXT NOT NULL,
+      title TEXT NOT NULL,
+      createdAt TEXT NOT NULL,
+      PRIMARY KEY (testId, fileId, project)
+    );
+
+    -- Indexes for tests table
+    CREATE INDEX IF NOT EXISTS idx_tests_project ON tests(project);
+    CREATE INDEX IF NOT EXISTS idx_tests_createdAt ON tests(createdAt DESC);
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS test_runs (
+      runId TEXT PRIMARY KEY,
+      testId TEXT NOT NULL,
+      fileId TEXT NOT NULL,
+      project TEXT NOT NULL,
+      reportId TEXT NOT NULL,
+      outcome TEXT NOT NULL,
+      duration INTEGER,
+      createdAt TEXT NOT NULL,
+      flakinessScore REAL DEFAULT 0 NOT NULL,
+      quarantineReason TEXT,
+      quarantined BOOLEAN DEFAULT FALSE NOT NULL,
+      fixedAt TEXT,
+      FOREIGN KEY (testId, fileId, project)
+        REFERENCES tests(testId, fileId, project)
+    );
+
+    -- Indexes for test_runs table
+    CREATE INDEX IF NOT EXISTS idx_test_runs_testId ON test_runs(testId, project);
+    CREATE INDEX IF NOT EXISTS idx_test_runs_reportId ON test_runs(reportId);
+    CREATE INDEX IF NOT EXISTS idx_test_runs_createdAt ON test_runs(createdAt DESC);
+    CREATE INDEX IF NOT EXISTS idx_test_runs_outcome ON test_runs(outcome);
+    CREATE INDEX IF NOT EXISTS idx_test_runs_test_created ON test_runs(testId, project, createdAt DESC);
+    CREATE INDEX IF NOT EXISTS idx_test_runs_outcome_created ON test_runs(outcome, createdAt DESC);
+    CREATE INDEX IF NOT EXISTS idx_test_runs_quarantined ON test_runs(quarantined);
+    CREATE INDEX IF NOT EXISTS idx_test_runs_quarantined_created ON test_runs(quarantined, createdAt DESC);
+  `);
+
   console.log('[db] schema initialized');
 }
 
@@ -158,6 +203,8 @@ export function clearAll(): void {
     DELETE FROM results;
     DELETE FROM reports;
     DELETE FROM cache_metadata;
+    DELETE FROM test_runs;
+    DELETE FROM tests;
   `);
 
   db.exec('VACUUM;');

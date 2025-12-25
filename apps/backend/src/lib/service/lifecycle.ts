@@ -30,6 +30,7 @@ export class Lifecycle {
 
     try {
       await Promise.all([configCache.init(), reportDb.init(), resultDb.init()]);
+      await reportDb.populateTestRuns();
       console.log('[lifecycle] Databases initialized successfully');
 
       if (!cronService.initialized) {

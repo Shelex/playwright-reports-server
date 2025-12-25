@@ -1,18 +1,21 @@
 'use client';
 
 import { Card, CardBody, CardHeader } from '@heroui/react';
-import type { OverviewStats } from '@playwright-reports/shared';
+import type { OverviewStats, TestWithQuarantineInfo } from '@playwright-reports/shared';
 import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
+import { parseMilliseconds } from '@/lib/time';
 
 interface OverviewStatsProps {
   stats: OverviewStats;
+  testStats?: TestWithQuarantineInfo[] | null;
 }
 
-export function OverviewStatsCard({ stats }: Readonly<OverviewStatsProps>) {
-  if (!stats) {
+export function OverviewStatsCard({ stats, testStats }: Readonly<OverviewStatsProps>) {
+  if (!stats || !testStats) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         {new Array({ length: 5 }).map((_, index) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: that is just a placeholder for 5 elements
           <Card key={index} className="shadow-sm">
             <CardHeader className="pb-2">
               <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Loading...</h3>
@@ -53,26 +56,20 @@ export function OverviewStatsCard({ stats }: Readonly<OverviewStatsProps>) {
     }
   };
 
-  const formatDuration = (ms: number) => {
-    if (ms < 1000) return `${ms}ms`;
-    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-    return `${(ms / 60000).toFixed(1)}m`;
-  };
-
   const {
-    totalTests = 0,
     passRate = 0,
-    flakyTests = 0,
-    averageStepDuration = 0,
-    testExecutionTime = 0,
+    averageTestDuration = 0,
+    averageTestRunDuration = 0,
     passRateTrend = 'stable' as const,
     flakyTestsTrend = 'stable' as const,
   } = stats;
 
+  const flakyTestsCount = testStats.filter((test) => (test?.flakinessScore ?? 0) > 0).length;
+
   const statsCards = [
     {
       title: 'Total Tests',
-      value: totalTests.toLocaleString(),
+      value: testStats.length.toLocaleString(),
       subtitle: 'Across all runs',
     },
     {
@@ -84,20 +81,20 @@ export function OverviewStatsCard({ stats }: Readonly<OverviewStatsProps>) {
     },
     {
       title: 'Flaky Tests',
-      value: flakyTests.toString(),
+      value: flakyTestsCount.toString(),
       subtitle: 'Failing intermittently',
       icon: getTrendIcon(flakyTestsTrend),
       iconColor: getTrendColor(flakyTestsTrend),
     },
     {
-      title: 'Avg Step Duration',
-      value: formatDuration(averageStepDuration),
+      title: 'Avg Test Duration',
+      value: parseMilliseconds(averageTestDuration),
       subtitle: 'Mean execution time',
     },
     {
-      title: 'Test Execution Time',
-      value: formatDuration(testExecutionTime),
-      subtitle: 'Total for latest run',
+      title: 'Average Run Time',
+      value: parseMilliseconds(averageTestRunDuration),
+      subtitle: 'Average for latest runs',
     },
   ];
 

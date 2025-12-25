@@ -1,8 +1,6 @@
+import type { ReportInfo } from '@playwright-reports/shared';
 import JSZip from 'jszip';
 import { withError } from '../../lib/withError.js';
-import type { ReportInfo } from './types.js';
-
-export * from './types.js';
 
 /**
  *

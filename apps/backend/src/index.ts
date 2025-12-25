@@ -38,7 +38,7 @@ async function start() {
   await fastify.register(fastifyCookie);
 
   await fastify.register(fastifyJwt, {
-    secret: env.AUTH_SECRET ?? '',
+    secret: env.AUTH_SECRET ?? 'default-secret-for-no-auth-mode',
     cookie: {
       cookieName: 'token',
       signed: false,

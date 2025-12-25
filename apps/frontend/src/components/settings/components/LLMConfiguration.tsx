@@ -38,7 +38,6 @@ export default function LLMConfiguration({
   const providers = [
     { key: 'openai', label: 'OpenAI' },
     { key: 'anthropic', label: 'Anthropic' },
-    { key: 'zai', label: 'Z.AI' },
   ];
 
   const isConfigured = config.llm?.baseUrl && config.llm?.apiKey;
