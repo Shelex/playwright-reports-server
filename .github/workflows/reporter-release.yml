@@ -49,9 +49,9 @@ jobs:
           fi
 
       - name: Update package.json version
-        run: pnpm version ${{ steps.version.outputs.VERSION }} --workspace=@playwright-reports/reporter --no-git-tag-version --allow-same-version
+        run: pnpm --filter @playwright-reports/reporter version ${{ steps.version.outputs.VERSION }} --no-git-tag-version --allow-same-version
 
       - name: Publish to npm
-        run: pnpm publish --workspace=@playwright-reports/reporter --access public
+        run: pnpm --filter @playwright-reports/reporter publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
