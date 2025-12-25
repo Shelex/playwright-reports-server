@@ -18,7 +18,7 @@ export function Layout({ children }: LayoutProps) {
         <footer className="w-full flex items-center justify-center py-4 bg-[#F9FAFB] dark:bg-background border-t border-gray-200 dark:border-gray-800 flex-shrink-0">
           <a
             className="flex items-center gap-1 text-current"
-            href="https://github.com/CyborgTests/playwright-reports-server"
+            href="https://github.com/Shelex/playwright-reports-server"
             target="_blank"
             rel="noreferrer"
             title="Source code link"

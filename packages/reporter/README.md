@@ -1,10 +1,10 @@
 # reporter-playwright-reports-server
 
-Playwright reporter that uploads results to Playwright Reports Server - https://github.com/CyborgTests/playwright-reports-server
+Playwright reporter that uploads results to Playwright Reports Server - https://github.com/Shelex/playwright-reports-server
 
 ## Install
 
-`npm i -D @cyborgtests/reporter-playwright-reports-server`
+`npm i -D @shelex/playwright-reporter`
 
 ## Basic Configuration
 
@@ -15,13 +15,13 @@ In your `playwright.config.ts` or `playwright.config.js`:
     // blob reporter is required, produced zip would be uploaded
     ['blob', { outputFile: 'test-results/blob.zip' }],
     [
-      '@cyborgtests/reporter-playwright-reports-server',
+      '@shelex/playwright-reporter',
       {
         // true by default. Use this if you need to skip this reporter for some cases (local executions for example)
         enabled: true,
         /**
          * Your server url
-         * @see https://github.com/CyborgTests/playwright-reports-server
+         * @see https://github.com/Shelex/playwright-reports-server
          */
         url: 'https://your server instance.com',
         // Set token if your server instance has authentication enabled
@@ -85,13 +85,13 @@ To enable automatic skipping of quarantined tests:
 
 ```typescript
 import { defineConfig } from '@playwright/test';
-import { test } from '@cyborgtests/reporter-playwright-reports-server';
+import { test } from '@shelex/playwright-reporter';
 
 export default defineConfig({
   reporter: [
     ['blob', { outputFile: 'test-results/blob.zip' }],
     [
-      '@cyborgtests/reporter-playwright-reports-server',
+      '@shelex/playwright-reporter',
       {
         url: 'http://localhost:3000',
         reportPath: 'test-results/blob.zip',
@@ -149,7 +149,7 @@ Ensure the reporter can fetch quarantined tests from the server (check network a
 
 **Tests not being skipped:**
 - Verify `skipQuarantinedTests: true` is set
-- Verify you're using the extended `test` fixture: `import { test } from '@cyborgtests/reporter-playwright-reports-server'`
+- Verify you're using the extended `test` fixture: `import { test } from '@shelex/playwright-reporter'`
 - Check the `project` in `resultDetails` matches the project name in the server, if you do not have the project - it can be skipped
 - Ensure the quarantine file is being generated correctly
 

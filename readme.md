@@ -64,7 +64,7 @@ The Playwright Reports Server provides APIs for managing and generating reports 
 1. Clone this repository:
 
    ```
-   git clone https://github.com/CyborgTests/playwright-reports-server.git
+   git clone https://github.com/Shelex/playwright-reports-server.git
    cd playwright-reports-server
    ```
 
@@ -477,7 +477,7 @@ Tests are categorized into three tiers based on their flakiness score:
 To automatically skip quarantined tests during test execution: 
 
 - enable feature in the app
-- configure the reporter and use the extended `test` fixture from the reporter package
+- configure the reporter and use the extended `test` fixture from the "@shelex/playwright-reporter"
 
 ## Storage Options
 
@@ -559,7 +559,7 @@ Image is available via github public registry.
 To run the server using Docker:
 
 ```sh
-docker run -p 3000:3000 -v /path/on/host:/app/data ghcr.io/cyborgtests/playwright-reports-server:latest
+docker run -p 3000:3000 -v /path/on/host:/app/data ghcr.io/shelex/playwright-reports-server:latest
 ```
 
 For external S3 storage, pass the necessary environment variables:
@@ -572,7 +572,7 @@ docker run -p 3000:3000 \
   -e S3_BUCKET="<your-bucket>" \
   -e S3_ACCESS_KEY_ID="<your-access-key>" \
   -e S3_SECRET_ACCESS_KEY="<your-secret-key>" \
-  ghcr.io/cyborgtests/playwright-reports-server:latest
+  ghcr.io/shelex/playwright-reports-server:latest
 ```
 
 ## UI White-label
@@ -589,7 +589,7 @@ curl --location --request PATCH 'localhost:3000/api/config' \
   --form 'title="YOUR_TITLE"' \
   --form 'logo=@"PATH_TO_YOUR_LOGO"' \
   --form 'favicon=@"PATH_TO_YOUR_FAVICON"' \
-  --form 'headerLinks="{\"someLink\": \"https://example.com\", \"github\": \"https://github.com/CyborgTests\"}"'
+  --form 'headerLinks="{\"someLink\": \"https://example.com\", \"github\": \"https://github.com/Shelex\"}"'
 ```
 
 ### Config File
