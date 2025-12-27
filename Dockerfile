@@ -6,6 +6,10 @@ RUN npm install -g pnpm
 # Install build tools for native dependencies (better-sqlite3, sharp, esbuild)
 RUN apk add --no-cache python3 make g++ libc6-compat curl
 
+# Set CI environment variable for pnpm
+# This prevents pnpm from prompting for input when removing node_modules
+ENV CI=true
+
 # Install all dependencies for monorepo from the ROOT
 # This is critical: pnpm install must run from root where pnpm-workspace.yaml
 # and root package.json with overrides are located
@@ -69,7 +73,8 @@ RUN pnpm --filter @playwright-reports/backend build
 
 # Prune dev dependencies from the entire workspace
 # This removes dev dependencies from all workspace packages
-RUN pnpm install --prod --frozen-lockfile
+# --ignore-scripts prevents running prepare scripts which would fail without dev deps
+RUN pnpm install --prod --frozen-lockfile --ignore-scripts
 
 # Production image
 FROM base AS runner
