@@ -1,48 +1,51 @@
 FROM node:22-alpine AS base
 
+# Install pnpm globally
+RUN npm install -g pnpm
+
+# Install build tools for native dependencies (better-sqlite3, sharp, esbuild)
+RUN apk add --no-cache python3 make g++ libc6-compat
+
 # Install all dependencies for monorepo
 FROM base AS deps
 WORKDIR /app
+
 # Copy package files for all workspaces FIRST
-COPY package.json package-lock.json* ./
-# Copy workspace packages so npm can resolve local dependencies
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# Copy workspace packages so pnpm can resolve local dependencies
 COPY packages/ ./packages/
-RUN npm ci
-# Install Biome native dependency for Alpine Linux
-# Fixes the npm optional dependencies issue: https://github.com/npm/cli/issues/4828
-RUN npm install --no-save @biomejs/cli-linux-x64 || echo "Biome binary already available"
 
-# Install dependencies for backend
-FROM base AS backend-deps
-RUN apk add --no-cache libc6-compat
-
-# Install dependencies for frontend
+# Install dependencies with pnpm (frozen lockfile for reproducibility)
+# --prefer-frozen-lockfile ensures exact versions from lockfile
+RUN pnpm install --frozen-lockfile
 
 # Build shared package first
 FROM base AS shared-builder
 WORKDIR /app/packages/shared
 COPY --from=deps /app/node_modules ./node_modules
 COPY packages/shared/ .
-RUN npm run build
+
+# pnpm uses the hoisted node_modules from deps
+# No need to install again, just build
+RUN pnpm run build
 
 # Build frontend
 FROM base AS frontend-builder
 WORKDIR /app/apps/frontend
+COPY --from=deps /app/node_modules ./node_modules
 COPY --from=shared-builder /app/packages/shared ./packages/shared
 COPY apps/frontend/ .
-# Remove the shared dependency from package.json temporarily to avoid npm trying to install it
-RUN sed -i '/"@playwright-reports\/shared":/d' package.json
 
-RUN npm install
+# Install frontend dependencies (pnpm handles workspace dependencies)
+RUN pnpm install --frozen-lockfile
+
 # Create symlink for shared package in node_modules for TypeScript resolution
 RUN mkdir -p ./node_modules/@playwright-reports && \
     ln -sf ../../packages/shared ./node_modules/@playwright-reports/shared
-# Install Rollup native dependency for Alpine Linux (x64-musl)
-# Fixes the npm optional dependencies issue: https://github.com/npm/cli/issues/4828
-RUN npm install @rollup/rollup-linux-x64-musl --no-save || echo "Rollup binary already available"
-# Skip TypeScript checks and just build with Vite
+
+# Build frontend
 ENV DOCKER_BUILD=true
-RUN npm run build:vite
+RUN pnpm run build:vite
 
 # Build backend
 FROM base AS backend-builder
@@ -51,17 +54,18 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=shared-builder /app/packages/shared ./packages/shared
 COPY apps/backend/ .
 
-# Remove the shared dependency from package.json temporarily to avoid npm trying to install it
-RUN sed -i '/"@playwright-reports\/shared":/d' package.json
 # Install backend dependencies including dev dependencies needed for build
-RUN npm install
+RUN pnpm install --frozen-lockfile
+
 # Create symlink for shared package in node_modules for TypeScript resolution
 RUN mkdir -p ./node_modules/@playwright-reports && \
     ln -sf ../../packages/shared ./node_modules/@playwright-reports/shared
+
 # Build first with all dependencies
-RUN npm run build
-# Install backend production dependencies (removes dev dependencies)
-RUN npm install --only=production
+RUN pnpm run build
+
+# Install backend production dependencies only (removes dev dependencies)
+RUN pnpm install --prod --frozen-lockfile
 
 # Production image
 FROM base AS runner
@@ -93,7 +97,7 @@ COPY --from=shared-builder --chown=appuser:nodejs /app/packages/shared/dist ./pa
 # Copy environment configuration (for default values)
 COPY --chown=appuser:nodejs .env.example /app/.env.example
 # Create empty .env if .env doesn't exist
-RUN touch /app/.env \ 
+RUN touch /app/.env && \
     chown appuser:nodejs /app/.env
 
 # Create folders required for storing results and reports
