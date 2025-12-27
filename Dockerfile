@@ -4,67 +4,65 @@ FROM node:22-alpine AS base
 RUN npm install -g pnpm
 
 # Install build tools for native dependencies (better-sqlite3, sharp, esbuild)
-RUN apk add --no-cache python3 make g++ libc6-compat
+RUN apk add --no-cache python3 make g++ libc6-compat curl
 
-# Install all dependencies for monorepo
+# Install all dependencies for monorepo from the ROOT
+# This is critical: pnpm install must run from root where pnpm-workspace.yaml
+# and root package.json with overrides are located
 FROM base AS deps
 WORKDIR /app
 
-# Copy package files for all workspaces FIRST
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-# Copy workspace packages so pnpm can resolve local dependencies
-COPY packages/ ./packages/
+# Copy workspace configuration files first
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./.npmrc ./
 
-# Install dependencies with pnpm (frozen lockfile for reproducibility)
-# --prefer-frozen-lockfile ensures exact versions from lockfile
+# Copy all workspace packages so pnpm can resolve local dependencies
+COPY packages/ ./packages/
+COPY apps/ ./apps/
+
+# Install dependencies from root with frozen lockfile
+# This reads the overrides from root package.json and onlyBuiltDependencies from pnpm-workspace.yaml
 RUN pnpm install --frozen-lockfile
 
-# Build shared package first
+# Build shared package first using pnpm filter from root
 FROM base AS shared-builder
-WORKDIR /app/packages/shared
-COPY --from=deps /app/node_modules ./node_modules
-COPY packages/shared/ .
+WORKDIR /app
 
-# pnpm uses the hoisted node_modules from deps
-# No need to install again, just build
-RUN pnpm run build
+# Copy the entire workspace structure with node_modules from deps
+COPY --from=deps /app/ ./
+
+# Build shared package using pnpm filter from root
+# This ensures workspace context is preserved
+RUN pnpm --filter @playwright-reports/shared build
 
 # Build frontend
 FROM base AS frontend-builder
-WORKDIR /app/apps/frontend
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=shared-builder /app/packages/shared ./packages/shared
-COPY apps/frontend/ .
+WORKDIR /app
 
-# Install frontend dependencies (pnpm handles workspace dependencies)
-RUN pnpm install --frozen-lockfile
+# Copy the entire workspace structure with node_modules from deps
+COPY --from=deps /app/ ./
 
-# Create symlink for shared package in node_modules for TypeScript resolution
-RUN mkdir -p ./node_modules/@playwright-reports && \
-    ln -sf ../../packages/shared ./node_modules/@playwright-reports/shared
+# Copy the built shared package
+COPY --from=shared-builder /app/packages/shared/dist ./packages/shared/dist
 
-# Build frontend
+# Build frontend using pnpm filter from root
 ENV DOCKER_BUILD=true
-RUN pnpm run build:vite
+RUN pnpm --filter @playwright-reports/frontend build:vite
 
 # Build backend
 FROM base AS backend-builder
-WORKDIR /app/apps/backend
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=shared-builder /app/packages/shared ./packages/shared
-COPY apps/backend/ .
+WORKDIR /app
 
-# Install backend dependencies including dev dependencies needed for build
-RUN pnpm install --frozen-lockfile
+# Copy the entire workspace structure with node_modules from deps
+COPY --from=deps /app/ ./
 
-# Create symlink for shared package in node_modules for TypeScript resolution
-RUN mkdir -p ./node_modules/@playwright-reports && \
-    ln -sf ../../packages/shared ./node_modules/@playwright-reports/shared
+# Copy the built shared package
+COPY --from=shared-builder /app/packages/shared/dist ./packages/shared/dist
 
-# Build first with all dependencies
-RUN pnpm run build
+# Build backend using pnpm filter from root
+RUN pnpm --filter @playwright-reports/backend build
 
-# Install backend production dependencies only (removes dev dependencies)
+# Prune dev dependencies from the entire workspace
+# This removes dev dependencies from all workspace packages
 RUN pnpm install --prod --frozen-lockfile
 
 # Production image
@@ -73,30 +71,22 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-RUN apk add --no-cache curl
-
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 --ingroup nodejs appuser
 
-# Copy all node_modules from deps
-COPY --from=deps --chown=appuser:nodejs /app/node_modules ./node_modules
-
-# Copy backend node_modules for backend-specific dependencies
-COPY --from=backend-builder --chown=appuser:nodejs /app/apps/backend/node_modules ./apps/backend/node_modules
-
-# Copy backend build
-COPY --from=backend-builder --chown=appuser:nodejs /app/apps/backend/dist ./apps/backend/dist
-COPY --from=backend-builder --chown=appuser:nodejs /app/apps/backend/package.json ./apps/backend/package.json
+# Copy all node_modules from backend-builder (already pruned of dev deps)
+COPY --from=backend-builder --chown=appuser:nodejs /app/node_modules ./node_modules
+COPY --from=backend-builder --chown=appuser:nodejs /app/apps ./apps
+COPY --from=backend-builder --chown=appuser:nodejs /app/packages ./packages
 
 # Copy frontend build
 COPY --from=frontend-builder --chown=appuser:nodejs /app/apps/frontend/dist ./apps/frontend/dist
 
-# Copy shared build
-COPY --from=shared-builder --chown=appuser:nodejs /app/packages/shared/dist ./packages/shared/dist
-
 # Copy environment configuration (for default values)
 COPY --chown=appuser:nodejs .env.example /app/.env.example
-# Create empty .env if .env doesn't exist
+COPY --chown=appuser:nodejs package.json ./package.json
+
+# Create empty .env for runtime overrides
 RUN touch /app/.env && \
     chown appuser:nodejs /app/.env
 
