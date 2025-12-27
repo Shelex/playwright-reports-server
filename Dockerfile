@@ -44,6 +44,12 @@ COPY --from=deps /app/ ./
 # Copy the built shared package
 COPY --from=shared-builder /app/packages/shared/dist ./packages/shared/dist
 
+# Create symlink for shared package in frontend directory
+# The Vite config expects ./packages/shared when DOCKER_BUILD=true
+# but the actual shared package is at /app/packages/shared
+RUN mkdir -p /app/apps/frontend/packages && \
+    ln -sf /app/packages/shared /app/apps/frontend/packages/shared
+
 # Build frontend using pnpm filter from root
 ENV DOCKER_BUILD=true
 RUN pnpm --filter @playwright-reports/frontend build:vite
