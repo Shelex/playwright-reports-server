@@ -140,32 +140,24 @@ export class TestManagementService {
 
     if (recentRuns.length < minRuns!) return 0;
 
-    // we should treat 'Flaky' as 'Failed' for flakiness calculation
-    // for cases when there are tests with and without retries
-    // as playwright can set test as a 'Flaky' if it passed on retry only
-    const getCanonicalOutcome = (outcome: string) => {
-      if (outcome === ReportTestOutcomeEnum.Flaky) {
-        return ReportTestOutcomeEnum.Failed;
-      }
-      return outcome;
-    };
+    const weights = {
+      [ReportTestOutcomeEnum.Unexpected]: 1,
+      [ReportTestOutcomeEnum.Flaky]: 3,
+      default: 0,
+    } as const;
 
-    const testsWithCanonicalOutcomes = recentRuns.map((run) => getCanonicalOutcome(run.outcome));
-    const statusChangeCount = testsWithCanonicalOutcomes.reduce((count, outcome, index, arr) => {
-      if (index === 0) return count;
-      if (outcome !== arr[index - 1]) {
-        return count + 1;
-      }
-      return count;
+    const weightedScore = recentRuns.reduce((score, { run }) => {
+      score += weights[run as keyof typeof weights] ?? weights.default;
+      return score;
     }, 0);
 
-    if (!statusChangeCount) {
-      return 0;
-    }
+    const maxPossibleScore = recentRuns.length * weights[ReportTestOutcomeEnum.Flaky];
 
-    const score = (statusChangeCount / (recentRuns.length - 1)) * 100;
+    if (maxPossibleScore === 0) return 0;
 
-    return score;
+    const flakinessScore = (weightedScore / maxPossibleScore) * 100;
+
+    return flakinessScore;
   }
 
   async updateQuarantineStatus(
