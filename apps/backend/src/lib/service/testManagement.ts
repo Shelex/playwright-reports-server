@@ -146,8 +146,8 @@ export class TestManagementService {
       default: 0,
     } as const;
 
-    const weightedScore = recentRuns.reduce((score, { run }) => {
-      score += weights[run as keyof typeof weights] ?? weights.default;
+    const weightedScore = recentRuns.reduce((score, { outcome }) => {
+      score += weights[outcome as keyof typeof weights] ?? weights.default;
       return score;
     }, 0);
 

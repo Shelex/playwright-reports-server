@@ -1,6 +1,7 @@
 import type Database from 'better-sqlite3';
 import { v4 as uuid } from 'uuid';
 import { getDatabase } from './db.js';
+import { ReportTestOutcomeEnum } from '@playwright-reports/shared';
 
 const initiatedTestsDb = Symbol.for('playwright.reports.db.tests');
 const instance = globalThis as typeof globalThis & {
@@ -299,9 +300,11 @@ export class TestDatabase {
     fileId: string,
     project: string,
     cutoffDate: string
-  ): Array<{ outcome: string }> {
+  ): Array<{
+    outcome: ReportTestOutcomeEnum 
+}> {
     return this.getRecentTestRunsStmt.all(testId, fileId, project, cutoffDate) as Array<{
-      outcome: string;
+      outcome: ReportTestOutcomeEnum;
     }>;
   }
 
