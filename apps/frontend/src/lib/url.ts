@@ -1,17 +1,12 @@
 export const getApiUrl = (): string => {
-  // for API calls during development, we want relative paths so Vite proxy can handle them
-  // for prod, this might be different if the frontend and backend are served from different origins
-  if (
-    typeof globalThis !== 'undefined' &&
-    (globalThis.location.hostname === 'localhost' ||
-      globalThis.location.hostname === '127.0.0.1' ||
-      globalThis.location.hostname.endsWith('.local') ||
-      globalThis.location.port >= '3000')
-  ) {
-    // Catch any local development ports
-    return ''; // Return empty string for localhost development - let Vite proxy handle it
+  // In dockerized environment frontend and backend are served from the same origin.
+  // Use relative paths by default so API calls go to the same host:port that serves the frontend.
+  // VITE_API_URL should ONLY be set for cross-origin deployments (e.g., separate frontend/backend servers).
+  if (import.meta.env?.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
   }
-  return import.meta.env?.VITE_API_URL || 'http://localhost:3001';
+
+  return '';
 };
 
 export const getCurrentPath = (): string => {
@@ -24,7 +19,7 @@ export const getCurrentPath = (): string => {
 export const buildUrl = (path: string, params?: Record<string, string>): string => {
   const baseUrl = getApiUrl();
 
-  // for development with empty baseUrl, construct relative URL
+  // relative URL for same origin deployment
   if (!baseUrl) {
     let url = path.startsWith('/') ? path : `/${path}`;
 
@@ -44,7 +39,7 @@ export const buildUrl = (path: string, params?: Record<string, string>): string 
     return url;
   }
 
-  // for prod or when baseUrl is set
+  // For cross-origin deployment when baseUrl is specified
   const url = new URL(path, baseUrl);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
@@ -62,7 +57,7 @@ export const withBase = (path: string): string => {
   }
 
   const baseUrl = getApiUrl();
-  // ff baseUrl is empty (development with Vite proxy), just return the path
+  // If baseUrl is empty (same-origin deployment), just return the relative path
   if (!baseUrl) {
     return path.startsWith('/') ? path : `/${path}`;
   }
