@@ -82,34 +82,27 @@ export default function ProjectSelect({
   }, [localStorageProject, isInitialized, items.includes, isLoading]);
 
   const effectiveSelectedProject = localStorageProject || selectedProject || defaultProjectName;
-  onSelect?.(effectiveSelectedProject);
+
+  useEffect(() => {
+    onSelect?.(effectiveSelectedProject);
+  }, [effectiveSelectedProject, onSelect]);
 
   const onChange = (keys: SharedSelection) => {
+    let project: string | null = null;
+
     if (keys instanceof Set) {
-      if (keys.has(defaultProjectName)) {
-        onSelect?.(defaultProjectName);
-        saveToLocalStorage(defaultProjectName);
+      if (keys.size === 0) {
         return;
       }
-
-      const selectedKey = Array.from(keys)?.at(0);
-      if (selectedKey) {
-        const project = String(selectedKey);
-        onSelect?.(project);
-        saveToLocalStorage(project);
-      }
+      const selectedKey = Array.from(keys).at(0);
+      project = String(selectedKey);
+    } else if (typeof keys === 'string' || typeof keys === 'number') {
+      project = String(keys);
+    } else {
       return;
     }
 
-    if (keys === defaultProjectName) {
-      onSelect?.(defaultProjectName);
-      saveToLocalStorage(defaultProjectName);
-      return;
-    }
-
-    if (typeof keys === 'string' || typeof keys === 'number') {
-      const project = String(keys);
-      onSelect?.(project);
+    if (project) {
       saveToLocalStorage(project);
     }
   };

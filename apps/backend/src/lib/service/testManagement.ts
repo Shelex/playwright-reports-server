@@ -1,10 +1,7 @@
 import type { TestManagementConfig } from '@playwright-reports/shared';
 import { ReportTestOutcomeEnum } from '@playwright-reports/shared';
 import { defaultConfig } from '../config.js';
-import { storage } from '../storage/index.js';
 import type { ReportHistory } from '../storage/types.js';
-import { convertTestRunToReportInfoUpdate } from '../storage/utils/deepMerge.js';
-import { withError } from '../withError.js';
 import type { Test, TestRun, TestWithQuarantineInfo } from './db/tests.sqlite.js';
 import { testDb } from './db/tests.sqlite.js';
 import { service } from './index.js';
@@ -183,26 +180,6 @@ export class TestManagementService {
 
     if (!updated) {
       throw new Error('Failed to update test run quarantine status');
-    }
-
-    const updatedRun = testDb.getLatestTestRun(testId, fileId, project);
-
-    if (!updatedRun) {
-      throw new Error('Failed to retrieve updated test run');
-    }
-
-    const patchedMetadata = convertTestRunToReportInfoUpdate(updatedRun);
-    const { error } = await withError(storage.updateMetadata(latestRun.reportId, patchedMetadata));
-    if (error) {
-      // optimistically revert update to sqlite
-      testDb.updateLatestTestRun(
-        testId,
-        fileId,
-        project,
-        !isQuarantined, // reverse the input
-        latestRun.quarantineReason // get back original value
-      );
-      throw new Error(`failed to update report metadata: ${error.message}`);
     }
   }
 

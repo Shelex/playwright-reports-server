@@ -6,6 +6,12 @@ RUN npm install -g pnpm
 # Install build tools for native dependencies (better-sqlite3, sharp, esbuild)
 RUN apk add --no-cache python3 make g++ libc6-compat curl
 
+# Install Litestream for SQLite replication (download from GitHub releases)
+ENV LITESTREAM_VERSION=0.3.13
+RUN curl -fsSL "https://github.com/benbjohnson/litestream/releases/download/v${LITESTREAM_VERSION}/litestream-v${LITESTREAM_VERSION}-linux-amd64.tar.gz" | tar -xz && \
+    mv litestream /usr/local/bin/litestream && \
+    chmod +x /usr/local/bin/litestream
+
 # Set CI environment variable for pnpm
 # This prevents pnpm from prompting for input when removing node_modules
 ENV CI=true
@@ -96,6 +102,9 @@ COPY --from=frontend-builder --chown=appuser:nodejs /app/apps/frontend/dist ./ap
 # Copy environment configuration (for default values)
 COPY --chown=appuser:nodejs .env.example /app/.env.example
 COPY --chown=appuser:nodejs package.json ./package.json
+
+# Copy Litestream configuration (internal, not exposed as env var)
+COPY --chown=appuser:nodejs litestream.yml /app/litestream.yml
 
 # Create empty .env for runtime overrides
 RUN touch /app/.env && \

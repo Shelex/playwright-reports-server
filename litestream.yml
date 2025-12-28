@@ -1,0 +1,16 @@
+# Litestream configuration for SQLite replication to S3
+# See https://litestream.io/reference/config/
+
+dbs:
+  - path: ./apps/backend/data/metadata.db
+    replicas:
+      - url: s3://${S3_BUCKET}/${S3_PATH:-litestream}/metadata.db
+        access-key-id: ${S3_ACCESS_KEY_ID}
+        secret-access-key: ${S3_SECRET_ACCESS_KEY}
+        region: ${S3_REGION:-us-east-1}
+        endpoint: ${S3_ENDPOINT}
+        force-path-style: ${S3_FORCE_PATH_STYLE:-true}
+        sync-interval: ${LITESTREAM_SYNC_INTERVAL:-1s}
+        snapshot-interval: ${LITESTREAM_SNAPSHOT_INTERVAL:-3h}
+        retention: ${LITESTREAM_RETENTION:-24h}
+        retention-check-interval: ${LITESTREAM_RETENTION_CHECK_INTERVAL:-1h}

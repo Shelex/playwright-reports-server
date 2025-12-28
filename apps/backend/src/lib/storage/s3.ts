@@ -53,7 +53,6 @@ import {
   type ServerDataInfo,
   type Storage,
 } from './types.js';
-import { deepMergeReportInfo } from './utils/deepMerge.js';
 
 const createClient = () => {
   const endPoint = env.S3_ENDPOINT;
@@ -1253,65 +1252,5 @@ export class S3 implements Storage {
     }
 
     return null;
-  }
-
-  private async readMetadata(reportId: string): Promise<ReportInfo> {
-    const metadataKey = path.join(REPORTS_BUCKET, reportId, REPORT_METADATA_FILE);
-
-    const { result: response, error } = await withError(
-      this.client.send(
-        new GetObjectCommand({
-          Bucket: this.bucket,
-          Key: metadataKey,
-        })
-      )
-    );
-
-    if (error || !response) {
-      throw new Error(`Failed to read metadata for report ${reportId}: ${error?.message || error}`);
-    }
-
-    const stream = response.Body as Readable;
-    const chunks: Uint8Array[] = [];
-
-    await new Promise<void>((resolve, reject) => {
-      stream.on('data', (chunk: Uint8Array) => chunks.push(chunk));
-      stream.on('end', resolve);
-      stream.on('error', reject);
-    });
-
-    const content = Buffer.concat(chunks).toString('utf-8');
-    return JSON.parse(content);
-  }
-
-  async updateMetadata(
-    reportIdentifier: string,
-    updates: Partial<ReportInfo>
-  ): Promise<ReportInfo> {
-    console.log(`[s3] updating metadata for report: ${reportIdentifier}`);
-
-    const metadataKey = path.join(REPORTS_BUCKET, reportIdentifier, REPORT_METADATA_FILE);
-    const existing = await this.readMetadata(reportIdentifier);
-    const updated = deepMergeReportInfo(existing, updates);
-
-    const { error } = await withError(
-      this.client.send(
-        new PutObjectCommand({
-          Bucket: this.bucket,
-          Key: metadataKey,
-          Body: JSON.stringify(updated, null, 2),
-          ContentType: 'application/json',
-        })
-      )
-    );
-
-    if (error) {
-      throw new Error(
-        `Failed to update metadata for report ${reportIdentifier}: ${error instanceof Error ? error.message : error}`
-      );
-    }
-
-    console.log(`[s3] successfully updated metadata for report: ${reportIdentifier}`);
-    return updated;
   }
 }

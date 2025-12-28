@@ -20,7 +20,7 @@ export default defineConfig({
       '@playwright-reports/reporter',
       {
         enabled: process.env.CI === 'true',
-        url: 'https://overwhelming-jsandye-cyborg-tests-d6a8367f.koyeb.app',
+        url: 'https://associated-jacqui-shelexdev-028b131e.koyeb.app',
         reportPath: 'test-results/blob.zip',
         resultDetails: {
           testsType: 'API',

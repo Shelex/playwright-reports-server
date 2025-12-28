@@ -33,7 +33,6 @@ import type {
   ServerDataInfo,
   Storage,
 } from './types.js';
-import { deepMergeReportInfo } from './utils/deepMerge.js';
 
 async function createDirectoriesIfMissing() {
   await createDirectory(RESULTS_FOLDER);
@@ -400,43 +399,6 @@ async function saveReportMetadata(reportPath: string, info: ReportMetadata) {
   });
 }
 
-async function updateMetadata(
-  reportIdentifier: string,
-  updates: Partial<ReportInfo>
-): Promise<ReportInfo> {
-  await createDirectoriesIfMissing();
-
-  const reportPath = path.join(REPORTS_FOLDER, reportIdentifier);
-  const metadataPath = path.join(reportPath, REPORT_METADATA_FILE);
-
-  const { result: metadataContent, error: readError } = await withError(
-    fs.readFile(metadataPath, 'utf-8')
-  );
-
-  if (readError) {
-    throw new Error(
-      `Failed to read metadata file: ${readError instanceof Error ? readError.message : readError}`
-    );
-  }
-
-  const existing: ReportInfo = JSON.parse(metadataContent || '{}');
-  const updated = deepMergeReportInfo(existing, updates);
-
-  const { error: writeError } = await withError(
-    fs.writeFile(metadataPath, JSON.stringify(updated, null, 2), {
-      encoding: 'utf-8',
-    })
-  );
-
-  if (writeError) {
-    throw new Error(
-      `Failed to write metadata file: ${writeError instanceof Error ? writeError.message : writeError}`
-    );
-  }
-
-  return updated;
-}
-
 async function readConfigFile() {
   const { error: accessConfigError } = await withError(fs.access(APP_CONFIG));
 
@@ -500,5 +462,4 @@ export const FS: Storage = {
   generateReport,
   readConfigFile,
   saveConfigFile,
-  updateMetadata,
 };

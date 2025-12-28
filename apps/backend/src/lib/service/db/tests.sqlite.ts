@@ -301,8 +301,8 @@ export class TestDatabase {
     project: string,
     cutoffDate: string
   ): Array<{
-    outcome: ReportTestOutcomeEnum 
-}> {
+    outcome: ReportTestOutcomeEnum;
+  }> {
     return this.getRecentTestRunsStmt.all(testId, fileId, project, cutoffDate) as Array<{
       outcome: ReportTestOutcomeEnum;
     }>;

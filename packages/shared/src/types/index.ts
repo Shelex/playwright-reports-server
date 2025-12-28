@@ -239,6 +239,7 @@ export interface ReportHistory {
   stats?: ReportStats;
   files?: ReportFile[];
   duration?: number;
+  metadata?: ReportMetadata;
 }
 
 export interface TestHistory extends ReportTest {

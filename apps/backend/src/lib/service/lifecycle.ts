@@ -1,6 +1,7 @@
 import { configCache } from './cache/config.js';
 import { cronService } from './cron.js';
 import { reportDb, resultDb } from './db/index.js';
+import { litestreamService } from './litestream.js';
 
 const createdLifecycle = Symbol.for('playwright.reports.lifecycle');
 const instance = globalThis as typeof globalThis & {
@@ -29,9 +30,15 @@ export class Lifecycle {
     console.log('[lifecycle] Starting application initialization');
 
     try {
-      await Promise.all([configCache.init(), reportDb.init(), resultDb.init()]);
-      await reportDb.populateTestRuns();
-      console.log('[lifecycle] Databases initialized successfully');
+      const restored = await litestreamService.restoreIfNeeded();
+
+      if (!restored) {
+        await Promise.all([configCache.init(), reportDb.init(), resultDb.init()]);
+        await reportDb.populateTestRuns();
+        console.log('[lifecycle] Databases initialized successfully');
+      }
+
+      await litestreamService.start();
 
       if (!cronService.initialized) {
         await cronService.init();
@@ -60,6 +67,8 @@ export class Lifecycle {
         await cronService.restart();
         console.log('[lifecycle] Cron service stopped');
       }
+
+      await litestreamService.stop();
 
       console.log('[lifecycle] Application cleanup complete');
     } catch (error) {

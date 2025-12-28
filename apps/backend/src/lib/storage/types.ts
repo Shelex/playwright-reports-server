@@ -32,7 +32,6 @@ export interface Storage {
   saveConfigFile: (
     config: Partial<SiteWhiteLabelConfig>
   ) => Promise<{ result: SiteWhiteLabelConfig; error: Error | null }>;
-  updateMetadata: (reportIdentifier: string, updates: Partial<ReportInfo>) => Promise<ReportInfo>;
 }
 
 export interface ReportPath {
