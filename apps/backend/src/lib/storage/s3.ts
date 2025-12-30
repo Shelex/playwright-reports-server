@@ -2,8 +2,8 @@ import { randomUUID, type UUID } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { PassThrough, Readable } from 'node:stream';
-
+import { PassThrough, type Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import {
   type _Object,
   AbortMultipartUploadCommand,
@@ -19,15 +19,18 @@ import {
   S3Client,
   UploadPartCommand,
 } from '@aws-sdk/client-s3';
+import { Upload } from '@aws-sdk/lib-storage';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import type { ReportInfo, SiteWhiteLabelConfig } from '@playwright-reports/shared';
+import type { SiteWhiteLabelConfig } from '@playwright-reports/shared';
+import getFolderSize from 'get-folder-size';
+import { type Entry, Parse } from 'unzipper';
 import { env } from '../../config/env.js';
 import { withError } from '../../lib/withError.js';
 import { defaultConfig, isConfigValid } from '../config.js';
 import { serveReportRoute } from '../constants.js';
 import { parse } from '../parser/index.js';
 import { generatePlaywrightReport } from '../pw.js';
-import { processBatch } from './batch.js';
+import { processWithConcurrency, Semaphore } from '../utils/semaphore.js';
 import {
   APP_CONFIG_S3,
   DATA_FOLDER,
@@ -221,7 +224,7 @@ export class S3 implements Storage {
     console.log(`[s3] clearing ${path}`);
     // avoid using "removeObjects" as it is not supported by every S3-compatible provider
     // for example, Google Cloud Storage.
-    await processBatch<string, void>(this, path, this.batchSize, async (object) => {
+    await processWithConcurrency(path, this.batchSize, async (object) => {
       await this.client.send(
         new DeleteObjectCommand({
           Bucket: this.bucket,
@@ -348,31 +351,26 @@ export class S3 implements Storage {
       };
     }
 
-    const results = await processBatch<_Object, Result>(
-      this,
-      jsonFiles,
-      this.batchSize,
-      async (file) => {
-        console.log(`[s3.batch] reading result: ${JSON.stringify(file)}`);
-        const response = await this.client.send(
-          new GetObjectCommand({
-            Bucket: this.bucket,
-            Key: file.Key!,
-          })
-        );
+    const results = await processWithConcurrency(jsonFiles, this.batchSize, async (file) => {
+      console.log(`[s3.batch] reading result: ${JSON.stringify(file)}`);
+      const response = await this.client.send(
+        new GetObjectCommand({
+          Bucket: this.bucket,
+          Key: file.Key!,
+        })
+      );
 
-        const stream = response.Body as Readable;
-        let jsonString = '';
+      const stream = response.Body as Readable;
+      let jsonString = '';
 
-        for await (const chunk of stream) {
-          jsonString += chunk.toString();
-        }
-
-        const parsed = JSON.parse(jsonString);
-
-        return parsed;
+      for await (const chunk of stream) {
+        jsonString += chunk.toString();
       }
-    );
+
+      const parsed = JSON.parse(jsonString);
+
+      return parsed;
+    });
 
     return {
       results: results.map((result) => {
@@ -391,13 +389,19 @@ export class S3 implements Storage {
   async readReport(reportID: string, reportPath: string): Promise<ReportHistory | null> {
     await this.ensureBucketExist();
 
-    console.log(`[s3] reading report ${reportID} metadata`);
+    console.log(`[s3] reading report ${reportID} metadata | reportPath: ${reportPath}`);
 
-    const relativePath = path.relative(reportPath, REPORTS_BUCKET);
+    let objectKey: string;
+    if (path.isAbsolute(reportPath)) {
+      const resolvedPath = path.relative(REPORTS_BUCKET, reportPath);
+      objectKey = path.join(REPORTS_BUCKET, resolvedPath, REPORT_METADATA_FILE);
+    } else if (reportPath.startsWith(REPORTS_BUCKET)) {
+      objectKey = path.join(reportPath, REPORT_METADATA_FILE);
+    } else {
+      objectKey = path.join(REPORTS_BUCKET, reportPath, REPORT_METADATA_FILE);
+    }
 
-    const objectKey = path.join(REPORTS_BUCKET, relativePath, REPORT_METADATA_FILE);
-
-    console.log(`[s3] checking existence of result: ${objectKey}`);
+    console.log(`[s3] checking existence of report: ${objectKey}`);
     const { error: headError } = await withError(
       this.client.send(
         new HeadObjectCommand({
@@ -411,40 +415,11 @@ export class S3 implements Storage {
       throw new Error(`failed to check ${objectKey}: ${headError.message}`);
     }
 
-    console.log(`[s3] downloading metadata file: ${objectKey}`);
-    const localFilePath = path.join(TMP_FOLDER, reportID, REPORT_METADATA_FILE);
-
-    const { error: downloadError } = await withError(
-      (async () => {
-        const response = await this.client.send(
-          new GetObjectCommand({
-            Bucket: this.bucket,
-            Key: objectKey,
-          })
-        );
-
-        const stream = response.Body as Readable;
-        const writeStream = createWriteStream(localFilePath);
-
-        return new Promise<void>((resolve, reject) => {
-          stream.pipe(writeStream);
-          writeStream.on('finish', resolve);
-          writeStream.on('error', reject);
-          stream.on('error', reject);
-        });
-      })()
-    );
-
-    if (downloadError) {
-      console.error(`[s3] failed to download ${objectKey}: ${downloadError.message}`);
-
-      throw new Error(`failed to download ${objectKey}: ${downloadError.message}`);
-    }
+    console.log(`[s3] reading metadata file from S3: ${objectKey}`);
 
     try {
-      const content = await fs.readFile(localFilePath, 'utf-8');
-
-      const metadata = JSON.parse(content);
+      const content = await this.readFile(objectKey, 'utf-8');
+      const metadata = JSON.parse(content as string);
 
       return isReportHistory(metadata) ? metadata : null;
     } catch (e) {
@@ -523,32 +498,27 @@ export class S3 implements Storage {
   }
 
   async getReportsMetadata(reports: ReportHistory[]): Promise<ReportHistory[]> {
-    return await processBatch<ReportHistory, ReportHistory>(
-      this,
-      reports,
-      this.batchSize,
-      async (report) => {
-        console.log(`[s3.batch] reading report ${report.reportID} metadata`);
+    return await processWithConcurrency(reports, this.batchSize, async (report) => {
+      console.log(`[s3.batch] reading report ${report.reportID} metadata`);
 
-        const { result: metadata, error: metadataError } = await withError(
-          this.readOrParseReportMetadata(report.reportID)
+      const { result: metadata, error: metadataError } = await withError(
+        this.readOrParseReportMetadata(report.reportID)
+      );
+
+      if (metadataError) {
+        console.error(
+          `[s3] failed to read or create metadata for ${report.reportID}: ${metadataError.message}`
         );
 
-        if (metadataError) {
-          console.error(
-            `[s3] failed to read or create metadata for ${report.reportID}: ${metadataError.message}`
-          );
-
-          return report;
-        }
-
-        if (!metadata) {
-          return report;
-        }
-
-        return Object.assign(metadata, report);
+        return report;
       }
-    );
+
+      if (!metadata) {
+        return report;
+      }
+
+      return Object.assign(metadata, report);
+    });
   }
 
   async readOrParseReportMetadata(id: string): Promise<ReportHistory> {
@@ -854,7 +824,7 @@ export class S3 implements Storage {
       withFileTypes: true,
     });
 
-    await processBatch(this, files, this.batchSize, async (file) => {
+    await processWithConcurrency(files, this.batchSize, async (file) => {
       if (!file.isFile()) {
         return;
       }
@@ -1018,8 +988,12 @@ export class S3 implements Storage {
 
     console.log(`[s3] report generated: ${reportId} | ${reportPath}`);
 
+    // Calculate folder size before upload
+    const sizeBytes = await getFolderSize.loose(reportPath);
+    console.log(`[s3] generated report size: ${sizeBytes} bytes`);
+
     const { result: info, error: parseReportMetadataError } = await withError(
-      this.parseReportMetadata(reportId, reportPath, metadata)
+      this.parseReportMetadata(reportId, reportPath, metadata, undefined, sizeBytes)
     );
 
     if (parseReportMetadataError) console.error(parseReportMetadataError.message);
@@ -1064,7 +1038,8 @@ export class S3 implements Storage {
     reportId: string,
     reportPath: string,
     metadata?: ReportMetadata,
-    htmlContent?: string // to pass file content if stored on s3
+    htmlContent?: string, // to pass file content if stored on s3
+    sizeBytes?: number
   ): Promise<ReportMetadata> {
     console.log(`[s3] creating report metadata for ${reportId} and ${reportPath}`);
     const html = htmlContent ?? (await fs.readFile(path.join(reportPath, 'index.html'), 'utf-8'));
@@ -1074,9 +1049,12 @@ export class S3 implements Storage {
     const content = Object.assign(
       info,
       {
-        reportId,
+        reportID: reportId,
         createdAt: new Date().toISOString(),
+        reportUrl: `${serveReportRoute}/${reportId}/index.html`,
+        project: '',
       },
+      sizeBytes !== undefined ? { sizeBytes, size: bytesToString(sizeBytes) } : {},
       metadata ?? {}
     );
 
@@ -1252,5 +1230,118 @@ export class S3 implements Storage {
     }
 
     return null;
+  }
+
+  async uploadReportFromStream(
+    reportId: string,
+    zipStream: Readable,
+    metadata?: ReportMetadata
+  ): Promise<{ reportPath: string }> {
+    const remotePath = path.join(REPORTS_BUCKET, reportId);
+
+    const semaphore = new Semaphore(this.batchSize);
+    const parser = Parse();
+    const uploads: Promise<{ size: number }>[] = [];
+    let foundIndexHtml = false;
+
+    parser.on('entry', async (entry: Entry) => {
+      if (entry.type !== 'File') {
+        entry.autodrain();
+        return;
+      }
+
+      if (entry.path === 'index.html') {
+        foundIndexHtml = true;
+      }
+
+      const upload = semaphore.run(async () => {
+        const s3Key = path.join(remotePath, entry.path);
+
+        let entrySize = 0;
+        const countingPassThrough = new PassThrough({
+          transform(chunk, _encoding, callback) {
+            entrySize += chunk.length;
+            callback(null, chunk);
+          },
+        });
+
+        entry.pipe(countingPassThrough);
+
+        const uploadResult = await new Upload({
+          client: this.client,
+          params: {
+            Bucket: this.bucket,
+            Key: s3Key,
+            Body: countingPassThrough,
+          },
+        }).done();
+
+        if (uploadResult instanceof Error) {
+          throw uploadResult;
+        }
+
+        return { size: entrySize };
+      });
+
+      uploads.push(upload);
+    });
+
+    const parsingPromise = new Promise<void>((resolve, reject) => {
+      parser.on('error', reject);
+      parser.on('close', () => {
+        Promise.all(uploads)
+          .then(() => resolve())
+          .catch(reject);
+      });
+    });
+
+    await pipeline(zipStream, parser);
+    await parsingPromise;
+
+    if (!foundIndexHtml) {
+      throw new Error('index.html not found at root of uploaded report ZIP');
+    }
+
+    const totalSizeBytes = await Promise.all(uploads).then((results) =>
+      results.reduce((sum, { size }) => sum + size, 0)
+    );
+
+    const indexHtmlKey = path.join(remotePath, 'index.html');
+    const { result: indexObject, error: indexError } = await withError(
+      this.client.send(
+        new GetObjectCommand({
+          Bucket: this.bucket,
+          Key: indexHtmlKey,
+        })
+      )
+    );
+
+    if (indexError) {
+      throw new Error(`[s3] failed to retrieve index.html: ${indexError.message}`);
+    }
+
+    if (!indexObject) {
+      throw new Error('index.html not found in uploaded report');
+    }
+
+    const htmlContent = await this.streamToString(indexObject.Body as Readable);
+    const info = await this.parseReportMetadata(
+      reportId,
+      remotePath,
+      metadata,
+      htmlContent,
+      totalSizeBytes
+    );
+    await this.saveReportMetadata(reportId, remotePath, info);
+
+    return { reportPath: remotePath };
+  }
+
+  private async streamToString(stream: Readable): Promise<string> {
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks).toString('utf-8');
   }
 }

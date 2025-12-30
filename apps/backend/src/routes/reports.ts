@@ -1,11 +1,19 @@
+import { randomUUID } from 'node:crypto';
+import { PassThrough } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import type { FastifyInstance } from 'fastify';
+import { serveReportRoute } from '../lib/constants.js';
 import {
   DeleteReportsRequestSchema,
   GenerateReportRequestSchema,
   GetReportParamsSchema,
   ListReportsQuerySchema,
+  UploadReportRequestSchema,
 } from '../lib/schemas/index.js';
+import { reportDb } from '../lib/service/db/index.js';
 import { service } from '../lib/service/index.js';
+import { testManagementService } from '../lib/service/testManagement.js';
+import { storage } from '../lib/storage/index.js';
 import { parseFromRequest } from '../lib/storage/pagination.js';
 import { validateSchema } from '../lib/validation/index.js';
 import { withError } from '../lib/withError.js';
@@ -158,6 +166,72 @@ export async function registerReportRoutes(fastify: FastifyInstance) {
     } catch (error) {
       console.error('[routes] delete reports validation error:', error);
       return reply.status(400).send({ error: 'Invalid request format' });
+    }
+  });
+
+  fastify.post('/api/report/upload', async (request, reply) => {
+    let metadata: Record<string, unknown> = {};
+    let fileFound = false;
+    let passThrough: PassThrough | null = null;
+    const parts = request.parts();
+    const reportId = randomUUID();
+
+    try {
+      for await (const part of parts) {
+        if (part.type === 'field' && part.fieldname === 'metadata') {
+          try {
+            metadata = JSON.parse(part.value as string);
+          } catch {
+            // use empty metadata on parse error
+          }
+        } else if (part.type === 'file' && !fileFound) {
+          fileFound = true;
+          passThrough = new PassThrough();
+          const validatedMetadata = validateSchema(UploadReportRequestSchema, metadata) as Record<
+            string,
+            string | number | undefined
+          >;
+
+          const uploadPromise = storage.uploadReportFromStream(
+            reportId,
+            passThrough,
+            validatedMetadata
+          );
+          await pipeline(part.file, passThrough);
+
+          const { error: uploadError, result: uploaded } = await withError(uploadPromise);
+
+          if (uploadError) {
+            throw uploadError;
+          }
+
+          const report = await service.getReport(reportId, uploaded?.reportPath);
+          if (!report) {
+            throw new Error('Failed to read uploaded report');
+          }
+          reportDb.onCreated(report);
+
+          const { error: testsError } = await withError(
+            testManagementService.processReport(report)
+          );
+
+          if (testsError) {
+            console.error('[routes] upload report - process tests error:', testsError);
+          }
+
+          const reportUrl = `${serveReportRoute}/${reportId}/index.html`;
+          return { reportId, reportUrl, metadata: validatedMetadata };
+        }
+      }
+
+      if (!fileFound) {
+        return reply.status(400).send({ error: 'No file uploaded' });
+      }
+    } catch (error) {
+      console.error('[routes] upload report error:', error);
+      if (passThrough && !passThrough.destroyed) passThrough.destroy();
+      const message = error instanceof Error ? error.message : 'Upload failed';
+      return reply.status(500).send({ error: message });
     }
   });
 }

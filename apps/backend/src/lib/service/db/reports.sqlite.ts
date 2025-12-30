@@ -235,6 +235,10 @@ export class ReportDatabase {
     });
 
     deleteMany(reportIds);
+
+    for (const reportId of reportIds) {
+      testDb.deleteTestRunsByReportId(reportId);
+    }
   }
 
   public onCreated(report: ReportHistory) {

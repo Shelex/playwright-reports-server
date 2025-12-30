@@ -120,6 +120,18 @@ export const UploadResultResponseSchema = z.object({
   }),
 });
 
+export const UploadReportRequestSchema = z.looseObject({
+  project: z.string().optional(),
+  title: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+});
+
+export const UploadReportResponseSchema = z.object({
+  reportId: z.string(),
+  reportUrl: z.string(),
+  metadata: ReportMetadataSchema,
+});
+
 export const ServerInfoSchema = z.object({
   dataFolderSizeinMB: z.string(),
   numOfResults: z.number(),
@@ -152,6 +164,8 @@ export type DeleteResultsResponse = z.infer<typeof DeleteResultsResponseSchema>;
 export type GetReportParams = z.infer<typeof GetReportParamsSchema>;
 export type GetReportResponse = z.infer<typeof GetReportResponseSchema>;
 export type UploadResultResponse = z.infer<typeof UploadResultResponseSchema>;
+export type UploadReportRequest = z.infer<typeof UploadReportRequestSchema>;
+export type UploadReportResponse = z.infer<typeof UploadReportResponseSchema>;
 export type ServerInfo = z.infer<typeof ServerInfoSchema>;
 export type Config = z.infer<typeof ConfigSchema>;
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;

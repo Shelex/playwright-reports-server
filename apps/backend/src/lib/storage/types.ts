@@ -1,4 +1,4 @@
-import type { PassThrough } from 'node:stream';
+import type { PassThrough, Readable } from 'node:stream';
 import type {
   ReportInfo,
   ReportTest,
@@ -25,6 +25,11 @@ export interface Storage {
     resultsIds: string[],
     metadata?: ReportMetadata
   ) => Promise<{ reportId: UUID; reportPath: string }>;
+  uploadReportFromStream: (
+    reportId: string,
+    zipStream: Readable,
+    metadata?: ReportMetadata
+  ) => Promise<{ reportPath: string }>;
   readConfigFile: () => Promise<{
     result?: SiteWhiteLabelConfig;
     error: Error | null;

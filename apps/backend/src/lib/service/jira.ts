@@ -1,5 +1,6 @@
 import type { JiraConfig } from '@playwright-reports/shared';
 import { env } from '../../config/env.js';
+import { storage } from '../storage/index.js';
 
 export interface JiraIssueFields {
   summary: string;
@@ -272,8 +273,6 @@ export class JiraService {
     }
   ): Promise<JiraAttachment[]> {
     try {
-      const { storage } = await import('../storage/index.js');
-
       let fileName = attachment.name;
 
       if (!fileName.includes('.')) {

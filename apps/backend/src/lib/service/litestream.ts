@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from 'node:child_process';
+import { type ChildProcess, exec, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import fsPromises from 'node:fs/promises';
 import path from 'node:path';
@@ -13,6 +13,10 @@ const instance = globalThis as typeof globalThis & {
   [litestreamProcess]?: LitestreamService;
 };
 
+/**
+ * Service to manage Litestream process for SQLite replication to S3.
+ * @link https://litestream.io/
+ */
 export class LitestreamService {
   private process: ChildProcess | null = null;
   private readonly configPath: string;
@@ -79,8 +83,6 @@ export class LitestreamService {
   }
 
   private async restoreFromS3(): Promise<boolean> {
-    const { exec } = await import('node:child_process');
-
     const litestreamEnv = {
       ...process.env,
       S3_ACCESS_KEY_ID: env.S3_ACCESS_KEY || process.env.S3_ACCESS_KEY_ID,
@@ -131,7 +133,6 @@ export class LitestreamService {
       return;
     }
 
-    const { exec } = await import('node:child_process');
     exec('which litestream', (error) => {
       if (error) {
         console.warn('[litestream] Litestream binary not found, skipping replication');

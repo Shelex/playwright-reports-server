@@ -84,6 +84,7 @@ export class TestDatabase {
   private readonly deleteTestRunsStmt: Database.Statement<[string, string, string]>;
 
   private readonly getTestStatsStmt: Database.Statement<[string, string, string]>;
+  private readonly deleteTestRunsByReportIdStmt: Database.Statement<[string]>;
 
   private constructor() {
     this.insertTestStmt = this.db.prepare(`
@@ -163,6 +164,10 @@ export class TestDatabase {
       FROM test_runs
       WHERE testId = ? AND fileId = ? AND project = ?
     `);
+
+    this.deleteTestRunsByReportIdStmt = this.db.prepare(`
+      DELETE FROM test_runs WHERE reportId = ?
+    `);
   }
 
   public static getInstance(): TestDatabase {
@@ -219,6 +224,42 @@ export class TestDatabase {
 
   public deleteTestRuns(testId: string, fileId: string, project: string): void {
     this.deleteTestRunsStmt.run(testId, fileId, project);
+  }
+
+  public deleteTestRunsByReportId(reportId: string): number {
+    const transaction = this.db.transaction(() => {
+      // First, find all unique (testId, fileId, project) tuples that have runs for this report
+      const affectedTestsStmt = this.db.prepare(`
+        SELECT DISTINCT testId, fileId, project FROM test_runs WHERE reportId = ?
+      `);
+      const affectedTests = affectedTestsStmt.all(reportId) as Array<{
+        testId: string;
+        fileId: string;
+        project: string;
+      }>;
+
+      // Delete test runs for this report
+      const result = this.deleteTestRunsByReportIdStmt.run(reportId);
+
+      // For each affected test, check if it has any remaining runs
+      // If not, delete the test itself
+      const checkRunsStmt = this.db.prepare(`
+        SELECT COUNT(*) as count FROM test_runs WHERE testId = ? AND fileId = ? AND project = ?
+      `);
+
+      for (const test of affectedTests) {
+        const { count } = checkRunsStmt.get(test.testId, test.fileId, test.project) as {
+          count: number;
+        };
+        if (count === 0) {
+          this.deleteTestStmt.run(test.testId, test.fileId, test.project);
+        }
+      }
+
+      return result.changes;
+    });
+
+    return transaction();
   }
 
   public createTestRun(testRun: Omit<TestRun, 'runId'> & { runId?: string }): TestRun {

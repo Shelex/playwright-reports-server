@@ -2,16 +2,18 @@ import { randomUUID } from 'node:crypto';
 import { createWriteStream, type Dirent, type Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { PassThrough } from 'node:stream';
+import type { PassThrough, Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import type { ReportInfo, SiteWhiteLabelConfig } from '@playwright-reports/shared';
+import type { SiteWhiteLabelConfig } from '@playwright-reports/shared';
 import getFolderSize from 'get-folder-size';
+import { type Entry, Parse } from 'unzipper';
+import { env } from '../../config/env.js';
 import { defaultConfig, isConfigValid, noConfigErr } from '../config.js';
 import { serveReportRoute } from '../constants.js';
 import { parse } from '../parser/index.js';
 import { generatePlaywrightReport } from '../pw.js';
+import { processWithConcurrency, Semaphore } from '../utils/semaphore.js';
 import { withError } from '../withError.js';
-import { processBatch } from './batch.js';
 import {
   APP_CONFIG,
   DATA_FOLDER,
@@ -90,11 +92,7 @@ export async function readResults() {
   await createDirectoriesIfMissing();
   const files = await fs.readdir(RESULTS_FOLDER);
 
-  const stats = await processBatch<
-    string,
-    Stats & { filePath: string; size: string; sizeBytes: number }
-  >(
-    {},
+  const stats = await processWithConcurrency(
     files.filter((file) => file.endsWith('.json')),
     20,
     async (file) => {
@@ -110,14 +108,7 @@ export async function readResults() {
     }
   );
 
-  const results = await processBatch<
-    Stats & {
-      filePath: string;
-      size: string;
-      sizeBytes: number;
-    },
-    Result
-  >({}, stats, 10, async (entry) => {
+  const results = await processWithConcurrency(stats, 10, async (entry) => {
     const content = await fs.readFile(entry.filePath, 'utf-8');
 
     return {
@@ -213,40 +204,30 @@ export async function readReports(): Promise<ReadReportsOutput> {
 
   const reportEntries = entries.filter((entry) => entry.isDirectory());
 
-  const stats = await processBatch<Dirent, Stats & { filePath: string; createdAt: Date }>(
-    {},
-    reportEntries,
-    20,
-    async (file) => {
-      const filePath = path.join(REPORTS_FOLDER, file.name);
-      const stat = await fs.stat(filePath);
+  const stats = await processWithConcurrency(reportEntries, 20, async (file) => {
+    const filePath = path.join(REPORTS_FOLDER, file.name);
+    const stat = await fs.stat(filePath);
 
-      return Object.assign(stat, { filePath, createdAt: stat.birthtime });
-    }
-  );
+    return Object.assign(stat, { filePath, createdAt: stat.birthtime });
+  });
 
-  const reports = await processBatch<Stats & { filePath: string; createdAt: Date }, ReportHistory>(
-    {},
-    stats,
-    10,
-    async (file) => {
-      const id = path.basename(file.filePath);
-      const sizeBytes = await getFolderSize.loose(file.filePath);
-      const size = bytesToString(sizeBytes);
+  const reports = await processWithConcurrency(stats, 10, async (file) => {
+    const id = path.basename(file.filePath);
+    const sizeBytes = await getFolderSize.loose(file.filePath);
+    const size = bytesToString(sizeBytes);
 
-      const metadata = await readOrParseReportMetadata(id);
+    const metadata = await readOrParseReportMetadata(id);
 
-      return {
-        reportID: id,
-        project: metadata.project || '',
-        createdAt: file.birthtime,
-        size,
-        sizeBytes,
-        reportUrl: `${serveReportRoute}/${id}/index.html`,
-        ...metadata,
-      } as ReportHistory;
-    }
-  );
+    return {
+      reportID: id,
+      project: metadata.project || '',
+      createdAt: file.birthtime,
+      size,
+      sizeBytes,
+      reportUrl: `${serveReportRoute}/${id}/index.html`,
+      ...metadata,
+    } as ReportHistory;
+  });
 
   return { reports: reports, total: reports.length };
 }
@@ -264,7 +245,7 @@ export async function deleteResult(resultId: string) {
 export async function deleteReports(reports: ReportPath[]) {
   const paths = reports.map((report) => report.reportID);
 
-  await processBatch<string, void>(undefined, paths, 10, async (path) => {
+  await processWithConcurrency(paths, 10, async (path) => {
     await deleteReport(path);
   });
 }
@@ -385,6 +366,7 @@ async function parseReportMetadata(
       sizeBytes: await getFolderSize.loose(reportPath).then(bytesToString),
       size: bytesToString(sizeBytes),
       reportUrl: `${serveReportRoute}/${reportID}/index.html`,
+      project: '',
     },
     metadata ?? {}
   );
@@ -449,6 +431,79 @@ async function saveConfigFile(config: Partial<SiteWhiteLabelConfig>) {
   };
 }
 
+async function uploadReportFromStream(
+  reportId: string,
+  zipStream: Readable,
+  metadata?: ReportMetadata
+): Promise<{ reportPath: string }> {
+  await createDirectoriesIfMissing();
+
+  const reportPath = path.join(REPORTS_FOLDER, reportId);
+  await fs.mkdir(reportPath, { recursive: true });
+
+  const concurrency = env.S3_BATCH_SIZE || 10;
+  const semaphore = new Semaphore(concurrency);
+
+  const parser = Parse();
+  const uploads: Promise<void>[] = [];
+  let foundIndexHtml = false;
+
+  parser.on('entry', async (entry: Entry) => {
+    if (entry.type !== 'File') {
+      entry.autodrain();
+      return;
+    }
+
+    if (entry.path === 'index.html') {
+      foundIndexHtml = true;
+    }
+
+    const upload = semaphore.run(async () => {
+      const targetPath = path.join(reportPath, entry.path);
+      await fs.mkdir(path.dirname(targetPath), { recursive: true });
+
+      const writeStream = createWriteStream(targetPath);
+
+      await new Promise<void>((res, rej) => {
+        entry.pipe(writeStream);
+        writeStream.on('finish', res);
+        writeStream.on('error', rej);
+        entry.on('error', rej);
+      });
+    });
+
+    uploads.push(upload);
+  });
+
+  const parsingPromise = new Promise<void>((resolve, reject) => {
+    parser.on('error', reject);
+    parser.on('close', () => {
+      Promise.all(uploads)
+        .then(() => resolve())
+        .catch(reject);
+    });
+  });
+
+  await pipeline(zipStream, parser);
+  await parsingPromise;
+
+  if (!foundIndexHtml) {
+    throw new Error('index.html not found at root of uploaded report ZIP');
+  }
+
+  const indexPath = path.join(reportPath, 'index.html');
+  try {
+    await fs.access(indexPath);
+  } catch {
+    throw new Error('index.html not found in uploaded report');
+  }
+
+  const info = await parseReportMetadata(reportId, reportPath, metadata);
+  await saveReportMetadata(reportPath, info);
+
+  return { reportPath };
+}
+
 export const FS: Storage = {
   getServerDataInfo,
   readFile,
@@ -460,6 +515,7 @@ export const FS: Storage = {
   saveResult,
   saveResultDetails,
   generateReport,
+  uploadReportFromStream,
   readConfigFile,
   saveConfigFile,
 };
