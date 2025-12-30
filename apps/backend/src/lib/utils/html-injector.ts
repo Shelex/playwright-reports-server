@@ -101,7 +101,7 @@ async function injectClientSideScript(document: any, testUrl: ParsedTestUrl): Pr
   const script = document.createElement('script');
   script.textContent = `
     const reportId = '${testUrl.reportId}';
-    ${await fs.readFile('./src/lib/utils/llmButton.js', 'utf-8')}`;
+    ${await fs.readFile(new URL('./llmButton.js', import.meta.url), 'utf-8')}`;
   document.body.appendChild(script);
 }
 
