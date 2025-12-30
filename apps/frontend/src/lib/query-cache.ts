@@ -1,5 +1,4 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { withBase } from './url';
 
 export const invalidateCache = async (
   queryClient: QueryClient,
@@ -23,9 +22,6 @@ export const invalidateCache = async (
         });
       }
     }
-
-    // Call server-side cache refresh
-    await fetch(withBase('/api/cache/refresh'), { method: 'POST' });
   } catch (error) {
     console.error('Failed to invalidate cache:', error);
   }

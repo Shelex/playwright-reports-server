@@ -17,9 +17,9 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@heroui/react": "2.7.4",
-    "@heroui/system": "2.4.11",
-    "@heroui/theme": "2.4.11",
+    "@heroui/react": "2.8.7",
+    "@heroui/system": "2.4.25",
+    "@heroui/theme": "2.4.25",
     "@playwright-reports/shared": "workspace:*",
     "@react-aria/selection": "^3.27.0",
     "@react-aria/ssr": "^3.9.10",

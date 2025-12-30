@@ -207,7 +207,7 @@ export default function ReportsTable({ onChange }: Readonly<ReportsTableProps>) 
         <TableBody
           emptyContent="No reports."
           isLoading={isFetching || isPending}
-          items={reports ?? []}
+          items={reports?.sort((a, b) => (b.displayNumber ?? 0) - (a.displayNumber ?? 0)) ?? []}
           loadingContent={<Spinner />}
         >
           {(item) => (

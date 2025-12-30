@@ -46,7 +46,6 @@ const useMutation = <TData = unknown, TVariables = unknown>(
         toast.error(`Network response was not ok: ${respText}`);
         throw new Error(`Network response was not ok: ${respText}`);
       }
-      console.log(`[useMutation] response: ${respText}`);
 
       return JSON.parse(respText);
     },

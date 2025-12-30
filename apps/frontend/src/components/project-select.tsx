@@ -53,7 +53,6 @@ export default function ProjectSelect({
         }
 
         setLocalStorageProject(stored);
-        console.log(`[ProjectSelect] Loaded selected project from localStorage: ${stored}`);
       }
     } catch (error) {
       console.warn('Failed to read from localStorage:', error);
@@ -70,9 +69,6 @@ export default function ProjectSelect({
         localStorageProject !== defaultProjectName &&
         !isLoading
       ) {
-        console.log(
-          `[ProjectSelect] localStorage project ${localStorageProject} is no longer valid, clearing it`
-        );
         localStorage.removeItem(localStorageKey);
         setLocalStorageProject(null);
       }

@@ -227,7 +227,6 @@ export default function SettingsPage() {
           [newLinkData.name]: newLinkData.url,
         },
       });
-      console.log('Added link:', newLinkData.name, 'with URL:', newLinkData.url);
       setNewLinkData({ name: '', url: '' });
       setShowAddLinkModal(false);
     }
