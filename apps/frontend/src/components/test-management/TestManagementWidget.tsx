@@ -108,7 +108,40 @@ export default function TestManagementWidget({ project }: Readonly<TestManagemen
     }
   );
 
-  const tests = useMemo(() => testsResponse?.data || [], [testsResponse]);
+  /**
+   * Sorting priorities:
+   * 1) Quarantined
+   * 2) High flakiness score (high to low)
+   * 3) Pass rate (low to high)
+   */
+  const tests = useMemo(() => {
+    const data = testsResponse?.data || [];
+
+    const getPassRate = (test: TestWithQuarantineInfo): number => {
+      if (!test.runs || test.runs.length === 0) {
+        return 1; // No data means 100% pass rate (lowest priority)
+      }
+      const passedRuns = test.runs.filter((run) => run.outcome === 'passed').length;
+      return passedRuns / test.runs.length;
+    };
+
+    return [...data].sort((prev, next) => {
+      if ((prev.isQuarantined ?? false) !== (next.isQuarantined ?? false)) {
+        return (next.isQuarantined ?? false) ? 1 : -1;
+      }
+
+      const prevFlakiness = prev.flakinessScore ?? 0;
+      const nextFlakiness = next.flakinessScore ?? 0;
+      const flakinessDiff = Math.abs(prevFlakiness - nextFlakiness) > 0.01;
+      if (flakinessDiff) {
+        return nextFlakiness - prevFlakiness;
+      }
+
+      const aPassRate = getPassRate(prev);
+      const bPassRate = getPassRate(next);
+      return aPassRate - bPassRate;
+    });
+  }, [testsResponse]);
 
   const getFlakinessColor = (score?: number) => {
     if (!score) return 'default';
