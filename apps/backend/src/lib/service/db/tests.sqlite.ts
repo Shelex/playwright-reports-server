@@ -1,7 +1,7 @@
+import type { ReportTestOutcomeEnum } from '@playwright-reports/shared';
 import type Database from 'better-sqlite3';
 import { v4 as uuid } from 'uuid';
 import { getDatabase } from './db.js';
-import { ReportTestOutcomeEnum } from '@playwright-reports/shared';
 
 const initiatedTestsDb = Symbol.for('playwright.reports.db.tests');
 const instance = globalThis as typeof globalThis & {

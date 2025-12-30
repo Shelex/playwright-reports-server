@@ -1,4 +1,4 @@
-FROM node:22-alpine AS base
+FROM node:22-alpine AS build-base
 
 # Install pnpm globally
 RUN npm install -g pnpm
@@ -6,20 +6,27 @@ RUN npm install -g pnpm
 # Install build tools for native dependencies (better-sqlite3, sharp, esbuild)
 RUN apk add --no-cache python3 make g++ libc6-compat curl
 
-# Install Litestream for SQLite replication (download from GitHub releases)
-ENV LITESTREAM_VERSION=0.3.13
-RUN curl -fsSL "https://github.com/benbjohnson/litestream/releases/download/v${LITESTREAM_VERSION}/litestream-v${LITESTREAM_VERSION}-linux-amd64.tar.gz" | tar -xz && \
-    mv litestream /usr/local/bin/litestream && \
-    chmod +x /usr/local/bin/litestream
-
 # Set CI environment variable for pnpm
 # This prevents pnpm from prompting for input when removing node_modules
 ENV CI=true
 
+# Runner base: minimal runtime image with only Node.js and Litestream
+FROM node:22-alpine AS runner-base
+
+# Install Litestream for SQLite replication
+ENV LITESTREAM_VERSION=0.3.13
+RUN apk add --no-cache curl && \
+    curl -fsSL "https://github.com/benbjohnson/litestream/releases/download/v${LITESTREAM_VERSION}/litestream-v${LITESTREAM_VERSION}-linux-amd64.tar.gz" | tar -xz && \
+    mv litestream /usr/local/bin/litestream && \
+    chmod +x /usr/local/bin/litestream && \
+    apk del curl
+
+ENV NODE_ENV=production
+
 # Install all dependencies for monorepo from the ROOT
 # This is critical: pnpm install must run from root where pnpm-workspace.yaml
 # and root package.json with overrides are located
-FROM base AS deps
+FROM build-base AS deps
 WORKDIR /app
 
 # Copy workspace configuration files first
@@ -34,7 +41,7 @@ COPY apps/ ./apps/
 RUN pnpm install --frozen-lockfile
 
 # Build shared package first using pnpm filter from root
-FROM base AS shared-builder
+FROM build-base AS shared-builder
 WORKDIR /app
 
 # Copy the entire workspace structure with node_modules from deps
@@ -45,7 +52,7 @@ COPY --from=deps /app/ ./
 RUN pnpm --filter @playwright-reports/shared build
 
 # Build frontend
-FROM base AS frontend-builder
+FROM build-base AS frontend-builder
 WORKDIR /app
 
 # Copy the entire workspace structure with node_modules from deps
@@ -65,7 +72,7 @@ ENV DOCKER_BUILD=true
 RUN pnpm --filter @playwright-reports/frontend build:vite
 
 # Build backend
-FROM base AS backend-builder
+FROM build-base AS backend-builder
 WORKDIR /app
 
 # Copy the entire workspace structure with node_modules from deps
@@ -83,20 +90,31 @@ RUN pnpm --filter @playwright-reports/backend build
 RUN pnpm install --prod --frozen-lockfile --ignore-scripts
 
 # Production image
-FROM base AS runner
+FROM runner-base AS runner
 WORKDIR /app
-
-ENV NODE_ENV=production
 
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 --ingroup nodejs appuser
 
-# Copy all node_modules from backend-builder (already pruned of dev deps)
+# Copy root node_modules (contains all dependencies)
 COPY --from=backend-builder --chown=appuser:nodejs /app/node_modules ./node_modules
-COPY --from=backend-builder --chown=appuser:nodejs /app/apps ./apps
-COPY --from=backend-builder --chown=appuser:nodejs /app/packages ./packages
 
-# Copy frontend build
+# Copy workspace package node_modules (pnpm symlinks for workspace resolution)
+COPY --from=backend-builder --chown=appuser:nodejs /app/apps/backend/node_modules ./apps/backend/node_modules
+
+# Copy shared package (needed as workspace dependency)
+COPY --from=backend-builder --chown=appuser:nodejs /app/packages/shared ./packages/shared
+
+# Copy only the backend dist folder (not full source code)
+COPY --from=backend-builder --chown=appuser:nodejs /app/apps/backend/dist ./apps/backend/dist
+
+# Copy backend public folder (static assets like logo.svg, favicon.ico)
+COPY --from=backend-builder --chown=appuser:nodejs /app/apps/backend/public ./apps/backend/public
+
+# Copy backend package.json for version/metadata access
+COPY --from=backend-builder --chown=appuser:nodejs /app/apps/backend/package.json ./apps/backend/package.json
+
+# Copy frontend dist
 COPY --from=frontend-builder --chown=appuser:nodejs /app/apps/frontend/dist ./apps/frontend/dist
 
 # Copy environment configuration (for default values)
