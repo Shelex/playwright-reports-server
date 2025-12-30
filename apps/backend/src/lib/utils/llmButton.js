@@ -187,13 +187,129 @@ function showLLMAnalysis(prompt, askBtn, testId = 'unknown') {
       prompt: prompt,
     }),
   })
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.success) {
-        content.innerHTML = formatLLMResponse(data.data);
-      } else {
-        throw new Error(data.error || 'Analysis failed');
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+
+      let accumulatedContent = '';
+      let modelData = null;
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      content.innerHTML = `
+        <div style="
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        ">
+          <div style="
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          ">
+            <div style="
+              width: 32px;
+              height: 32px;
+              background: linear-gradient(135deg, #10b981, #059669);
+              border-radius: 8px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: white;
+              font-size: 16px;
+            ">🔍</div>
+            <h2 style="margin: 0; color: #1f2937; font-size: 20px; font-weight: 600;">Test Failure Analysis</h2>
+          </div>
+          <div id="llm-streaming-content" style="
+            background: #f9fafb;
+            border-left: 4px solid #3b82f6;
+            padding: 20px;
+            border-radius: 8px;
+            min-height: 60px;
+            line-height: 1.7;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 15px;
+            color: #1f2937;
+          "></div>
+          <div id="llm-streaming-footer" style="
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7eb;
+            margin-top: 8px;
+            font-size: 13px;
+            color: #6b7280;
+          "></div>
+        </div>
+      `;
+
+      const streamingContent = document.getElementById('llm-streaming-content');
+      const streamingFooter = document.getElementById('llm-streaming-footer');
+
+      function processText(text) {
+        accumulatedContent += text;
+        streamingContent.textContent = accumulatedContent;
+        streamingContent.scrollTop = streamingContent.scrollHeight;
+      }
+
+      function finalizeResponse() {
+        streamingContent.innerHTML = markdownToHtml(accumulatedContent);
+
+        if (streamingFooter) {
+          streamingFooter.style.display = 'flex';
+          streamingFooter.innerHTML = `
+            <div>Analysis powered by ${modelData || 'LLM'}</div>
+            <div>${new Date().toLocaleString()}</div>
+          `;
+        }
+      }
+
+      return new Promise((resolve, reject) => {
+        function read() {
+          reader
+            .read()
+            .then(({ done, value }) => {
+              if (done) {
+                finalizeResponse();
+                resolve();
+                return;
+              }
+
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+
+              for (const line of lines) {
+                const trimmedLine = line.trim();
+                if (!trimmedLine || !trimmedLine.startsWith('data: ')) {
+                  continue;
+                }
+
+                try {
+                  const data = JSON.parse(trimmedLine.slice(6));
+
+                  if (data.type === 'token' && data.content) {
+                    processText(data.content);
+                  } else if (data.type === 'done') {
+                    modelData = data.model;
+                  } else if (data.type === 'error') {
+                    throw new Error(data.error || 'Stream error occurred');
+                  }
+                } catch (parseError) {
+                  console.error('Failed to parse SSE data:', parseError);
+                }
+              }
+
+              read();
+            })
+            .catch(reject);
+        }
+
+        read();
+      });
     })
     .catch((error) => {
       console.error('Analysis error:', error);

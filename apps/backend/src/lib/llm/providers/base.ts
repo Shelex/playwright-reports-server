@@ -1,11 +1,39 @@
 import { withError } from '../../withError.js';
-import type { LLMRequest, LLMResponse } from '../types/index.js';
+import type { LLMRequest, LLMResponse, LLMStreamChunk } from '../types/index.js';
 import { BaseLLMProvider as BaseProvider, LLMProviderError } from '../types/index.js';
 
 export abstract class LLMProvider extends BaseProvider {
   protected abstract getApiEndpoint(): string;
+  protected abstract getStreamApiEndpoint(): string;
   protected abstract getModelsEndpoint(): string;
   protected abstract getDefaultHeaders(): Record<string, string>;
+
+  async sendMessageStream(
+    prompt: string,
+    onChunk: (chunk: LLMStreamChunk) => void,
+    systemPrompt?: string
+  ): Promise<void> {
+    let modelToUse = this.config.model;
+
+    if (!modelToUse) {
+      const bestModel = await this.getBestAvailableModel();
+      if (!bestModel) {
+        onChunk({
+          type: 'error',
+          error: 'No model configured and no suitable models found',
+        });
+        return;
+      }
+      modelToUse = bestModel;
+    }
+
+    const request = this.createRequest(prompt, systemPrompt, modelToUse);
+
+    return this.retryRequest(async () => {
+      const response = await this.withTimeout(this.sendStreamRequest(request));
+      return this.processStream(response, onChunk);
+    });
+  }
 
   async sendMessage(prompt: string, systemPrompt?: string): Promise<LLMResponse> {
     let modelToUse = this.config.model;
@@ -110,6 +138,29 @@ export abstract class LLMProvider extends BaseProvider {
     return result;
   }
 
+  protected async sendStreamRequest(request: LLMRequest): Promise<Response> {
+    const streamHeaders = {
+      ...this.getHeaders(),
+    };
+
+    const { result, error } = await withError(
+      fetch(this.getStreamApiEndpoint(), {
+        method: 'POST',
+        headers: streamHeaders,
+        body: JSON.stringify(this.formatStreamRequestBody(request)),
+      })
+    );
+
+    if (error) {
+      throw new LLMProviderError(`Network error: ${error.message}`, 'network');
+    }
+
+    if (!result) {
+      throw new LLMProviderError('No response received', 'network');
+    }
+    return result;
+  }
+
   protected getHeaders(): Record<string, string> {
     return {
       'Content-Type': 'application/json',
@@ -118,6 +169,7 @@ export abstract class LLMProvider extends BaseProvider {
   }
 
   protected abstract formatRequestBody(request: LLMRequest): unknown;
+  protected abstract formatStreamRequestBody(request: LLMRequest): unknown;
   protected abstract extractModelIds(data: unknown): string[];
 
   protected async getBestAvailableModel(): Promise<string | null> {

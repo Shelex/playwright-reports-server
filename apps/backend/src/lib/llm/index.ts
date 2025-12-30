@@ -2,7 +2,7 @@ import { env } from '../../config/env.js';
 import { getCustomSystemPrompt, testFailedWithContext } from './prompts/index.js';
 import { AnthropicProvider } from './providers/anthropic.js';
 import { OpenAIProvider } from './providers/openai.js';
-import type { LLMProviderConfig } from './types/index.js';
+import type { LLMProviderConfig, LLMStreamChunk } from './types/index.js';
 
 export class LLMService {
   private static instance: LLMService;
@@ -62,6 +62,7 @@ export class LLMService {
     return this.provider.getAvailableModels();
   }
 
+  // previous implementation with sync request
   async sendMessage(
     prompt: string,
     systemPrompt?: string,
@@ -86,6 +87,35 @@ export class LLMService {
     const finalSystemPrompt = getCustomSystemPrompt(systemPrompt);
 
     return this.provider.sendMessage(enhancedPrompt, finalSystemPrompt);
+  }
+
+  async sendMessageStream(
+    prompt: string,
+    onChunk: (chunk: LLMStreamChunk) => void,
+    options?: {
+      systemPrompt?: string;
+      context?: {
+        totalRuns?: number;
+        averageDuration?: number;
+        isFlaky?: boolean;
+        recentFailures?: number;
+        additionalContext?: string;
+      };
+    }
+  ): Promise<void> {
+    if (!this.provider) {
+      throw new Error('LLM provider not initialized');
+    }
+
+    let enhancedPrompt = prompt;
+
+    if (options?.context) {
+      enhancedPrompt = testFailedWithContext(prompt, options.context);
+    }
+
+    const finalSystemPrompt = getCustomSystemPrompt(options?.systemPrompt);
+
+    return this.provider.sendMessageStream(enhancedPrompt, onChunk, finalSystemPrompt);
   }
 
   private createProvider(): OpenAIProvider | AnthropicProvider {

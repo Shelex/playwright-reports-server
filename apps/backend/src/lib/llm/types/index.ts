@@ -23,6 +23,29 @@ export interface LLMResponse {
   finishReason?: string;
 }
 
+export interface LLMStreamChunk {
+  type: 'token' | 'done' | 'error';
+  content?: string;
+  model?: string;
+  usage?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens?: number;
+  };
+  finishReason?: string;
+  error?: string;
+}
+
+export interface StreamAccumulator {
+  buffer: string;
+  usage?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens?: number;
+  };
+  finishReason?: string;
+}
+
 export interface LLMModelError {
   code: string;
   message: string;
@@ -55,12 +78,22 @@ export abstract class BaseLLMProvider {
   }
 
   abstract sendMessage(prompt: string, systemPrompt?: string): Promise<LLMResponse>;
+  abstract sendMessageStream(
+    prompt: string,
+    onChunk: (chunk: LLMStreamChunk) => void,
+    systemPrompt?: string
+  ): Promise<void>;
   abstract validateConfig(): Promise<boolean>;
   abstract getAvailableModels(): Promise<string[]>;
 
   protected abstract createRequest(prompt: string, systemPrompt?: string): LLMRequest;
   protected abstract sendRequest(request: LLMRequest): Promise<Response>;
+  protected abstract sendStreamRequest(request: LLMRequest): Promise<Response>;
   protected abstract parseResponse(response: Response): Promise<LLMResponse>;
+  protected abstract parseStreamLine(
+    line: string,
+    accumulator: StreamAccumulator
+  ): LLMStreamChunk | null;
   protected abstract handleError(error: unknown): LLMProviderError;
 
   protected async retryRequest<T>(
@@ -104,6 +137,61 @@ export abstract class BaseLLMProvider {
     });
 
     return Promise.race([promise, timeoutPromise]);
+  }
+
+  protected async processStream(
+    response: Response,
+    onChunk: (chunk: LLMStreamChunk) => void
+  ): Promise<void> {
+    if (!response.ok) {
+      throw this.handleError({
+        status: response.status,
+        statusText: response.statusText,
+      });
+    }
+
+    if (!response.body) {
+      throw new LLMProviderError('No response body', 'network');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    const accumulator: StreamAccumulator = {
+      buffer: '',
+    };
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+          if (!trimmedLine || trimmedLine.startsWith(':')) {
+            continue;
+          }
+
+          const chunk = this.parseStreamLine(trimmedLine, accumulator);
+          if (chunk) {
+            onChunk(chunk);
+          }
+        }
+      }
+
+      onChunk({
+        type: 'done',
+        model: this.config.model,
+        usage: accumulator.usage,
+        finishReason: accumulator.finishReason,
+      });
+    } finally {
+      reader.releaseLock();
+    }
   }
 }
 

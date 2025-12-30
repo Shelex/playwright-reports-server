@@ -7,6 +7,7 @@ export interface AnthropicRequest {
   }>;
   system?: string;
   temperature?: number;
+  stream?: boolean;
 }
 
 export interface AnthropicResponse {
@@ -76,4 +77,55 @@ export interface OpenAIModel {
 
 export interface OpenAIModelList {
   data: OpenAIModel[];
+}
+
+export interface OpenAIStreamChoice {
+  index: number;
+  delta: {
+    content?: string;
+    role?: string;
+  };
+  finish_reason: string | null;
+}
+
+export interface OpenAIStreamUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
+export interface OpenAIStreamChunk {
+  id: string;
+  object: string;
+  created: number;
+  model: string;
+  choices: OpenAIStreamChoice[];
+  usage?: OpenAIStreamUsage;
+}
+
+export interface AnthropicStreamContentBlockDelta {
+  type: string;
+  delta: {
+    type: string;
+    text?: string;
+  };
+}
+
+export interface AnthropicStreamChunk {
+  type: string;
+  index?: number;
+  delta?: {
+    type: string;
+    text?: string;
+  };
+  content_block?: AnthropicStreamContentBlockDelta;
+  usage?: {
+    output_tokens: number;
+  };
+  message?: {
+    usage: {
+      input_tokens: number;
+      output_tokens: number;
+    };
+  };
 }

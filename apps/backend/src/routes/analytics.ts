@@ -29,27 +29,30 @@ export async function registerAnalyticsRoutes(fastify: FastifyInstance) {
 
       if (!testId || !reportId || !prompt) {
         reply.status(400);
-        return {
+        reply.send({
           success: false,
           error: 'Missing some of required parameters: testId, reportId, prompt',
-        };
+        });
+        return;
       }
 
       if (!llmService.isConfigured()) {
         reply.status(400);
-        return {
+        reply.send({
           success: false,
           error: 'LLM service is not enabled. Set LLM_BASE_URL and LLM_API_TOKEN to enable',
-        };
+        });
+        return;
       }
 
       const { error: llmInitError } = await withError(llmService.initialize());
       if (llmInitError) {
         reply.status(400);
-        return {
+        reply.send({
           success: false,
           error: `LLM initialization error: ${llmInitError instanceof Error ? llmInitError.message : 'Unknown initialization error'}`,
-        };
+        });
+        return;
       }
 
       console.log(`[llm] Fetching historical data for testId: ${testId}, reportId: ${reportId}`);
@@ -79,31 +82,45 @@ export async function registerAnalyticsRoutes(fastify: FastifyInstance) {
         context.recentFailures = recentFailures;
       }
 
-      const { result: response, error } = await withError(
-        llmService.sendMessage(prompt, undefined, context)
-      );
-      if (error || !response) {
-        reply.status(400);
-        return { success: false, error: 'Failed to get response from LLM service' };
+      reply.raw.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      });
+
+      const sendChunk = (chunk: {
+        type: string;
+        content?: string;
+        model?: string;
+        usage?: any;
+        finishReason?: string;
+        error?: string;
+      }) => {
+        reply.raw.write(`data: ${JSON.stringify(chunk)}\n\n`);
+      };
+
+      try {
+        await llmService.sendMessageStream(prompt, sendChunk, {
+          context,
+        });
+      } catch (streamError) {
+        sendChunk({
+          type: 'error',
+          error: streamError instanceof Error ? streamError.message : 'Stream error occurred',
+        });
       }
 
-      return {
-        success: true,
-        data: {
-          content: response.content,
-          usage: response.usage,
-          model: response.model,
-          testId,
-          reportId,
-        },
-      };
+      reply.raw.end();
     } catch (error) {
       fastify.log.error({
-        error: 'LLM analysis error',
+        error: 'LLM streaming analysis error',
         message: error instanceof Error ? error.message : String(error),
       });
-      reply.status(500);
-      return { success: false, error: 'Failed to analyze test with LLM' };
+      if (!reply.sent) {
+        reply.status(500);
+        reply.send({ success: false, error: 'Failed to analyze test with LLM' });
+      }
     }
   });
 }

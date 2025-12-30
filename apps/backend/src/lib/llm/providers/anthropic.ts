@@ -1,9 +1,18 @@
-import type { LLMRequest, LLMResponse } from '../types/index.js';
+import type { LLMRequest, LLMResponse, LLMStreamChunk, StreamAccumulator } from '../types/index.js';
 import { LLMProvider } from './base.js';
-import type { AnthropicModelList, AnthropicRequest, AnthropicResponse } from './types.js';
+import type {
+  AnthropicModelList,
+  AnthropicRequest,
+  AnthropicResponse,
+  AnthropicStreamChunk,
+} from './types.js';
 
 export class AnthropicProvider extends LLMProvider {
   protected getApiEndpoint(): string {
+    return `${this.config.baseUrl}/messages`;
+  }
+
+  protected getStreamApiEndpoint(): string {
     return `${this.config.baseUrl}/messages`;
   }
 
@@ -29,8 +38,15 @@ export class AnthropicProvider extends LLMProvider {
     } as AnthropicRequest;
   }
 
-  protected formatRequestBody(request: AnthropicRequest): AnthropicRequest {
-    return request;
+  protected formatRequestBody(request: LLMRequest): AnthropicRequest {
+    return request as AnthropicRequest;
+  }
+
+  protected formatStreamRequestBody(request: LLMRequest): AnthropicRequest {
+    return {
+      ...(request as AnthropicRequest),
+      stream: true,
+    };
   }
 
   protected async parseResponse(response: Response): Promise<LLMResponse> {
@@ -46,6 +62,50 @@ export class AnthropicProvider extends LLMProvider {
       model: data.model || this.config.model,
       finishReason: data.stop_reason || undefined,
     };
+  }
+
+  protected parseStreamLine(line: string, accumulator: StreamAccumulator): LLMStreamChunk | null {
+    if (!line.startsWith('data: ')) {
+      return null;
+    }
+
+    const data = line.slice(6); // Remove 'data: ' prefix
+
+    try {
+      const chunk = JSON.parse(data) as AnthropicStreamChunk;
+
+      if (chunk.type === 'content_block_delta' && chunk.delta?.type === 'text_delta') {
+        const text = chunk.delta.text;
+        if (text) {
+          return {
+            type: 'token',
+            content: text,
+          };
+        }
+      }
+
+      if (chunk.type === 'message_stop' && chunk.message?.usage) {
+        accumulator.usage = {
+          inputTokens: chunk.message.usage.input_tokens || 0,
+          outputTokens: chunk.message.usage.output_tokens || 0,
+          totalTokens:
+            (chunk.message.usage.input_tokens || 0) + (chunk.message.usage.output_tokens || 0),
+        };
+      }
+
+      if (chunk.type === 'message_start' && chunk.message?.usage) {
+        accumulator.usage = {
+          inputTokens: chunk.message.usage.input_tokens || 0,
+          outputTokens: chunk.message.usage.output_tokens || 0,
+          totalTokens:
+            (chunk.message.usage.input_tokens || 0) + (chunk.message.usage.output_tokens || 0),
+        };
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
   }
 
   protected extractModelIds(data: AnthropicModelList): string[] {
