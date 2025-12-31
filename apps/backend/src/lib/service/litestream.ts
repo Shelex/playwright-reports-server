@@ -1,12 +1,9 @@
 import { type ChildProcess, exec, spawn } from 'node:child_process';
-import fs from 'node:fs';
-import fsPromises from 'node:fs/promises';
+import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { env } from '../../config/env.js';
 import { withError } from '../withError.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const litestreamProcess = Symbol.for('playwright.reports.litestream');
 const instance = globalThis as typeof globalThis & {
@@ -19,28 +16,89 @@ const instance = globalThis as typeof globalThis & {
  */
 export class LitestreamService {
   private process: ChildProcess | null = null;
-  private readonly configPath: string;
+  private configPath: string;
   private readonly dbPath: string;
 
   private constructor() {
-    this.configPath = this.resolveConfigPath();
     this.dbPath = path.join(process.cwd(), 'data', 'metadata.db');
+    this.configPath = path.join(os.tmpdir(), 'litestream.yml');
   }
 
   private get usesS3() {
     return env.DATA_STORAGE === 's3';
   }
 
-  private resolveConfigPath(): string {
-    const dockerPath = '/app/litestream.yml';
-    const localPath = path.join(__dirname, '..', '..', '..', '..', 'litestream.yml');
+  private generateConfig(): string {
+    const s3Path = 'litestream';
+    const bucket = env.S3_BUCKET;
+    const region = env.S3_REGION || 'us-east-1';
+    const endpoint = env.S3_ENDPOINT;
+    const accessKeyId = env.S3_ACCESS_KEY;
+    const secretAccessKey = env.S3_SECRET_KEY;
 
-    try {
-      fs.accessSync(dockerPath);
-      return dockerPath;
-    } catch {
-      return localPath;
+    if (!bucket || !accessKeyId || !secretAccessKey) {
+      throw new Error(
+        'Missing required S3 configuration for Litestream: S3_BUCKET, S3_ACCESS_KEY, S3_SECRET_KEY'
+      );
     }
+
+    const config = {
+      dbs: [
+        {
+          path: this.dbPath,
+          replicas: [
+            {
+              url: `s3://${bucket}/${s3Path}/metadata.db`,
+              'access-key-id': accessKeyId,
+              'secret-access-key': secretAccessKey,
+              region: region,
+              ...(endpoint && { endpoint: endpoint }),
+              'force-path-style': 'true',
+              'sync-interval': '1s',
+              'snapshot-interval': '3h',
+              retention: '24h',
+              'retention-check-interval': '1h',
+            },
+          ],
+        },
+      ],
+    };
+
+    return this.toYaml(config);
+  }
+
+  private toYaml(obj: unknown, indent = 0): string {
+    const spaces = '  '.repeat(indent);
+
+    if (Array.isArray(obj)) {
+      return obj.map((item) => this.toYaml(item, indent)).join('\n');
+    }
+
+    if (typeof obj === 'object' && obj !== null) {
+      const entries = Object.entries(obj);
+      return entries
+        .map(([key, value]) => {
+          if (Array.isArray(value)) {
+            return `${spaces}${key}:\n${this.toYaml(value, indent + 1)}`;
+          }
+          if (typeof value === 'object' && value !== null) {
+            return `${spaces}${key}:\n${this.toYaml(value, indent + 1)}`;
+          }
+          if (typeof value === 'string' && (value === '' || /[\s:]/.test(value))) {
+            return `${spaces}${key}: "${value}"`;
+          }
+          return `${spaces}${key}: ${value}`;
+        })
+        .join('\n');
+    }
+
+    return String(obj);
+  }
+
+  private async ensureConfigExists(): Promise<void> {
+    const config = this.generateConfig();
+    await fs.writeFile(this.configPath, config, 'utf-8');
+    console.log(`[litestream] Generated config from env package: ${this.configPath}`);
   }
 
   public static getInstance(): LitestreamService {
@@ -53,6 +111,7 @@ export class LitestreamService {
       return false;
     }
 
+    await this.ensureConfigExists();
     const dbExists = await this.databaseExists();
 
     if (!dbExists) {
@@ -88,7 +147,7 @@ export class LitestreamService {
 
   private async databaseExists(): Promise<boolean> {
     try {
-      await fsPromises.access(this.dbPath);
+      await fs.access(this.dbPath);
       return true;
     } catch {
       return false;
@@ -154,16 +213,7 @@ export class LitestreamService {
   }
 
   private buildLitestreamEnv() {
-    return {
-      ...process.env,
-      S3_ACCESS_KEY_ID: env.S3_ACCESS_KEY || process.env.S3_ACCESS_KEY_ID,
-      S3_SECRET_ACCESS_KEY: env.S3_SECRET_KEY || process.env.S3_SECRET_ACCESS_KEY,
-      S3_BUCKET: env.S3_BUCKET || process.env.S3_BUCKET,
-      S3_REGION: env.S3_REGION || process.env.S3_REGION,
-      S3_ENDPOINT: env.S3_ENDPOINT || process.env.S3_ENDPOINT,
-      S3_PATH: 'litestream',
-      S3_FORCE_PATH_STYLE: 'true',
-    };
+    return { ...process.env };
   }
 
   public async start(): Promise<void> {
@@ -176,7 +226,12 @@ export class LitestreamService {
       return;
     }
 
-    const { error } = await withError(fsPromises.access(this.configPath));
+    await this.ensureConfigExists();
+    console.log(`[litestream] Using config from env package: ${this.configPath}`);
+    console.log(`[litestream] S3 bucket: ${env.S3_BUCKET}`);
+    console.log(`[litestream] S3 endpoint: ${env.S3_ENDPOINT || 'default (AWS)'}`);
+
+    const { error } = await withError(fs.access(this.configPath));
 
     if (error) {
       console.warn('[litestream] Config file not found, skipping replication');
@@ -189,16 +244,7 @@ export class LitestreamService {
       return;
     }
 
-    exec('which litestream', (error) => {
-      if (error) {
-        console.warn('[litestream] Litestream binary not found, skipping replication');
-        console.warn('[litestream] Install with: https://litestream.io/install/');
-        return;
-      }
-    });
-
     console.log('[litestream] Starting replication process');
-    console.log(`[litestream] Config: ${this.configPath}`);
     console.log(`[litestream] Database: ${this.dbPath}`);
 
     const litestreamEnv = this.buildLitestreamEnv();
