@@ -58,7 +58,14 @@ export default function LoginForm() {
       redirect: false,
     });
 
-    result?.error ? setError('invalid API key') : navigate(callbackUrl, { replace: true });
+    if (result?.error) {
+      setError('invalid API key');
+    } else {
+      if (result?.user?.jwtToken) {
+        localStorage.setItem('jwtToken', result.user.jwtToken);
+      }
+      navigate(callbackUrl, { replace: true });
+    }
   };
 
   // Show spinner while session is loading or while auto-signing in

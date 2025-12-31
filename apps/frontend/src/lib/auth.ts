@@ -1,15 +1,16 @@
 import { withBase } from './url';
 
+export interface AuthUser {
+  apiToken: string;
+  jwtToken: string;
+}
+
 export interface AuthSession {
-  user?: {
-    name?: string;
-    email?: string;
-    image?: string;
-  };
-  expires: string;
-  accessToken?: string;
+  user?: AuthUser;
+  expires?: string;
+  success?: boolean;
   error?: string;
-  isLoading?: boolean;
+  ok?: boolean;
 }
 
 export interface AuthConfig {
@@ -33,6 +34,7 @@ export const getAuthSession = (): Promise<AuthSession> => {
 
 export const signOut = async (): Promise<void> => {
   await fetch(withBase('/api/auth/signout'), { method: 'POST' });
+  localStorage.removeItem('jwtToken');
 };
 
 export const signIn = async (

@@ -56,8 +56,9 @@ const useQuery = <ReturnType>(
     queryFn: async () => {
       const headers: HeadersInit = {};
 
-      if (session.data?.user?.apiToken) {
-        headers.Authorization = session.data.user.apiToken;
+      const jwtToken = typeof window !== 'undefined' ? localStorage.getItem('jwtToken') : null;
+      if (jwtToken && session.status === 'authenticated') {
+        headers.Authorization = `Bearer ${jwtToken}`;
       }
 
       const fullPath = withBase(path);

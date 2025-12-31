@@ -16,7 +16,6 @@ const useMutation = <TData = unknown, TVariables = unknown>(
   }
 ) => {
   const session = useAuth();
-  const apiToken = session?.data?.user?.apiToken;
 
   return useTanStackMutation<TData, Error, MutationFnParams<TVariables>>({
     mutationFn: async ({ body, path }: MutationFnParams<TVariables>) => {
@@ -24,8 +23,9 @@ const useMutation = <TData = unknown, TVariables = unknown>(
         'Content-Type': 'application/json',
       };
 
-      if (apiToken) {
-        headers.Authorization = apiToken;
+      const jwtToken = typeof window !== 'undefined' ? localStorage.getItem('jwtToken') : null;
+      if (jwtToken && session.status === 'authenticated') {
+        headers.Authorization = `Bearer ${jwtToken}`;
       }
 
       const fullPath = withBase(path ?? url);
