@@ -45,24 +45,21 @@ export class LitestreamService {
     const absoluteDbPath = path.resolve(this.dbPath);
 
     return `
-# Global S3 credentials (can also use AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY env vars)
-access-key-id: ${accessKeyId}
-secret-access-key: ${secretAccessKey}
-
-# Global snapshot settings
-snapshot:
-  interval: 3h
-  retention: 24h
-
-# Database configuration
+# Litestream configuration for SQLite replication to S3
+# See: https://litestream.io/reference/config/
 dbs:
   - path: ${absoluteDbPath}
-    replica:
-      url: s3://${bucket}/${s3Path}/metadata.db
-      region: ${region}
-      ${endpoint ? `endpoint: ${endpoint}` : ''}
-      force-path-style: true
-      sync-interval: 1s
+    replicas:
+      - url: s3://${bucket}/${s3Path}/metadata.db
+        access-key-id: ${accessKeyId}
+        secret-access-key: ${secretAccessKey}
+        region: ${region}
+        ${endpoint ? `endpoint: ${endpoint}` : ''}
+        force-path-style: true
+        sync-interval: 1s
+        snapshot-interval: 3h
+        retention: 24h
+        retention-check-interval: 1h
 `;
   }
 
