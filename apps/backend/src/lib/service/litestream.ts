@@ -55,22 +55,35 @@ export class LitestreamService {
 
     const dbExists = await this.databaseExists();
 
-    if (dbExists) {
-      console.log('[litestream] Local sqlite exists, skipping restore');
+    if (!dbExists) {
+      console.log('[litestream] No local sqlite found, attempting restore from S3...');
+      const restored = await this.restoreFromS3();
+      if (restored) {
+        console.log('[litestream] Successfully restored sqlite from S3');
+      } else {
+        console.log('[litestream] No sqlite found on S3, will start fresh');
+      }
+      return restored;
+    }
+
+    console.log('[litestream] Local sqlite exists, checking if remote is newer...');
+    const hasRemote = await this.hasRemoteBackup();
+
+    if (!hasRemote) {
+      console.log('[litestream] No remote backup found, using local copy');
       return false;
     }
 
-    // Try to restore from S3
-    console.log('[litestream] No local sqlite found, attempting restore from S3...');
+    console.log('[litestream] Remote backup exists, syncing with remote...');
+    const synced = await this.syncWithRemote();
 
-    const restored = await this.restoreFromS3();
-    if (restored) {
-      console.log('[litestream] Successfully restored sqlite from S3');
+    if (synced) {
+      console.log('[litestream] Successfully synced with remote backup');
     } else {
-      console.log('[litestream] No sqlite found on S3, will start fresh');
+      console.log('[litestream] Sync failed, continuing with local copy');
     }
 
-    return restored;
+    return synced;
   }
 
   private async databaseExists(): Promise<boolean> {
@@ -82,22 +95,52 @@ export class LitestreamService {
     }
   }
 
-  private async restoreFromS3(): Promise<boolean> {
-    const litestreamEnv = {
-      ...process.env,
-      S3_ACCESS_KEY_ID: env.S3_ACCESS_KEY || process.env.S3_ACCESS_KEY_ID,
-      S3_SECRET_ACCESS_KEY: env.S3_SECRET_KEY || process.env.S3_SECRET_ACCESS_KEY,
-      S3_BUCKET: env.S3_BUCKET || process.env.S3_BUCKET,
-      S3_REGION: env.S3_REGION || process.env.S3_REGION,
-      S3_ENDPOINT: env.S3_ENDPOINT || process.env.S3_ENDPOINT,
-      S3_PATH: 'litestream',
-      S3_FORCE_PATH_STYLE: 'true',
-    };
+  private async hasRemoteBackup(): Promise<boolean> {
+    const litestreamEnv = this.buildLitestreamEnv();
 
     return new Promise((resolve) => {
       exec(
-        'litestream restore -config ' + this.configPath + ' -o ' + this.dbPath,
-        { env: litestreamEnv },
+        `litestream generations -config ${this.configPath}`,
+        { env: litestreamEnv, timeout: 30000 },
+        (error, stdout) => {
+          if (error) {
+            console.error('[litestream] Failed to check remote generations:', error.message);
+            resolve(false);
+          } else {
+            const hasGenerations = stdout.trim().length > 0;
+            resolve(hasGenerations);
+          }
+        }
+      );
+    });
+  }
+
+  private async syncWithRemote(): Promise<boolean> {
+    const litestreamEnv = this.buildLitestreamEnv();
+
+    return new Promise((resolve) => {
+      exec(
+        `litestream restore -config ${this.configPath} -o ${this.dbPath} --if-replica-exists`,
+        { env: litestreamEnv, timeout: 60000 },
+        (error) => {
+          if (error) {
+            console.error('[litestream] Sync with remote failed:', error.message);
+            resolve(false);
+          } else {
+            resolve(true);
+          }
+        }
+      );
+    });
+  }
+
+  private async restoreFromS3(): Promise<boolean> {
+    const litestreamEnv = this.buildLitestreamEnv();
+
+    return new Promise((resolve) => {
+      exec(
+        `litestream restore -config ${this.configPath} -o ${this.dbPath}`,
+        { env: litestreamEnv, timeout: 60000 },
         (error) => {
           if (error) {
             console.error('[litestream] Restore failed:', error.message);
@@ -108,6 +151,19 @@ export class LitestreamService {
         }
       );
     });
+  }
+
+  private buildLitestreamEnv() {
+    return {
+      ...process.env,
+      S3_ACCESS_KEY_ID: env.S3_ACCESS_KEY || process.env.S3_ACCESS_KEY_ID,
+      S3_SECRET_ACCESS_KEY: env.S3_SECRET_KEY || process.env.S3_SECRET_ACCESS_KEY,
+      S3_BUCKET: env.S3_BUCKET || process.env.S3_BUCKET,
+      S3_REGION: env.S3_REGION || process.env.S3_REGION,
+      S3_ENDPOINT: env.S3_ENDPOINT || process.env.S3_ENDPOINT,
+      S3_PATH: 'litestream',
+      S3_FORCE_PATH_STYLE: 'true',
+    };
   }
 
   public async start(): Promise<void> {
@@ -145,16 +201,7 @@ export class LitestreamService {
     console.log(`[litestream] Config: ${this.configPath}`);
     console.log(`[litestream] Database: ${this.dbPath}`);
 
-    const litestreamEnv = {
-      ...process.env,
-      S3_ACCESS_KEY_ID: env.S3_ACCESS_KEY,
-      S3_SECRET_ACCESS_KEY: env.S3_SECRET_KEY,
-      S3_BUCKET: env.S3_BUCKET,
-      S3_REGION: env.S3_REGION,
-      S3_ENDPOINT: env.S3_ENDPOINT,
-      S3_PATH: 'litestream',
-      S3_FORCE_PATH_STYLE: 'true',
-    };
+    const litestreamEnv = this.buildLitestreamEnv();
 
     this.process = spawn('litestream', ['replicate', '-config', this.configPath], {
       stdio: 'pipe',

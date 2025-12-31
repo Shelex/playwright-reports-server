@@ -14,9 +14,14 @@ ENV CI=true
 FROM node:22-alpine AS runner-base
 
 # Install Litestream for SQLite replication
+# Supports: linux/amd64, linux/arm64, linux/armv6, linux/armv7
+# TARGETPLATFORM is automatically set by Docker buildkit when using --platform
+ARG TARGETPLATFORM
 ENV LITESTREAM_VERSION=0.3.13
 RUN apk add --no-cache curl && \
-    curl -fsSL "https://github.com/benbjohnson/litestream/releases/download/v${LITESTREAM_VERSION}/litestream-v${LITESTREAM_VERSION}-linux-amd64.tar.gz" | tar -xz && \
+    TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64} && \
+    LITESTREAM_ARCH=$(echo "${TARGETPLATFORM##*/}" | sed -e 's/x86_64/amd64/' -e 's/aarch64/arm64/') && \
+    curl -fsSL "https://github.com/benbjohnson/litestream/releases/download/v${LITESTREAM_VERSION}/litestream-v${LITESTREAM_VERSION}-linux-${LITESTREAM_ARCH}.tar.gz" | tar -xz && \
     mv litestream /usr/local/bin/litestream && \
     chmod +x /usr/local/bin/litestream && \
     apk del curl
