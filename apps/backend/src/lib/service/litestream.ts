@@ -44,57 +44,26 @@ export class LitestreamService {
 
     const absoluteDbPath = path.resolve(this.dbPath);
 
-    const config = {
-      dbs: [
-        {
-          path: absoluteDbPath,
-          replicas: [
-            {
-              url: `s3://${bucket}/${s3Path}/metadata.db`,
-              'access-key-id': accessKeyId,
-              'secret-access-key': secretAccessKey,
-              region: region,
-              ...(endpoint && { endpoint: endpoint }),
-              'force-path-style': 'true',
-              'sync-interval': '1s',
-              'snapshot-interval': '3h',
-              retention: '24h',
-              'retention-check-interval': '1h',
-            },
-          ],
-        },
-      ],
-    };
+    return `
+# Global S3 credentials (can also use AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY env vars)
+access-key-id: ${accessKeyId}
+secret-access-key: ${secretAccessKey}
 
-    return this.toYaml(config);
-  }
+# Global snapshot settings
+snapshot:
+  interval: 3h
+  retention: 24h
 
-  private toYaml(obj: unknown, indent = 0): string {
-    const spaces = '  '.repeat(indent);
-
-    if (Array.isArray(obj)) {
-      return obj.map((item) => this.toYaml(item, indent)).join('\n');
-    }
-
-    if (typeof obj === 'object' && obj !== null) {
-      const entries = Object.entries(obj);
-      return entries
-        .map(([key, value]) => {
-          if (Array.isArray(value)) {
-            return `${spaces}${key}:\n${this.toYaml(value, indent + 1)}`;
-          }
-          if (typeof value === 'object' && value !== null) {
-            return `${spaces}${key}:\n${this.toYaml(value, indent + 1)}`;
-          }
-          if (typeof value === 'string' && (value === '' || /[\s:]/.test(value))) {
-            return `${spaces}${key}: "${value}"`;
-          }
-          return `${spaces}${key}: ${value}`;
-        })
-        .join('\n');
-    }
-
-    return String(obj);
+# Database configuration
+dbs:
+  - path: ${absoluteDbPath}
+    replica:
+      url: s3://${bucket}/${s3Path}/metadata.db
+      region: ${region}
+      ${endpoint ? `endpoint: ${endpoint}` : ''}
+      force-path-style: true
+      sync-interval: 1s
+`;
   }
 
   private async ensureConfigExists(): Promise<void> {
