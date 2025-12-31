@@ -42,10 +42,12 @@ export class LitestreamService {
       );
     }
 
+    const absoluteDbPath = path.resolve(this.dbPath);
+
     const config = {
       dbs: [
         {
-          path: this.dbPath,
+          path: absoluteDbPath,
           replicas: [
             {
               url: `s3://${bucket}/${s3Path}/metadata.db`,
@@ -98,7 +100,9 @@ export class LitestreamService {
   private async ensureConfigExists(): Promise<void> {
     const config = this.generateConfig();
     await fs.writeFile(this.configPath, config, 'utf-8');
+    const absoluteDbPath = path.resolve(this.dbPath);
     console.log(`[litestream] Generated config from env package: ${this.configPath}`);
+    console.log(`[litestream] Database path in config: ${absoluteDbPath}`);
   }
 
   public static getInstance(): LitestreamService {
