@@ -1,20 +1,23 @@
 'use client';
 
-import {
-  Button,
-  Input,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  Select,
-  SelectItem,
-  Textarea,
-} from '@heroui/react';
 import type { JiraApiResponse, ReportTest } from '@playwright-reports/shared';
+import { AlertTriangle, Paperclip } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { Button } from './ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Spinner } from './ui/spinner';
+import { Textarea } from './ui/textarea';
 
 interface JiraTicketModalProps {
   isOpen: boolean;
@@ -141,7 +144,6 @@ export default function JiraTicketModal({
 
   const generateDefaultSummary = () => {
     if (!test) return '';
-
     return `Test Failed: ${test.title}`;
   };
 
@@ -149,25 +151,25 @@ export default function JiraTicketModal({
     if (!test) return '';
 
     return `Test Failure Details
-      Test: ${test.title}
-      Project: ${test.projectName || 'Unknown'}
-      Location: ${test.location?.file || 'Unknown'}:${test.location?.line || 'Unknown'}
-      Test ID: ${test.testId || 'Unknown'}
+Test: ${test.title}
+Project: ${test.projectName || 'Unknown'}
+Location: ${test.location?.file || 'Unknown'}:${test.location?.line || 'Unknown'}
+Test ID: ${test.testId || 'Unknown'}
 
-      Steps to Reproduce:
-      1. Run the test suite
-      2. Test "${test.title}" fails
+Steps to Reproduce:
+1. Run the test suite
+2. Test "${test.title}" fails
 
-      Expected Behavior:
-      Test should pass
+Expected Behavior:
+Test should pass
 
-      Actual Behavior:
-      Test is failing
+Actual Behavior:
+Test is failing
 
-      Additional Information:
-      - Duration: ${test.duration || 0}ms
-      - Tags: ${test.tags?.join(', ') || 'None'}
-      - Annotations: ${test.annotations?.map((a) => a.description).join(', ') || 'None'}`;
+Additional Information:
+- Duration: ${test.duration || 0}ms
+- Tags: ${test.tags?.join(', ') || 'None'}
+- Annotations: ${test.annotations?.map((a) => a.description).join(', ') || 'None'}`;
   };
 
   // Auto-populate form when test changes
@@ -180,152 +182,134 @@ export default function JiraTicketModal({
   }
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent>
-        {(onClose) => (
-          <>
-            <ModalHeader className="flex flex-col gap-1">Create Jira Ticket</ModalHeader>
-            <ModalBody>
-              {isLoadingConfig ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">Loading Jira configuration...</p>
-                  </div>
-                </div>
-              ) : !jiraConfig?.configured ? (
-                <div className="text-center py-8">
-                  <div className="text-red-500 mb-4">
-                    <svg
-                      aria-label="Warning icon"
-                      className="w-12 h-12 mx-auto mb-2"
-                      fill="none"
-                      role="img"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                      />
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">Jira Not Configured</h3>
-                  <p className="text-sm text-gray-600 mb-4">
-                    {jiraConfig?.message || 'Jira integration is not properly configured.'}
-                  </p>
-                  <div className="bg-gray-50 p-4 rounded-lg text-left">
-                    <p className="text-sm font-medium mb-2">Required Environment Variables:</p>
-                    <ul className="text-sm text-gray-600 space-y-1">
-                      <li>• JIRA_BASE_URL</li>
-                      <li>• JIRA_EMAIL</li>
-                      <li>• JIRA_API_TOKEN</li>
-                    </ul>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-4">
-                  <Input
-                    isRequired
-                    label="Summary"
-                    placeholder="Brief description of the issue"
-                    value={ticketData.summary}
-                    onValueChange={(value) =>
-                      setTicketData((prev) => ({ ...prev, summary: value }))
-                    }
-                  />
-                  <Textarea
-                    label="Description"
-                    minRows={6}
-                    placeholder="Detailed description of the issue"
-                    value={ticketData.description}
-                    onValueChange={(value) =>
-                      setTicketData((prev) => ({ ...prev, description: value }))
-                    }
-                  />
-                  <div className="flex gap-4">
-                    <Select
-                      label="Issue Type"
-                      placeholder="Select issue type"
-                      selectedKeys={[ticketData.issueType]}
-                      onSelectionChange={(keys) => {
-                        const issueType = Array.from(keys)[0] as string;
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Create Jira Ticket</DialogTitle>
+          <DialogDescription>Create a Jira ticket for a failed test</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          {isLoadingConfig ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <Spinner size="lg" />
+                <p className="text-sm text-muted-foreground mt-2">Loading Jira configuration...</p>
+              </div>
+            </div>
+          ) : !jiraConfig?.configured ? (
+            <div className="text-center py-8">
+              <AlertTriangle className="h-12 w-12 mx-auto mb-2 text-destructive" />
+              <h3 className="text-lg font-semibold mb-2">Jira Not Configured</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                {jiraConfig?.message || 'Jira integration is not properly configured.'}
+              </p>
+              <div className="bg-muted p-4 rounded-lg text-left">
+                <p className="text-sm font-medium mb-2">Required Environment Variables:</p>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• JIRA_BASE_URL</li>
+                  <li>• JIRA_EMAIL</li>
+                  <li>• JIRA_API_TOKEN</li>
+                </ul>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="summary">Summary</Label>
+                <Input
+                  id="summary"
+                  placeholder="Brief description of the issue"
+                  value={ticketData.summary}
+                  onChange={(e) => setTicketData((prev) => ({ ...prev, summary: e.target.value }))}
+                />
+              </div>
 
-                        setTicketData((prev) => ({ ...prev, issueType }));
-                      }}
-                    >
-                      {jiraConfig?.issueTypes?.map((issueType) => (
-                        <SelectItem key={issueType.name}>{issueType.name}</SelectItem>
-                      )) || (
-                        <>
-                          <SelectItem key="Bug">Bug</SelectItem>
-                          <SelectItem key="Task">Task</SelectItem>
-                          <SelectItem key="Story">Story</SelectItem>
-                        </>
-                      )}
-                    </Select>
-                  </div>
-                  <Input
-                    isRequired
-                    label="Project Key"
-                    placeholder="e.g., PROJ"
-                    value={ticketData.projectKey}
-                    onValueChange={(value) =>
-                      setTicketData((prev) => ({ ...prev, projectKey: value }))
-                    }
-                  />
-                  {test?.attachments && test.attachments.length > 0 && (
-                    <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="text-blue-600">
-                        <svg
-                          aria-label="Attachment icon"
-                          className="w-5 h-5"
-                          fill="none"
-                          role="img"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                          />
-                        </svg>
-                      </div>
-                      <div className="text-sm">
-                        <div className="font-medium text-blue-800">
-                          {test.attachments.length} test attachment(s) will be included
-                        </div>
-                        <div className="text-blue-600">
-                          {test.attachments.map((att) => att.name).join(', ')}
-                        </div>
-                      </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  placeholder="Detailed description of the issue"
+                  value={ticketData.description}
+                  onChange={(e) =>
+                    setTicketData((prev) => ({ ...prev, description: e.target.value }))
+                  }
+                  rows={6}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="issue-type">Issue Type</Label>
+                <Select
+                  value={ticketData.issueType}
+                  onValueChange={(value) =>
+                    setTicketData((prev) => ({ ...prev, issueType: value }))
+                  }
+                >
+                  <SelectTrigger id="issue-type">
+                    <SelectValue placeholder="Select issue type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {jiraConfig?.issueTypes?.map((issueType) => (
+                      <SelectItem key={issueType.name} value={issueType.name}>
+                        {issueType.name}
+                      </SelectItem>
+                    )) || (
+                      <>
+                        <SelectItem value="Bug">Bug</SelectItem>
+                        <SelectItem value="Task">Task</SelectItem>
+                        <SelectItem value="Story">Story</SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="project-key">Project Key</Label>
+                <Input
+                  id="project-key"
+                  placeholder="e.g., PROJ"
+                  value={ticketData.projectKey}
+                  onChange={(e) =>
+                    setTicketData((prev) => ({ ...prev, projectKey: e.target.value }))
+                  }
+                />
+              </div>
+
+              {test?.attachments && test.attachments.length > 0 && (
+                <div className="flex items-center gap-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <Paperclip className="h-5 w-5 text-blue-500" />
+                  <div className="text-sm">
+                    <div className="font-medium text-blue-500 dark:text-blue-400">
+                      {test.attachments.length} test attachment(s) will be included
                     </div>
-                  )}
+                    <div className="text-blue-500/70 dark:text-blue-400/70">
+                      {test.attachments.map((att) => att.name).join(', ')}
+                    </div>
+                  </div>
                 </div>
               )}
-            </ModalBody>
-            <ModalFooter>
-              <Button color="primary" variant="light" onPress={onClose}>
-                Cancel
-              </Button>
-              <Button
-                color="primary"
-                isDisabled={
-                  !jiraConfig?.configured || !ticketData.summary || !ticketData.projectKey
-                }
-                isLoading={isSubmitting}
-                onPress={handleSubmit}
-              >
-                Create Ticket
-              </Button>
-            </ModalFooter>
-          </>
-        )}
-      </ModalContent>
-    </Modal>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            disabled={
+              !jiraConfig?.configured ||
+              !ticketData.summary ||
+              !ticketData.projectKey ||
+              isSubmitting
+            }
+            onClick={handleSubmit}
+          >
+            {isSubmitting && <Spinner className="mr-2 h-4 w-4" />}
+            Create Ticket
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

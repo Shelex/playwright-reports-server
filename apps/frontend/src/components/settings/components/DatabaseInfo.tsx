@@ -1,11 +1,11 @@
 'use client';
 
-import { Button } from '@heroui/react';
 import type { DatabaseStats } from '@playwright-reports/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import useMutation from '../../../hooks/useMutation';
-import { invalidateCache } from '../../../lib/query-cache';
+import { Button } from '@/components/ui/button';
+import useMutation from '@/hooks/useMutation';
+import { invalidateCache } from '@/lib/query-cache';
 
 interface DatabaseInfoProps {
   stats?: DatabaseStats;
@@ -27,19 +27,19 @@ export default function DatabaseInfo({ stats }: Readonly<DatabaseInfoProps>) {
 
   return (
     <div>
-      <p className="text-sm text-gray-600">Size: {stats?.sizeOnDisk ?? 'n/a'}</p>
-      <p className="text-sm text-gray-600">RAM: {stats?.estimatedRAM}</p>
-      <p className="text-sm text-gray-600">Results: {stats?.results}</p>
-      <p className="text-sm text-gray-600">Reports: {stats?.reports}</p>
+      <p className="text-sm text-muted-foreground">Size: {stats?.sizeOnDisk ?? 'n/a'}</p>
+      <p className="text-sm text-muted-foreground">RAM: {stats?.estimatedRAM}</p>
+      <p className="text-sm text-muted-foreground">Results: {stats?.results}</p>
+      <p className="text-sm text-muted-foreground">Reports: {stats?.reports}</p>
       <Button
-        color="warning"
-        isLoading={isPending}
+        variant="outline"
         size="sm"
-        onPress={() => {
+        disabled={isPending}
+        onClick={() => {
           cacheRefresh({});
         }}
       >
-        Force Refresh
+        {isPending ? 'Refreshing...' : 'Force Refresh'}
       </Button>
       {error && toast.error(error.message)}
     </div>

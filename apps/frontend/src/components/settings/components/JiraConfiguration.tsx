@@ -1,8 +1,13 @@
 'use client';
 
-import { Button, Card, CardBody, CardHeader, Chip, Divider, Input } from '@heroui/react';
-
 import type { JiraConfig, ServerConfig } from '@playwright-reports/shared';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 
 interface JiraConfigurationProps {
   config: ServerConfig;
@@ -30,40 +35,38 @@ export default function JiraConfiguration({
   return (
     <Card className="mb-6 p-4">
       <CardHeader
-        className={`flex justify-between items-center ${editingSection === 'jira' ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500' : ''}`}
+        className={`flex justify-between items-center flex-row ${editingSection === 'jira' ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 -mx-4 px-4' : ''}`}
       >
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-semibold">Jira Integration</h2>
           {editingSection === 'jira' && (
-            <Chip color="primary" size="sm" variant="flat">
+            <Badge variant="secondary" className="text-xs">
               Editing
-            </Chip>
+            </Badge>
           )}
         </div>
         {editingSection !== 'jira' ? (
-          <Button color="primary" isDisabled={editingSection !== 'none'} onPress={onEdit}>
+          <Button disabled={editingSection !== 'none'} onClick={onEdit}>
             {editingSection === 'none' ? 'Edit Configuration' : 'Section in Use'}
           </Button>
         ) : (
           <div className="flex gap-2">
-            <Button color="success" isLoading={isUpdating} onPress={onSave}>
-              Save Changes
+            <Button disabled={isUpdating} onClick={onSave}>
+              {isUpdating ? 'Saving...' : 'Save Changes'}
             </Button>
-            <Button color="default" onPress={onCancel}>
+            <Button variant="outline" onClick={onCancel}>
               Cancel
             </Button>
           </div>
         )}
       </CardHeader>
-      <CardBody>
+      <CardContent>
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2" htmlFor="jira-base-url">
-              Jira Base URL
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="jira-base-url">Jira Base URL</Label>
             <Input
               id="jira-base-url"
-              isDisabled={editingSection !== 'jira'}
+              disabled={editingSection !== 'jira'}
               placeholder="https://your-domain.atlassian.net"
               value={
                 editingSection === 'jira'
@@ -79,13 +82,11 @@ export default function JiraConfiguration({
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2" htmlFor="jira-email">
-              Jira Email
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="jira-email">Jira Email</Label>
             <Input
               id="jira-email"
-              isDisabled={editingSection !== 'jira'}
+              disabled={editingSection !== 'jira'}
               placeholder="your-email@example.com"
               value={
                 editingSection === 'jira' ? tempConfig.jira?.email || '' : config.jira?.email || ''
@@ -99,13 +100,11 @@ export default function JiraConfiguration({
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2" htmlFor="jira-api-token">
-              Jira API Token
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="jira-api-token">Jira API Token</Label>
             <Input
               id="jira-api-token"
-              isDisabled={editingSection !== 'jira'}
+              disabled={editingSection !== 'jira'}
               placeholder="Your Jira API token"
               type="password"
               value={
@@ -122,13 +121,11 @@ export default function JiraConfiguration({
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2" htmlFor="jira-project-key">
-              Default Project Key (Optional)
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="jira-project-key">Default Project Key (Optional)</Label>
             <Input
               id="jira-project-key"
-              isDisabled={editingSection !== 'jira'}
+              disabled={editingSection !== 'jira'}
               placeholder="PROJECT"
               value={
                 editingSection === 'jira'
@@ -144,25 +141,25 @@ export default function JiraConfiguration({
             />
           </div>
 
-          <Divider />
+          <Separator />
 
           {/* Status Display */}
           {jiraConfig?.configured ? (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <Chip color="success" size="sm">
+                <Badge variant="default" className="bg-green-600">
                   Configured
-                </Chip>
-                <span className="text-sm text-gray-600">Jira integration is active</span>
+                </Badge>
+                <span className="text-sm text-muted-foreground">Jira integration is active</span>
               </div>
               {jiraConfig.issueTypes && jiraConfig.issueTypes.length > 0 && (
                 <div>
-                  <span className="block text-sm font-medium mb-1">Available Issue Types</span>
+                  <span className="block text-sm font-medium mb-2">Available Issue Types</span>
                   <div className="flex flex-wrap gap-1">
                     {jiraConfig.issueTypes.map((type) => (
-                      <Chip key={type.id} size="sm" variant="flat">
+                      <Badge key={type.id} variant="secondary">
                         {type.name}
-                      </Chip>
+                      </Badge>
                     ))}
                   </div>
                 </div>
@@ -171,40 +168,36 @@ export default function JiraConfiguration({
           ) : jiraConfig?.error ? (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <Chip color="danger" size="sm">
-                  Error
-                </Chip>
-                <span className="text-sm text-gray-600">Jira integration failed</span>
+                <Badge variant="destructive">Error</Badge>
+                <span className="text-sm text-muted-foreground">Jira integration failed</span>
               </div>
-              <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border border-red-200 dark:border-red-800">
-                <h3 className="font-medium text-red-800 dark:text-red-200 mb-2">
-                  Connection Error
-                </h3>
-                <p className="text-sm text-red-700 dark:text-red-300">{jiraConfig.error}</p>
-              </div>
+              <Alert variant="destructive">
+                <AlertTitle>Connection Error</AlertTitle>
+                <AlertDescription>{jiraConfig.error}</AlertDescription>
+              </Alert>
             </div>
           ) : (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <Chip color="warning" size="sm">
-                  Not Configured
-                </Chip>
-                <span className="text-sm text-gray-600">Jira integration is not set up</span>
+                <Badge variant="outline">Not Configured</Badge>
+                <span className="text-sm text-muted-foreground">
+                  Jira integration is not set up
+                </span>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                <h3 className="font-medium mb-2">To enable Jira integration:</h3>
-                <p className="text-sm text-gray-600 mb-2">
-                  Fill in the Jira configuration fields above and save the configuration.
-                </p>
-                <p className="text-sm text-gray-600">
-                  You can also set environment variables as a fallback: JIRA_BASE_URL, JIRA_EMAIL,
-                  JIRA_API_TOKEN, JIRA_PROJECT_KEY
-                </p>
-              </div>
+              <Alert>
+                <AlertTitle>To enable Jira integration:</AlertTitle>
+                <AlertDescription className="space-y-2">
+                  <p>Fill in the Jira configuration fields above and save the configuration.</p>
+                  <p className="text-xs">
+                    You can also set environment variables as a fallback: JIRA_BASE_URL, JIRA_EMAIL,
+                    JIRA_API_TOKEN, JIRA_PROJECT_KEY
+                  </p>
+                </AlertDescription>
+              </Alert>
             </div>
           )}
         </div>
-      </CardBody>
+      </CardContent>
     </Card>
   );
 }

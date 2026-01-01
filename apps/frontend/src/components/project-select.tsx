@@ -1,11 +1,12 @@
 'use client';
 
-import { Select, SelectItem, type SharedSelection } from '@heroui/react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import useQuery from '../hooks/useQuery';
 import { defaultProjectName } from '../lib/constants';
 import { buildUrl } from '../lib/url';
+import { Label } from './ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 interface ProjectSelectProps {
   onSelect: (project: string) => void;
@@ -14,8 +15,7 @@ interface ProjectSelectProps {
   selectedProject?: string;
   className?: string;
   label?: string;
-  labelPlacement?: 'inside' | 'outside' | 'outside-left';
-  variant?: 'flat' | 'bordered' | 'faded' | 'underlined';
+  showLabel?: boolean;
 }
 
 export default function ProjectSelect({
@@ -23,10 +23,9 @@ export default function ProjectSelect({
   onSelect,
   entity,
   selectedProject,
-  className = 'w-64 min-w-36 bg-transparent',
+  className = 'w-64 min-w-36',
   label = 'Project',
-  labelPlacement = 'outside',
-  variant = 'bordered',
+  showLabel = true,
 }: Readonly<ProjectSelectProps>) {
   const {
     data: projects,
@@ -83,24 +82,8 @@ export default function ProjectSelect({
     onSelect?.(effectiveSelectedProject);
   }, [effectiveSelectedProject, onSelect]);
 
-  const onChange = (keys: SharedSelection) => {
-    let project: string | null = null;
-
-    if (keys instanceof Set) {
-      if (keys.size === 0) {
-        return;
-      }
-      const selectedKey = Array.from(keys).at(0);
-      project = String(selectedKey);
-    } else if (typeof keys === 'string' || typeof keys === 'number') {
-      project = String(keys);
-    } else {
-      return;
-    }
-
-    if (project) {
-      saveToLocalStorage(project);
-    }
+  const handleChange = (value: string) => {
+    saveToLocalStorage(value);
   };
 
   const saveToLocalStorage = (project: string) => {
@@ -115,22 +98,32 @@ export default function ProjectSelect({
   };
 
   error && toast.error(error.message);
-  const selectedKeys = effectiveSelectedProject ? [effectiveSelectedProject] : [defaultProjectName];
+
+  const selectId = `project-select-${entity}`;
 
   return (
-    <Select
-      className={className}
-      selectedKeys={selectedKeys}
-      isDisabled={items.length <= 1}
-      isLoading={isLoading}
-      label={label}
-      labelPlacement={labelPlacement}
-      variant={variant}
-      onSelectionChange={onChange}
-    >
-      {items.map((project) => (
-        <SelectItem key={project}>{project}</SelectItem>
-      ))}
-    </Select>
+    <div className={showLabel ? 'flex flex-col gap-2' : ''}>
+      {showLabel && (
+        <Label htmlFor={selectId} className="text-sm font-medium">
+          {label}
+        </Label>
+      )}
+      <Select
+        value={effectiveSelectedProject}
+        onValueChange={handleChange}
+        disabled={items.length <= 1 || isLoading}
+      >
+        <SelectTrigger id={selectId} className={className}>
+          <SelectValue placeholder={showLabel ? `Select ${label.toLowerCase()}` : label} />
+        </SelectTrigger>
+        <SelectContent>
+          {items.map((project) => (
+            <SelectItem key={project} value={project}>
+              {project}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }

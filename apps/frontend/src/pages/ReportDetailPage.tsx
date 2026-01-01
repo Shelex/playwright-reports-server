@@ -1,14 +1,15 @@
-import { Button, Spinner } from '@heroui/react';
 import type { ReportHistory } from '@playwright-reports/shared';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import FormattedDate from '../components/date-format';
-import { subtitle, title } from '../components/primitives';
-import FileList from '../components/report-details/file-list';
-import ReportStatistics from '../components/report-details/report-stats';
-import { useAuth } from '../hooks/useAuth';
-import useQuery from '../hooks/useQuery';
-import { withBase } from '../lib/url';
+import FormattedDate from '@/components/date-format';
+import { subtitle, title } from '@/components/primitives';
+import FileList from '@/components/report-details/file-list';
+import ReportStatistics from '@/components/report-details/report-stats';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
+import { useAuth } from '@/hooks/useAuth';
+import useQuery from '@/hooks/useQuery';
+import { withBase } from '@/lib/url';
 
 function ReportDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -27,11 +28,19 @@ function ReportDetailPage() {
   });
 
   if (isAuthLoading) {
-    return <Spinner className="w-full" label="Loading auth..." />;
+    return (
+      <div className="flex items-center justify-center w-full">
+        <Spinner size="lg" />
+      </div>
+    );
   }
 
   if (!report && isReportLoading) {
-    return <Spinner className="w-full" label="Loading report..." />;
+    return (
+      <div className="flex items-center justify-center w-full">
+        <Spinner size="lg" />
+      </div>
+    );
   }
 
   reportError && toast.error(reportError.message);
@@ -52,7 +61,7 @@ function ReportDetailPage() {
         <div className="flex flex-col items-center md:w-1/4 max-w-full">
           <ReportStatistics stats={report?.stats} />
           <Link to={withBase(report?.reportUrl ?? '')} target="_blank">
-            <Button color="primary">Open report</Button>
+            <Button>Open report</Button>
           </Link>
         </div>
         <div className="md:w-3/4 max-w-full">

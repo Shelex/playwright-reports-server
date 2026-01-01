@@ -1,18 +1,15 @@
 'use client';
 
-import {
-  Button,
-  Card,
-  CardBody,
-  CardHeader,
-  Chip,
-  Divider,
-  Input,
-  Slider,
-  Switch,
-} from '@heroui/react';
-
 import type { ServerConfig } from '@playwright-reports/shared';
+import { Alert } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 
 interface TestManagementSettingsProps {
   config: ServerConfig;
@@ -84,70 +81,65 @@ export default function TestManagementSettings({
   return (
     <Card className="mb-6 p-4">
       <CardHeader
-        className={`flex justify-between items-center ${editingSection === 'testManagement' ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500' : ''}`}
+        className={`flex justify-between items-center flex-row ${editingSection === 'testManagement' ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 -mx-4 px-4' : ''}`}
       >
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-semibold">Test Management</h2>
           {editingSection === 'testManagement' && (
-            <Chip color="primary" size="sm" variant="flat">
+            <Badge variant="secondary" className="text-xs">
               Editing
-            </Chip>
+            </Badge>
           )}
         </div>
         {editingSection === 'testManagement' ? (
           <div className="flex gap-2">
-            <Button color="success" isLoading={isUpdating} onPress={onSave}>
-              Save Changes
+            <Button disabled={isUpdating} onClick={onSave}>
+              {isUpdating ? 'Saving...' : 'Save Changes'}
             </Button>
-            <Button color="default" onPress={onCancel}>
+            <Button variant="outline" onClick={onCancel}>
               Cancel
             </Button>
           </div>
         ) : (
-          <Button color="primary" isDisabled={editingSection !== 'none'} onPress={onEdit}>
+          <Button disabled={editingSection !== 'none'} onClick={onEdit}>
             {editingSection === 'none' ? 'Edit Configuration' : 'Section in Use'}
           </Button>
         )}
       </CardHeader>
-      <CardBody>
+      <CardContent>
         <div className="space-y-6">
-          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-            <h3 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
-              About Test Management Settings
-            </h3>
-            <p className="text-sm text-blue-800 dark:text-blue-200">
+          <Alert>
+            <h3 className="font-medium mb-2">About Test Management Settings</h3>
+            <p className="text-sm">
               Configure thresholds for test flakiness detection and automatic quarantine. Tests
               exceeding these thresholds will be flagged or quarantined based on their failure
               history.
             </p>
-          </div>
+          </Alert>
 
-          <Divider />
+          <Separator />
 
-          <div>
-            <label className="block text-sm font-medium mb-2" htmlFor="warning-threshold">
-              Warning Threshold (%)
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="warning-threshold">Warning Threshold (%)</Label>
             <div className="flex items-center gap-4">
               <Slider
-                aria-label="Warning threshold percentage"
+                id="warning-threshold-slider"
                 className="flex-1"
-                isDisabled={editingSection !== 'testManagement'}
-                maxValue={100}
-                minValue={0}
+                disabled={editingSection !== 'testManagement'}
+                max={100}
+                min={0}
                 step={1}
-                value={warningThreshold}
-                onChange={(value) => {
+                value={[warningThreshold]}
+                onValueChange={([value]) => {
                   if (editingSection === 'testManagement') {
-                    updateTestManagementConfig({ warningThresholdPercentage: value as number });
+                    updateTestManagementConfig({ warningThresholdPercentage: value });
                   }
                 }}
               />
               <Input
                 aria-label="Warning threshold input"
                 className="w-20"
-                endContent={<span className="text-default-400 text-small">%</span>}
-                isDisabled={editingSection !== 'testManagement'}
+                disabled={editingSection !== 'testManagement'}
                 max={100}
                 min={0}
                 type="number"
@@ -162,36 +154,33 @@ export default function TestManagementSettings({
                 }}
               />
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground">
               Tests with a flakiness score at or above this percentage will be marked with a warning
               indicator.
             </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2" htmlFor="quarantine-threshold">
-              Quarantine Threshold (%)
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="quarantine-threshold">Quarantine Threshold (%)</Label>
             <div className="flex items-center gap-4">
               <Slider
-                aria-label="Quarantine threshold percentage"
+                id="quarantine-threshold-slider"
                 className="flex-1"
-                isDisabled={editingSection !== 'testManagement'}
-                maxValue={100}
-                minValue={0}
+                disabled={editingSection !== 'testManagement'}
+                max={100}
+                min={0}
                 step={1}
-                value={quarantineThreshold}
-                onChange={(value) => {
+                value={[quarantineThreshold]}
+                onValueChange={([value]) => {
                   if (editingSection === 'testManagement') {
-                    updateTestManagementConfig({ quarantineThresholdPercentage: value as number });
+                    updateTestManagementConfig({ quarantineThresholdPercentage: value });
                   }
                 }}
               />
               <Input
                 aria-label="Quarantine threshold input"
                 className="w-20"
-                endContent={<span className="text-default-400 text-small">%</span>}
-                isDisabled={editingSection !== 'testManagement'}
+                disabled={editingSection !== 'testManagement'}
                 max={100}
                 min={0}
                 type="number"
@@ -206,26 +195,25 @@ export default function TestManagementSettings({
                 }}
               />
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground">
               Tests with a flakiness score at or above this percentage will be automatically
               quarantined (if auto-quarantine is enabled).
             </p>
           </div>
 
-          <Divider />
+          <Separator />
 
           <div className="flex items-center justify-between">
             <div>
               <h4 className="text-sm font-medium">Auto-Quarantine Tests</h4>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Automatically quarantine tests that exceed the quarantine threshold
               </p>
             </div>
             <Switch
-              aria-label="Auto-quarantine enabled"
-              isDisabled={editingSection !== 'testManagement'}
-              isSelected={autoQuarantineEnabled}
-              onValueChange={(checked) => {
+              disabled={editingSection !== 'testManagement'}
+              checked={autoQuarantineEnabled}
+              onCheckedChange={(checked) => {
                 if (editingSection === 'testManagement') {
                   updateTestManagementConfig({ autoQuarantineEnabled: checked });
                 }
@@ -233,15 +221,13 @@ export default function TestManagementSettings({
             />
           </div>
 
-          <Divider />
+          <Separator />
 
-          <div>
-            <label className="block text-sm font-medium mb-2" htmlFor="flakiness-min-runs">
-              Minimum Runs for Flakiness Evaluation
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="flakiness-min-runs">Minimum Runs for Flakiness Evaluation</Label>
             <Input
-              aria-label="Minimum runs for flakiness evaluation"
-              isDisabled={editingSection !== 'testManagement'}
+              id="flakiness-min-runs"
+              disabled={editingSection !== 'testManagement'}
               min={1}
               type="number"
               value={flakinessMinRuns.toString()}
@@ -254,18 +240,16 @@ export default function TestManagementSettings({
                 }
               }}
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground">
               Minimum number of times a test must run before being evaluated for flakiness
             </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2" htmlFor="flakiness-evaluation-window">
-              Evaluation Window (Days)
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="flakiness-evaluation-window">Evaluation Window (Days)</Label>
             <Input
-              aria-label="Evaluation window in days"
-              isDisabled={editingSection !== 'testManagement'}
+              id="flakiness-evaluation-window"
+              disabled={editingSection !== 'testManagement'}
               min={1}
               type="number"
               value={flakinessEvaluationWindowDays.toString()}
@@ -278,18 +262,18 @@ export default function TestManagementSettings({
                 }
               }}
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground">
               Number of days to look back when calculating test flakiness scores
             </p>
           </div>
 
           {editingSection === 'testManagement' && (
-            <Button color="warning" size="sm" onPress={handleReset}>
+            <Button variant="outline" size="sm" onClick={handleReset}>
               Reset to Defaults
             </Button>
           )}
         </div>
-      </CardBody>
+      </CardContent>
     </Card>
   );
 }

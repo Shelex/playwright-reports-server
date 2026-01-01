@@ -1,5 +1,5 @@
-import { Link } from '@heroui/react';
 import type { SiteWhiteLabelConfig } from '@playwright-reports/shared';
+import { Link } from 'react-router-dom';
 import {
   BitbucketIcon,
   CyborgTestIcon,
@@ -34,8 +34,16 @@ export const HeaderLinks: React.FC<HeaderLinksProps> = ({ config, withTitle = fa
     const title = availableLink?.title ?? name;
 
     return href ? (
-      <Link key={name} isExternal aria-label={title} href={href} title={title}>
-        <Icon className="text-default-500" size={40} />
+      <Link
+        key={name}
+        to={href}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={title}
+        title={title}
+        className="text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <Icon size={40} />
         {withTitle && <p className="ml-2">{title}</p>}
       </Link>
     ) : null;

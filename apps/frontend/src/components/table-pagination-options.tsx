@@ -1,8 +1,13 @@
-import { Input, Select, SelectItem } from '@heroui/react';
-import { type ChangeEvent, useCallback } from 'react';
-import { SearchIcon } from './icons';
+'use client';
+
+import { Search, X } from 'lucide-react';
+import { useCallback } from 'react';
 import ProjectSelect from './project-select';
 import TagSelect from './tag-select';
+import { Badge } from './ui/badge';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 interface TablePaginationRowProps {
   total?: number;
@@ -15,6 +20,7 @@ interface TablePaginationRowProps {
   rowPerPageOptions?: number[];
   entity: 'report' | 'result';
   selectedProject?: string;
+  selectedTags?: string[];
 }
 
 const defaultRowPerPageOptions = [10, 20, 40];
@@ -30,13 +36,13 @@ export default function TablePaginationOptions({
   onSearchChange,
   onTagsChange,
   selectedProject,
+  selectedTags = [],
 }: Readonly<TablePaginationRowProps>) {
   const rowPerPageItems = rowPerPageOptions ?? defaultRowPerPageOptions;
 
   const onRowsPerPageChange = useCallback(
-    (e: ChangeEvent<HTMLSelectElement>) => {
-      const rows = Number(e.target.value);
-
+    (value: string) => {
+      const rows = Number(value);
       setRowsPerPage(rows);
       setPage(1);
     },
@@ -44,37 +50,78 @@ export default function TablePaginationOptions({
   );
 
   return (
-    <div className="flex justify-between items-center pb-6">
-      <div className="flex flex-row gap-3 w-full items-end">
-        <Input
-          className="w-48 bg-transparent"
-          endContent={<SearchIcon size={16} />}
-          placeholder="Search..."
-          variant="bordered"
-          onChange={(e) => onSearchChange?.(e.target.value)}
-        />
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6">
+      <div className="flex flex-row gap-3 w-full sm:w-auto items-center">
+        <div className="relative w-full sm:w-48">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            className="pl-9 bg-transparent"
+            placeholder="Search..."
+            onChange={(e) => onSearchChange?.(e.target.value)}
+          />
+        </div>
         <ProjectSelect
           entity={entity}
           onSelect={onProjectChange}
           selectedProject={selectedProject}
+          showLabel={false}
+          label="Project"
         />
-        {entity === 'result' && <TagSelect entity={entity} onSelect={onTagsChange} />}
-        <Select
-          disallowEmptySelection
-          className="w-32 min-w-32 bg-transparent"
-          label="Rows per page"
-          labelPlacement="outside"
-          selectedKeys={[rowsPerPage.toString()]}
-          variant="bordered"
-          onChange={onRowsPerPageChange}
-        >
-          {rowPerPageItems.map((item) => (
-            <SelectItem key={item} textValue={item.toString()}>
-              {item}
-            </SelectItem>
-          ))}
-        </Select>
-        <span className="text-default-500 min-w-24 text-center text-lg">Total: {total ?? 0}</span>
+        {entity === 'result' && onTagsChange && (
+          <TagSelect
+            entity={entity}
+            project={selectedProject}
+            onSelect={onTagsChange}
+          />
+        )}
+      </div>
+      <div className="flex flex-row gap-3 w-full sm:w-auto items-center justify-between sm:justify-end">
+        {entity === 'result' && selectedTags && selectedTags.length > 0 && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {selectedTags.map((tag) => (
+              <Badge key={tag} variant="secondary" className="gap-1 pr-1">
+                {tag}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newTags = selectedTags.filter((t) => t !== tag);
+                    onTagsChange?.(newTags);
+                  }}
+                  className="hover:bg-muted-foreground/20 rounded"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+            {selectedTags.length > 0 && (
+              <button
+                type="button"
+                onClick={() => onTagsChange?.([])}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <Label htmlFor="rows-per-page" className="text-sm whitespace-nowrap">
+            Rows per page:
+          </Label>
+          <Select value={rowsPerPage.toString()} onValueChange={onRowsPerPageChange}>
+            <SelectTrigger id="rows-per-page" className="w-[80px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {rowPerPageItems.map((item) => (
+                <SelectItem key={item} value={item.toString()}>
+                  {item}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <span className="text-muted-foreground text-sm whitespace-nowrap">Total: {total ?? 0}</span>
       </div>
     </div>
   );

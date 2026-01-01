@@ -1,8 +1,11 @@
 'use client';
 
-import { Button, Card, CardBody, CardHeader, Chip, Input } from '@heroui/react';
-
 import type { ServerConfig } from '@playwright-reports/shared';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface CronConfigurationProps {
   config: ServerConfig;
@@ -28,40 +31,38 @@ export default function CronConfiguration({
   return (
     <Card className="mb-6 p-4">
       <CardHeader
-        className={`flex justify-between items-center ${editingSection === 'cron' ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500' : ''}`}
+        className={`flex justify-between items-center flex-row ${editingSection === 'cron' ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 -mx-4 px-4' : ''}`}
       >
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-semibold">Cron Settings</h2>
           {editingSection === 'cron' && (
-            <Chip color="primary" size="sm" variant="flat">
+            <Badge variant="secondary" className="text-xs">
               Editing
-            </Chip>
+            </Badge>
           )}
         </div>
         {editingSection !== 'cron' ? (
-          <Button color="primary" isDisabled={editingSection !== 'none'} onPress={onEdit}>
+          <Button disabled={editingSection !== 'none'} onClick={onEdit}>
             {editingSection === 'none' ? 'Edit Configuration' : 'Section in Use'}
           </Button>
         ) : (
           <div className="flex gap-2">
-            <Button color="success" isLoading={isUpdating} onPress={onSave}>
-              Save Changes
+            <Button disabled={isUpdating} onClick={onSave}>
+              {isUpdating ? 'Saving...' : 'Save Changes'}
             </Button>
-            <Button color="default" onPress={onCancel}>
+            <Button variant="outline" onClick={onCancel}>
               Cancel
             </Button>
           </div>
         )}
       </CardHeader>
-      <CardBody>
+      <CardContent>
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2" htmlFor="result-expire-days">
-              Result Expire Days
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="result-expire-days">Result Expire Days</Label>
             <Input
               id="result-expire-days"
-              isDisabled={editingSection !== 'cron'}
+              disabled={editingSection !== 'cron'}
               placeholder="30"
               type="number"
               value={
@@ -80,18 +81,16 @@ export default function CronConfiguration({
                 }
               }}
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground">
               Number of days before test results are automatically deleted
             </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2" htmlFor="result-expire-cron-schedule">
-              Result Expire Cron Schedule
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="result-expire-cron-schedule">Result Expire Cron Schedule</Label>
             <Input
               id="result-expire-cron-schedule"
-              isDisabled={editingSection !== 'cron'}
+              disabled={editingSection !== 'cron'}
               placeholder="0 2 * * *"
               value={
                 editingSection === 'cron'
@@ -109,19 +108,17 @@ export default function CronConfiguration({
                 }
               }}
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground">
               Cron expression for when to run result cleanup (e.g., &quot;0 2 * * *&quot; for daily
               at 2 AM)
             </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2" htmlFor="report-expire-days">
-              Report Expire Days
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="report-expire-days">Report Expire Days</Label>
             <Input
               id="report-expire-days"
-              isDisabled={editingSection !== 'cron'}
+              disabled={editingSection !== 'cron'}
               placeholder="90"
               type="number"
               value={
@@ -140,18 +137,16 @@ export default function CronConfiguration({
                 }
               }}
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground">
               Number of days before test reports are automatically deleted
             </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2" htmlFor="report-expire-cron-schedule">
-              Report Expire Cron Schedule
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="report-expire-cron-schedule">Report Expire Cron Schedule</Label>
             <Input
               id="report-expire-cron-schedule"
-              isDisabled={editingSection !== 'cron'}
+              disabled={editingSection !== 'cron'}
               placeholder="0 3 * * *"
               value={
                 editingSection === 'cron'
@@ -169,7 +164,7 @@ export default function CronConfiguration({
                 }
               }}
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground">
               Cron expression for when to run report cleanup (e.g., &quot;0 3 * * *&quot; for daily
               at 3 AM)
             </p>
@@ -177,9 +172,9 @@ export default function CronConfiguration({
 
           {editingSection === 'cron' && (
             <Button
-              color="warning"
+              variant="outline"
               size="sm"
-              onPress={() =>
+              onClick={() =>
                 onUpdateTempConfig({
                   cron: {
                     resultExpireDays: 30,
@@ -194,7 +189,7 @@ export default function CronConfiguration({
             </Button>
           )}
         </div>
-      </CardBody>
+      </CardContent>
     </Card>
   );
 }

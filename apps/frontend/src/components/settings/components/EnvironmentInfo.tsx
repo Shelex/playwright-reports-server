@@ -1,9 +1,10 @@
 'use client';
 
-import { Card, CardBody, CardHeader, Skeleton } from '@heroui/react';
 import type { ServerDataInfo } from '@playwright-reports/shared';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useAuthConfig } from '@/hooks/useAuthConfig';
 import useQuery from '@/hooks/useQuery';
-import { useAuthConfig } from '../../../hooks/useAuthConfig';
 import DatabaseInfo from './DatabaseInfo';
 
 export default function EnvironmentInfo() {
@@ -15,14 +16,14 @@ export default function EnvironmentInfo() {
       <CardHeader>
         <h2 className="text-xl font-semibold">Environment Information</h2>
       </CardHeader>
-      <CardBody>
+      <CardContent>
         <div className="space-y-4">
           <div>
             <span className="block text-sm font-medium mb-1">Authentication</span>
             {isLoading ? (
               <Skeleton className="h-5 w-20 rounded-lg" />
             ) : (
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 {envInfo?.authRequired ? 'Enabled' : 'Disabled'}
               </p>
             )}
@@ -40,22 +41,28 @@ export default function EnvironmentInfo() {
             {isLoading ? (
               <Skeleton className="h-5 w-20 rounded-lg" />
             ) : (
-              <p className="text-sm text-gray-600">{envInfo?.dataStorage || 'fs'}</p>
+              <p className="text-sm text-muted-foreground">{envInfo?.dataStorage || 'fs'}</p>
             )}
           </div>
           {envInfo?.s3Endpoint && (
             <div>
               <span className="block text-sm font-medium mb-1">S3 Storage</span>
-              <p className="text-sm text-gray-600">Endpoint: {envInfo.s3Endpoint}</p>
-              <p className="text-sm text-gray-600">Bucket: {envInfo.s3Bucket}</p>
+              <p className="text-sm text-muted-foreground">Endpoint: {envInfo.s3Endpoint}</p>
+              <p className="text-sm text-muted-foreground">Bucket: {envInfo.s3Bucket}</p>
             </div>
           )}
-          <p className="text-sm text-gray-600">Total: {serverInfo?.dataFolderSizeinMB}</p>
-          <p className="text-sm text-gray-600">Reports: {serverInfo?.reportsFolderSizeinMB}</p>
-          <p className="text-sm text-gray-600">Results: {serverInfo?.resultsFolderSizeinMB}</p>
-          <p className="text-sm text-gray-600">Available: {serverInfo?.availableSizeinMB}</p>
+          <p className="text-sm text-muted-foreground">Total: {serverInfo?.dataFolderSizeinMB}</p>
+          <p className="text-sm text-muted-foreground">
+            Reports: {serverInfo?.reportsFolderSizeinMB}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Results: {serverInfo?.resultsFolderSizeinMB}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Available: {serverInfo?.availableSizeinMB}
+          </p>
         </div>
-      </CardBody>
+      </CardContent>
     </Card>
   );
 }

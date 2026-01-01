@@ -1,9 +1,9 @@
 'use client';
 
-import { Spinner } from '@heroui/react';
 import type { TestWithQuarantineInfo } from '@playwright-reports/shared';
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
+import { Spinner } from '../../components/ui/spinner';
 import { useAnalyticsData } from '../../hooks/useAnalyticsData';
 import useQuery from '../../hooks/useQuery';
 import { defaultProjectName } from '../../lib/constants';
@@ -79,7 +79,6 @@ export default function AnalyticsDashboard() {
             label="Select project"
             entity="report"
             onSelect={onProjectChange}
-            labelPlacement="inside"
             selectedProject={project}
           />
         </div>

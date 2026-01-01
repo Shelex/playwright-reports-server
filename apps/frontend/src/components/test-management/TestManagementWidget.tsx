@@ -1,30 +1,3 @@
-import {
-  Badge,
-  Button,
-  Card,
-  CardBody,
-  CardHeader,
-  Chip,
-  Dropdown,
-  DropdownItem,
-  DropdownMenu,
-  DropdownTrigger,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  Progress,
-  Spinner,
-  Table,
-  TableBody,
-  TableCell,
-  TableColumn,
-  TableHeader,
-  TableRow,
-  Textarea,
-  useDisclosure,
-} from '@heroui/react';
 import type {
   SiteWhiteLabelConfig,
   TestFilters,
@@ -34,6 +7,34 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Clock } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Progress } from '@/components/ui/progress';
+import { Spinner } from '@/components/ui/spinner';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
 import { parseMilliseconds } from '@/lib/time';
 import useMutation from '../../hooks/useMutation';
 import useQuery from '../../hooks/useQuery';
@@ -56,11 +57,7 @@ export default function TestManagementWidget({ project }: Readonly<TestManagemen
   });
   const [quarantineTest, setQuarantineTest] = useState<TestWithQuarantineInfo | null>(null);
   const [quarantineReason, setQuarantineReason] = useState('');
-  const {
-    isOpen: isQuarantineModalOpen,
-    onOpen: onQuarantineModalOpen,
-    onOpenChange: onQuarantineModalOpenChange,
-  } = useDisclosure();
+  const [isQuarantineModalOpen, setIsQuarantineModalOpen] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -98,7 +95,7 @@ export default function TestManagementWidget({ project }: Readonly<TestManagemen
       method: 'PATCH',
       onSuccess: (_, variables) => {
         invalidateCache(queryClient, { predicate: '/api/tests' });
-        onQuarantineModalOpenChange();
+        setIsQuarantineModalOpen(false);
         setQuarantineReason('');
         const test = (variables as { body: { test: TestWithQuarantineInfo } }).body.test;
         toast.success(
@@ -143,45 +140,34 @@ export default function TestManagementWidget({ project }: Readonly<TestManagemen
     });
   }, [testsResponse]);
 
-  const getFlakinessColor = (score?: number) => {
-    if (!score) return 'default';
-    if (score < warningThreshold) return 'success';
-    if (score < quarantineThreshold) return 'warning';
-    return 'danger';
-  };
-
   const getStatusBadge = (test: TestWithQuarantineInfo) => {
     if (test.isQuarantined) {
       return (
-        <Badge color="danger" variant="flat">
+        <Badge variant="destructive" className="gap-1">
           🔒 Quarantined
         </Badge>
       );
     }
     if (test.flakinessScore === undefined) {
-      return (
-        <Badge color="default" variant="flat">
-          No Data
-        </Badge>
-      );
+      return <Badge variant="secondary">No Data</Badge>;
     }
     if (test.flakinessScore < warningThreshold) {
       return (
-        <Badge color="success" variant="flat">
-          ✅ Stable
+        <Badge variant="default" className="bg-green-600 gap-1">
+          Stable
         </Badge>
       );
     }
     if (test.flakinessScore < quarantineThreshold) {
       return (
-        <Badge color="warning" variant="flat">
+        <Badge variant="secondary" className="bg-yellow-600 text-white gap-1">
           ⚠️ Flaky
         </Badge>
       );
     }
     return (
-      <Badge color="danger" variant="flat">
-        🚫 Critical
+      <Badge variant="destructive" className="gap-1">
+        Critical
       </Badge>
     );
   };
@@ -191,7 +177,7 @@ export default function TestManagementWidget({ project }: Readonly<TestManagemen
     if (!test.isQuarantined) {
       setQuarantineReason('');
     }
-    onQuarantineModalOpen();
+    setIsQuarantineModalOpen(true);
   };
 
   const handleQuarantineSubmit = () => {
@@ -217,110 +203,116 @@ export default function TestManagementWidget({ project }: Readonly<TestManagemen
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Test Management</h2>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">
+        <h2 className="text-2xl font-bold">Test Management</h2>
+        <p className="text-muted-foreground mt-1">
           Monitor test health and manage quarantine status
         </p>
       </div>
 
       <Card className="mb-4">
-        <CardBody>
+        <CardContent className="pt-6">
           <TestFiltersComponent filters={filters} onFiltersChange={setFilters} />
-        </CardBody>
+        </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
           <h3 className="text-lg font-semibold">Tests</h3>
         </CardHeader>
-        <CardBody>
+        <CardContent>
           {isLoadingTests ? (
             <div className="flex justify-center py-12">
               <Spinner size="lg" />
             </div>
           ) : (
-            <Table aria-label="Test management table">
-              <TableHeader>
-                <TableColumn>Test Name</TableColumn>
-                <TableColumn>Project</TableColumn>
-                <TableColumn>Outcome (latest)</TableColumn>
-                <TableColumn>Is Flaky</TableColumn>
-                <TableColumn>Flakiness Score</TableColumn>
-                <TableColumn>Total Runs</TableColumn>
-                <TableColumn>History (first to last)</TableColumn>
-                <TableColumn>Duration (Avg)</TableColumn>
-                <TableColumn>Last Run</TableColumn>
-                <TableColumn>Actions</TableColumn>
-              </TableHeader>
-              <TableBody items={tests} emptyContent="No tests found">
-                {(item: TestWithQuarantineInfo) => (
-                  <TableRow key={`${item.testId}-${item.fileId}-${item.project}`}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{item.title}</p>
-                        <p className="text-small text-default-500">{item.filePath}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm">{item.project}</p>
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm">{item.runs?.at(0)?.outcome}</p>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(item)}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Progress
-                          value={item.flakinessScore || 0}
-                          color={getFlakinessColor(item.flakinessScore)}
-                          size="sm"
-                          className="max-w-[100px]"
-                        />
-                        <span className="text-sm">{item.flakinessScore?.toFixed(1)}%</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Chip variant="flat" size="sm">
-                        {item.totalRuns || 0}
-                      </Chip>
-                    </TableCell>
-                    <TableCell>
-                      <TrendSparklineHistory runs={item.runs ?? []} />
-                    </TableCell>
-                    <TableCell>
-                      <span className="flex">
-                        <Clock className="h-5 w-5 mr-1" />
-                        {parseMilliseconds(exponentialMovingAverageDuration(item.runs))}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {item.lastRunAt ? new Date(item.lastRunAt).toLocaleString() : 'Never'}
-                    </TableCell>
-
-                    <TableCell>
-                      <Dropdown>
-                        <DropdownTrigger>
-                          <Button variant="light" size="sm">
-                            Actions
-                          </Button>
-                        </DropdownTrigger>
-                        <DropdownMenu aria-label="Actions">
-                          <DropdownItem
-                            key={`quarantine-${item.testId}-${item.fileId}`}
-                            onPress={() => handleQuarantineAction(item)}
-                            color={item.isQuarantined ? 'success' : 'danger'}
-                          >
-                            {item.isQuarantined ? 'Remove Quarantine' : 'Send Quarantine'}
-                          </DropdownItem>
-                        </DropdownMenu>
-                      </Dropdown>
-                    </TableCell>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Test Name</TableHead>
+                    <TableHead>Project</TableHead>
+                    <TableHead>Outcome (latest)</TableHead>
+                    <TableHead>Is Flaky</TableHead>
+                    <TableHead>Flakiness Score</TableHead>
+                    <TableHead>Total Runs</TableHead>
+                    <TableHead>History (first to last)</TableHead>
+                    <TableHead>Duration (Avg)</TableHead>
+                    <TableHead>Last Run</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {tests.map((item) => (
+                    <TableRow key={`${item.testId}-${item.fileId}-${item.project}`}>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{item.title}</p>
+                          <p className="text-sm text-muted-foreground">{item.filePath}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm">{item.project}</p>
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm">{item.runs?.at(0)?.outcome}</p>
+                      </TableCell>
+                      <TableCell>{getStatusBadge(item)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Progress
+                            value={item.flakinessScore || 0}
+                            className="max-w-[100px] h-2"
+                          />
+                          <span className="text-sm">{item.flakinessScore?.toFixed(1)}%</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{item.totalRuns || 0}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <TrendSparklineHistory runs={item.runs ?? []} />
+                      </TableCell>
+                      <TableCell>
+                        <span className="flex items-center">
+                          <Clock className="h-4 w-4 mr-1" />
+                          {parseMilliseconds(exponentialMovingAverageDuration(item.runs))}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        {item.lastRunAt ? new Date(item.lastRunAt).toLocaleString() : 'Never'}
+                      </TableCell>
+
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              Actions
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem
+                              onClick={() => handleQuarantineAction(item)}
+                              className={item.isQuarantined ? 'text-green-600' : 'text-red-600'}
+                            >
+                              {item.isQuarantined ? 'Remove Quarantine' : 'Send Quarantine'}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {tests.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                        No tests found
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
-          <div className="mt-4 text-xs text-gray-400 dark:text-gray-500 border-t pt-3 w-full">
+          <div className="mt-4 text-xs text-muted-foreground border-t pt-3 w-full">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1">
                 <span className="inline-block w-2 h-2 bg-green-500 rounded"></span>
@@ -332,62 +324,67 @@ export default function TestManagementWidget({ project }: Readonly<TestManagemen
               </div>
             </div>
           </div>
-        </CardBody>
+        </CardContent>
       </Card>
 
-      <Modal isOpen={isQuarantineModalOpen} onOpenChange={onQuarantineModalOpenChange}>
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader>
-                {quarantineTest?.isQuarantined ? 'Remove from Quarantine' : 'Quarantine Test'}
-              </ModalHeader>
-              <ModalBody>
-                {quarantineTest && (
-                  <div>
-                    <p className="mb-4">
-                      <strong>Test:</strong> {quarantineTest.title}
-                    </p>
-                    {!quarantineTest.isQuarantined && (
-                      <Textarea
-                        label="Quarantine Reason"
-                        placeholder="Enter reason for quarantine..."
-                        value={quarantineReason}
-                        onChange={(e) => setQuarantineReason(e.target.value)}
-                        isRequired
-                        minRows={3}
-                      />
-                    )}
-                    {quarantineTest.isQuarantined && quarantineTest.quarantineReason && (
-                      <div className="bg-content2 p-3 rounded-lg">
-                        <p className="text-sm font-semibold mb-1">Current Reason:</p>
-                        <p className="text-sm">{quarantineTest.quarantineReason}</p>
-                      </div>
-                    )}
+      <Dialog open={isQuarantineModalOpen} onOpenChange={setIsQuarantineModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {quarantineTest?.isQuarantined ? 'Remove from Quarantine' : 'Quarantine Test'}
+            </DialogTitle>
+            <DialogDescription>
+              {quarantineTest?.isQuarantined
+                ? 'This test will be removed from quarantine and allowed to run again.'
+                : 'This test will be quarantined and skipped in future runs.'}
+            </DialogDescription>
+          </DialogHeader>
+          {quarantineTest && (
+            <div className="space-y-4">
+              <div>
+                <p className="mb-4">
+                  <strong>Test:</strong> {quarantineTest.title}
+                </p>
+                {!quarantineTest.isQuarantined && (
+                  <Textarea
+                    placeholder="Enter reason for quarantine..."
+                    value={quarantineReason}
+                    onChange={(e) => setQuarantineReason(e.target.value)}
+                    required
+                    rows={3}
+                  />
+                )}
+                {quarantineTest.isQuarantined && quarantineTest.quarantineReason && (
+                  <div className="bg-muted p-3 rounded-lg">
+                    <p className="text-sm font-semibold mb-1">Current Reason:</p>
+                    <p className="text-sm">{quarantineTest.quarantineReason}</p>
                   </div>
                 )}
-              </ModalBody>
-              <ModalFooter>
-                <Button
-                  color="default"
-                  variant="light"
-                  onPress={onClose}
-                  isDisabled={isUpdateQuarantinePending}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  color={quarantineTest?.isQuarantined ? 'success' : 'danger'}
-                  onPress={handleQuarantineSubmit}
-                  isLoading={isUpdateQuarantinePending}
-                >
-                  {quarantineTest?.isQuarantined ? 'Remove Quarantine' : 'Quarantine Test'}
-                </Button>
-              </ModalFooter>
-            </>
+              </div>
+            </div>
           )}
-        </ModalContent>
-      </Modal>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsQuarantineModalOpen(false)}
+              disabled={isUpdateQuarantinePending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={quarantineTest?.isQuarantined ? 'default' : 'destructive'}
+              onClick={handleQuarantineSubmit}
+              disabled={isUpdateQuarantinePending}
+            >
+              {isUpdateQuarantinePending
+                ? 'Saving...'
+                : quarantineTest?.isQuarantined
+                  ? 'Remove Quarantine'
+                  : 'Quarantine Test'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

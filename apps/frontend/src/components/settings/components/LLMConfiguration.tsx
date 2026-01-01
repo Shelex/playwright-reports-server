@@ -1,18 +1,20 @@
 'use client';
 
-import {
-  Button,
-  Card,
-  CardBody,
-  CardHeader,
-  Chip,
-  Divider,
-  Input,
-  Select,
-  SelectItem,
-} from '@heroui/react';
-
 import type { ServerConfig } from '@playwright-reports/shared';
+import { Alert } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 
 interface LLMConfigurationProps {
   config: ServerConfig;
@@ -45,72 +47,68 @@ export default function LLMConfiguration({
   return (
     <Card className="mb-6 p-4">
       <CardHeader
-        className={`flex justify-between items-center ${editingSection === 'llm' ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500' : ''}`}
+        className={`flex justify-between items-center flex-row ${editingSection === 'llm' ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 -mx-4 px-4' : ''}`}
       >
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-semibold">LLM Configuration</h2>
           {editingSection === 'llm' && (
-            <Chip color="primary" size="sm" variant="flat">
+            <Badge variant="secondary" className="text-xs">
               Editing
-            </Chip>
+            </Badge>
           )}
         </div>
         {editingSection === 'llm' ? (
           <div className="flex gap-2">
-            <Button color="success" isLoading={isUpdating} onPress={onSave}>
-              Save Changes
+            <Button disabled={isUpdating} onClick={onSave}>
+              {isUpdating ? 'Saving...' : 'Save Changes'}
             </Button>
-            <Button color="default" onPress={onCancel}>
+            <Button variant="outline" onClick={onCancel}>
               Cancel
             </Button>
           </div>
         ) : (
-          <Button color="primary" isDisabled={editingSection !== 'none'} onPress={onEdit}>
+          <Button disabled={editingSection !== 'none'} onClick={onEdit}>
             {editingSection === 'none' ? 'Edit Configuration' : 'Section in Use'}
           </Button>
         )}
       </CardHeader>
-      <CardBody>
+      <CardContent>
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2" htmlFor="llm-provider">
-              LLM Provider
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="llm-provider">LLM Provider</Label>
             <Select
-              id="llm-provider"
-              isDisabled={editingSection !== 'llm'}
-              placeholder="Select LLM provider"
-              selectedKeys={
-                editingSection === 'llm' && tempConfig.llm?.provider
-                  ? [tempConfig.llm.provider]
-                  : config.llm?.provider
-                    ? [config.llm.provider]
-                    : []
+              disabled={editingSection !== 'llm'}
+              value={
+                editingSection === 'llm'
+                  ? tempConfig.llm?.provider || ''
+                  : config.llm?.provider || ''
               }
-              onSelectionChange={(keys) => {
-                if (editingSection === 'llm' && keys !== 'all') {
-                  const selectedKey = Array.from(keys)[0] as string;
+              onValueChange={(value) => {
+                if (editingSection === 'llm') {
                   onUpdateTempConfig({
-                    llm: { ...tempConfig.llm, provider: selectedKey as any },
+                    llm: { ...tempConfig.llm, provider: value as any },
                   });
                 }
               }}
             >
-              {providers.map((provider) => (
-                <SelectItem key={provider.key} textValue={provider.key}>
-                  {provider.label}
-                </SelectItem>
-              ))}
+              <SelectTrigger>
+                <SelectValue placeholder="Select LLM provider" />
+              </SelectTrigger>
+              <SelectContent>
+                {providers.map((provider) => (
+                  <SelectItem key={provider.key} value={provider.key}>
+                    {provider.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2" htmlFor="llm-base-url">
-              Base URL
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="llm-base-url">Base URL</Label>
             <Input
               id="llm-base-url"
-              isDisabled={editingSection !== 'llm'}
+              disabled={editingSection !== 'llm'}
               placeholder="https://api.openai.com/v1"
               value={
                 editingSection === 'llm' ? tempConfig.llm?.baseUrl || '' : config.llm?.baseUrl || ''
@@ -124,13 +122,11 @@ export default function LLMConfiguration({
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2" htmlFor="llm-api-key">
-              API Key
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="llm-api-key">API Key</Label>
             <Input
               id="llm-api-key"
-              isDisabled={editingSection !== 'llm'}
+              disabled={editingSection !== 'llm'}
               placeholder="Your API key"
               type="password"
               value={
@@ -145,13 +141,11 @@ export default function LLMConfiguration({
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2" htmlFor="llm-model">
-              Model (Optional)
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="llm-model">Model (Optional)</Label>
             <Input
               id="llm-model"
-              isDisabled={editingSection !== 'llm'}
+              disabled={editingSection !== 'llm'}
               placeholder="gpt-4, claude-3-sonnet, etc."
               value={
                 editingSection === 'llm' ? tempConfig.llm?.model || '' : config.llm?.model || ''
@@ -165,13 +159,11 @@ export default function LLMConfiguration({
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2" htmlFor="llm-temperature">
-              Temperature (0-2)
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="llm-temperature">Temperature (0-2)</Label>
             <Input
               id="llm-temperature"
-              isDisabled={editingSection !== 'llm'}
+              disabled={editingSection !== 'llm'}
               placeholder="0.3"
               type="number"
               min="0"
@@ -194,57 +186,53 @@ export default function LLMConfiguration({
             />
           </div>
 
-          <Divider />
+          <Separator />
 
           {/* Status Display */}
           {isConfigured ? (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <Chip color="success" size="sm">
+                <Badge variant="default" className="bg-green-600">
                   Configured
-                </Chip>
-                <span className="text-sm text-gray-600">LLM integration is active</span>
+                </Badge>
+                <span className="text-sm text-muted-foreground">LLM integration is active</span>
               </div>
               {config.llm?.provider && (
                 <div>
-                  <span className="block text-sm font-medium mb-1">Provider</span>
-                  <Chip size="sm" variant="flat">
+                  <span className="block text-sm font-medium mb-2">Provider</span>
+                  <Badge variant="secondary">
                     {providers.find((p) => p.key === config.llm?.provider)?.label ||
                       config.llm.provider}
-                  </Chip>
+                  </Badge>
                 </div>
               )}
               {config.llm?.model && (
                 <div>
-                  <span className="block text-sm font-medium mb-1">Model</span>
-                  <Chip size="sm" variant="flat">
-                    {config.llm.model}
-                  </Chip>
+                  <span className="block text-sm font-medium mb-2">Model</span>
+                  <Badge variant="secondary">{config.llm.model}</Badge>
                 </div>
               )}
             </div>
           ) : (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <Chip color="warning" size="sm">
-                  Not Configured
-                </Chip>
-                <span className="text-sm text-gray-600">LLM integration is not set up</span>
+                <Badge variant="outline">Not Configured</Badge>
+                <span className="text-sm text-muted-foreground">LLM integration is not set up</span>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                <h3 className="font-medium mb-2">To enable LLM integration:</h3>
-                <p className="text-sm text-gray-600 mb-2">
+              <Alert>
+                <p className="font-medium mb-2">To enable LLM integration:</p>
+                <p className="text-sm text-muted-foreground mb-2">
                   Fill in the LLM configuration fields above and save the configuration.
                 </p>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-muted-foreground">
                   You can also set environment variables as a fallback: LLM_PROVIDER, LLM_BASE_URL,
                   LLM_API_KEY, LLM_MODEL, LLM_TEMPERATURE
                 </p>
-              </div>
+              </Alert>
             </div>
           )}
         </div>
-      </CardBody>
+      </CardContent>
     </Card>
   );
 }

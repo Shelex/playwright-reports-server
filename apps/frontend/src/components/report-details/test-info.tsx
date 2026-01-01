@@ -1,13 +1,3 @@
-import {
-  Link,
-  LinkIcon,
-  Table,
-  TableBody,
-  TableCell,
-  TableColumn,
-  TableHeader,
-  TableRow,
-} from '@heroui/react';
 import type {
   ReportHistory,
   ReportTest,
@@ -15,8 +5,18 @@ import type {
   TestHistory,
 } from '@playwright-reports/shared';
 import type { FC } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import FormattedDate from '@/components/date-format';
+import { LinkIcon } from '@/components/icons';
 import { subtitle } from '@/components/primitives';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { testStatusToColor } from '@/lib/tailwind';
 import { parseMilliseconds } from '@/lib/time';
 import { withBase } from '@/lib/url';
@@ -70,7 +70,7 @@ const TestInfo: FC<TestInfoProps> = ({ test, history }: TestInfoProps) => {
 
   return (
     <div className="shadow-md rounded-lg p-6">
-      <div className="mb-4">
+      <div className="mb-4 space-y-1">
         <p>
           Outcome: <span className={formatted.color}>{formatted.title}</span>
         </p>
@@ -87,15 +87,17 @@ const TestInfo: FC<TestInfoProps> = ({ test, history }: TestInfoProps) => {
       {!!testHistory?.length && (
         <div>
           <h3 className={subtitle()}>Results:</h3>
-          <Table aria-label="Test History">
+          <Table>
             <TableHeader>
-              <TableColumn>Created At</TableColumn>
-              <TableColumn>Status</TableColumn>
-              <TableColumn>Duration</TableColumn>
-              <TableColumn>Actions</TableColumn>
+              <TableRow>
+                <TableHead>Created At</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Duration</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
             </TableHeader>
-            <TableBody items={testHistory.filter(Boolean)}>
-              {(item) => {
+            <TableBody>
+              {testHistory.filter(Boolean).map((item) => {
                 const itemOutcome = testStatusToColor(
                   (item.outcome as ReportTestOutcome) || 'expected'
                 );
@@ -110,16 +112,16 @@ const TestInfo: FC<TestInfoProps> = ({ test, history }: TestInfoProps) => {
                     </TableCell>
                     <TableCell className="w-2/8">{parseMilliseconds(item.duration || 0)}</TableCell>
                     <TableCell className="w-1/8">
-                      <Link
-                        href={`${withBase(item.reportUrl || '')}#?testId=${item.testId || ''}`}
+                      <RouterLink
+                        to={`${withBase(item.reportUrl || '')}#?testId=${item.testId || ''}`}
                         target="_blank"
                       >
                         <LinkIcon />
-                      </Link>
+                      </RouterLink>
                     </TableCell>
                   </TableRow>
                 );
-              }}
+              })}
             </TableBody>
           </Table>
         </div>

@@ -1,32 +1,39 @@
 import { useLayoutEffect } from 'react';
 import { Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import { Toaster } from 'sonner';
-import { Layout } from './components/Layout';
-import HomePage from './pages/HomePage';
-import LoginPage from './pages/LoginPage';
-import ReportDetailPage from './pages/ReportDetailPage';
-import ReportsPage from './pages/ReportsPage';
-import ResultsPage from './pages/ResultsPage';
-import SettingsPage from './pages/SettingsPage';
-import TrendsPage from './pages/TrendsPage';
-import { Providers } from './providers';
+import { Layout } from '@/components/Layout';
+import HomePage from '@/pages/HomePage';
+import LoginPage from '@/pages/LoginPage';
+import ReportDetailPage from '@/pages/ReportDetailPage';
+import ReportsPage from '@/pages/ReportsPage';
+import ResultsPage from '@/pages/ResultsPage';
+import SettingsPage from '@/pages/SettingsPage';
+import TrendsPage from '@/pages/TrendsPage';
+import { Providers } from '@/providers';
 
 function App() {
   return (
-    <Providers attribute="class" defaultTheme="dark">
-      <Layout>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/reports" element={<ReportsPage />} />
-          <Route path="/report/:id" element={<ReportDetailPage />} />
-          <Route path="/report/:id/:testId" element={<RedirectTestDetails />} />
-          <Route path="/results" element={<ResultsPage />} />
-          <Route path="/trends" element={<TrendsPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/login" element={<LoginPage />} />
-        </Routes>
-        <Toaster closeButton richColors visibleToasts={3} />
-      </Layout>
+    <Providers attribute="class" defaultTheme="system">
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/*"
+          element={
+            <Layout>
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/reports" element={<ReportsPage />} />
+                <Route path="/report/:id" element={<ReportDetailPage />} />
+                <Route path="/report/:id/:testId" element={<RedirectTestDetails />} />
+                <Route path="/results" element={<ResultsPage />} />
+                <Route path="/trends" element={<TrendsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+              </Routes>
+            </Layout>
+          }
+        />
+      </Routes>
+      <Toaster closeButton richColors visibleToasts={3} />
     </Providers>
   );
 }

@@ -1,10 +1,10 @@
-import { Spinner } from '@heroui/react';
 import type { ServerDataInfo } from '@playwright-reports/shared';
 import { useEffect, useLayoutEffect } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '../hooks/useAuth';
 import { useAuthConfig } from '../hooks/useAuthConfig';
 import useQuery from '../hooks/useQuery';
+import { Spinner } from './ui/spinner';
 
 interface PageLayoutProps {
   render: (props: { info: ServerDataInfo; onUpdate: () => void }) => React.ReactNode;
@@ -47,12 +47,15 @@ export default function PageLayout({ render }: Readonly<PageLayoutProps>) {
   }, [session, authRequired, authIsLoading, refetch]);
 
   if (authIsLoading || isInfoLoading) {
-    return <Spinner className="flex justify-center items-center" />;
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
   }
 
   if (error) {
     toast.error(error.message);
-
     return <div>Error loading data: {error.message}</div>;
   }
 

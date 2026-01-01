@@ -1,4 +1,3 @@
-import { Spinner } from '@heroui/react';
 import type {
   EnvInfo,
   JiraConfig,
@@ -7,16 +6,17 @@ import type {
 } from '@playwright-reports/shared';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import AddLinkModal from '../components/settings/components/AddLinkModal';
-import CronConfiguration from '../components/settings/components/CronConfiguration';
-import EnvironmentInfo from '../components/settings/components/EnvironmentInfo';
-import JiraConfiguration from '../components/settings/components/JiraConfiguration';
-import LLMConfiguration from '../components/settings/components/LLMConfiguration';
-import ServerConfiguration from '../components/settings/components/ServerConfiguration';
-import TestManagementSettings from '../components/settings/components/TestManagementSettings';
-import { useAuth } from '../hooks/useAuth';
+import AddLinkModal from '@/components/settings/components/AddLinkModal';
+import CronConfiguration from '@/components/settings/components/CronConfiguration';
+import EnvironmentInfo from '@/components/settings/components/EnvironmentInfo';
+import JiraConfiguration from '@/components/settings/components/JiraConfiguration';
+import LLMConfiguration from '@/components/settings/components/LLMConfiguration';
+import ServerConfiguration from '@/components/settings/components/ServerConfiguration';
+import TestManagementSettings from '@/components/settings/components/TestManagementSettings';
+import { Spinner } from '@/components/ui/spinner';
+import { useAuth } from '@/hooks/useAuth';
 
-import useQuery from '../hooks/useQuery';
+import useQuery from '@/hooks/useQuery';
 
 export default function SettingsPage() {
   const session = useAuth();
@@ -238,7 +238,11 @@ export default function SettingsPage() {
   };
 
   if (session.status === 'loading') {
-    return <Spinner className="flex justify-center items-center" />;
+    return (
+      <div className="flex justify-center items-center">
+        <Spinner size="lg" />
+      </div>
+    );
   }
 
   if (serverConfig?.authRequired === true && session.status === 'unauthenticated') {
