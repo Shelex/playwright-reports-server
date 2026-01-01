@@ -10,7 +10,6 @@ import ReportDetailPage from '@/pages/ReportDetailPage';
 import ReportsPage from '@/pages/ReportsPage';
 import ResultsPage from '@/pages/ResultsPage';
 import SettingsPage from '@/pages/SettingsPage';
-import TrendsPage from '@/pages/TrendsPage';
 import { Providers } from '@/providers';
 
 function ConfigInitializer() {
@@ -41,7 +40,6 @@ function App() {
                 <Route path="/report/:id" element={<ReportDetailPage />} />
                 <Route path="/report/:id/:testId" element={<RedirectTestDetails />} />
                 <Route path="/results" element={<ResultsPage />} />
-                <Route path="/trends" element={<TrendsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Routes>
             </Layout>

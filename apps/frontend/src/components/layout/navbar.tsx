@@ -15,9 +15,9 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
+  { label: 'Dashboard', href: '/', icon: TrendIcon },
   { label: 'Reports', href: '/reports', icon: ReportIcon },
   { label: 'Results', href: '/results', icon: ResultIcon },
-  { label: 'Trends', href: '/trends', icon: TrendIcon },
   { label: 'Settings', href: '/settings', icon: SettingsIcon },
 ];
 

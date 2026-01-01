@@ -1,5 +1,5 @@
-import { Navigate } from 'react-router-dom';
+import AnalyticsDashboard from '@/components/analytics/AnalyticsDashboard';
 
 export default function HomePage() {
-  return <Navigate to="/reports" replace />;
+  return <AnalyticsDashboard />;
 }
