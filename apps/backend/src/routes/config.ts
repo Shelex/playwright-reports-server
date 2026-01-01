@@ -52,6 +52,15 @@ export async function registerConfigRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: error.message });
     }
 
+    if (!config) {
+      return reply.status(500).send({ error: 'failed to get config' });
+    }
+
+    const maskString = (str: string | undefined) => {
+      if (!str) return undefined;
+      return '*'.repeat(str.length);
+    };
+
     const envInfo = {
       authRequired: !!env.API_TOKEN,
       database: getDatabaseStats(),
@@ -61,11 +70,13 @@ export async function registerConfigRoutes(fastify: FastifyInstance) {
     };
 
     const llmInfo = {
-      provider: env.LLM_PROVIDER,
-      baseUrl: env.LLM_BASE_URL,
-      apiKey: env.LLM_API_KEY,
-      model: env.LLM_MODEL,
-      temperature: env.LLM_TEMPERATURE,
+      provider: config.llm?.provider || env.LLM_PROVIDER,
+      baseUrl: config.llm?.baseUrl || env.LLM_BASE_URL,
+      apiKey: maskString(config.llm?.apiKey || env.LLM_API_KEY),
+      model: config.llm?.model || env.LLM_MODEL,
+      temperature:
+        config.llm?.temperature ??
+        (env.LLM_TEMPERATURE ? Number.parseFloat(String(env.LLM_TEMPERATURE)) : undefined),
     };
 
     return { ...config, ...envInfo, llm: llmInfo };
