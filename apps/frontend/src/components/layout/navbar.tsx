@@ -40,7 +40,7 @@ export function Navbar() {
               <img
                 alt="Logo"
                 className={cn('h-8', isCustomLogo ? 'w-auto' : 'w-[174px]', 'dark:invert')}
-                src={withBase(`/api/static${config?.logoPath}`)}
+                src={withBase(`/api/static${config?.logoPath ?? defaultConfig.logoPath}`)}
               />
               {isCustomTitle && config?.title && (
                 <span className="font-display font-bold text-lg">{config.title}</span>

@@ -1,5 +1,5 @@
-export * from './types.js';
 export type { Storage } from './types.js';
+export * from './types.js';
 
 import { env } from '../../config/env.js';
 import { FS } from './fs.js';

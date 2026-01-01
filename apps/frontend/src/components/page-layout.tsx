@@ -32,14 +32,13 @@ export default function PageLayout({ render }: Readonly<PageLayoutProps>) {
       return;
     }
 
-    if (!authIsLoading && !session && authRequired === true) {
+    if (!authIsLoading && session.status === 'unauthenticated' && authRequired === true) {
       toast.error('You are not authenticated');
     }
   }, [authIsLoading, session, authRequired]);
 
   useLayoutEffect(() => {
-    // skip refetch is not authorized
-    if (authRequired && (authIsLoading || !session)) {
+    if (authRequired && (authIsLoading || session.status === 'unauthenticated')) {
       return;
     }
 
