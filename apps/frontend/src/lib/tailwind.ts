@@ -12,32 +12,32 @@ export function testStatusToColor(outcome: ReportTestOutcome): TestStatusColor {
     case 'expected':
       return {
         title: '✅ Passed',
-        color: 'text-success',
+        color: 'text-[hsl(var(--success))]',
         colorName: 'success',
       };
     case 'failed':
     case 'unexpected':
       return {
         title: '❌ Failed',
-        color: 'text-danger',
+        color: 'text-[hsl(var(--failure))]',
         colorName: 'danger',
       };
     case 'skipped':
       return {
         title: '⏭️ Skipped',
-        color: 'text-warning',
+        color: 'text-[hsl(var(--skipped))]',
         colorName: 'warning',
       };
     case 'flaky':
       return {
         title: '🔄 Flaky',
-        color: 'text-warning',
+        color: 'text-[hsl(var(--flaky))]',
         colorName: 'warning',
       };
     default:
       return {
         title: '❓ Unknown',
-        color: 'text-default',
+        color: 'text-[hsl(var(--muted-foreground))]',
         colorName: 'default',
       };
   }

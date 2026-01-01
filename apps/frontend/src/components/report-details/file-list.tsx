@@ -1,12 +1,19 @@
 'use client';
 
-import { Accordion, AccordionItem, Alert, Spinner } from '@heroui/react';
 import type { ReportHistory } from '@playwright-reports/shared';
 import { type FC, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import InlineStatsCircle from '@/components/inline-stats-circle';
 import { subtitle } from '@/components/primitives';
 import { StatChart } from '@/components/stat-chart';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import { Alert } from '@/components/ui/alert';
+import { Spinner } from '@/components/ui/spinner';
 import useQuery from '@/hooks/useQuery';
 import { pluralize } from '@/lib/transformers';
 import FileSuitesTree from './suite-tree';
@@ -30,7 +37,7 @@ const FileList: FC<FileListProps> = ({ report, highlightTestId }) => {
   const [filteredTests, setFilteredTests] = useState<ReportHistory | undefined>(
     report ?? undefined
   );
-  const [defaultExpandedKeys, setDefaultExpandedKeys] = useState<string[] | undefined>();
+  const [defaultExpandedKeys, setDefaultExpandedKeys] = useState<string[]>([]);
 
   useEffect(() => {
     if (historyError) {
@@ -50,11 +57,17 @@ const FileList: FC<FileListProps> = ({ report, highlightTestId }) => {
   }, [highlightTestId, filteredTests]);
 
   if (!report) {
-    return <Spinner color="primary" label="Loading..." />;
+    return (
+      <div className="flex items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
   }
 
   return isHistoryLoading ? (
-    <Spinner color="primary" label="Loading test history..." />
+    <div className="flex items-center justify-center">
+      <Spinner size="lg" />
+    </div>
   ) : (
     <div>
       <div className="flex flex-row justify-between">
@@ -62,38 +75,38 @@ const FileList: FC<FileListProps> = ({ report, highlightTestId }) => {
         <ReportFilters report={report} onChangeFilters={setFilteredTests} />
       </div>
       {filteredTests?.files?.length ? (
-        <Accordion
-          isCompact={true}
-          variant="bordered"
-          defaultExpandedKeys={defaultExpandedKeys}
-          selectedKeys={defaultExpandedKeys}
-        >
+        <Accordion type="multiple" defaultValue={defaultExpandedKeys} className="w-full">
           {(filteredTests?.files ?? []).map((file) => (
-            <AccordionItem
-              key={file.fileId}
-              aria-label={file.fileName}
-              startContent={<InlineStatsCircle stats={file.stats} />}
-              title={
-                <p className="flex flex-row gap-5">
-                  {file.fileName}
-                  <span className="text-gray-500">
-                    {file.tests.length} {pluralize(file.tests.length, 'test')}
-                  </span>
-                </p>
-              }
-            >
-              <div className="file-details">
-                <StatChart stats={file.stats} />
-                <div className="file-tests">
-                  <h4 className={subtitle()}>Tests</h4>
-                  <FileSuitesTree file={file} history={history ?? []} reportId={report?.reportID} />
+            <AccordionItem key={file.fileId} value={file.fileId}>
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex flex-row items-center gap-3 flex-1">
+                  <InlineStatsCircle stats={file.stats} />
+                  <p className="flex flex-row gap-5 justify-between">
+                    {file.fileName}
+                    <span className="text-muted-foreground">
+                      {file.tests.length} {pluralize(file.tests.length, 'test')}
+                    </span>
+                  </p>
                 </div>
-              </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="file-details space-y-4">
+                  <StatChart stats={file.stats} />
+                  <div className="file-tests">
+                    <h4 className={subtitle()}>Tests</h4>
+                    <FileSuitesTree
+                      file={file}
+                      history={history ?? []}
+                      reportId={report?.reportID}
+                    />
+                  </div>
+                </div>
+              </AccordionContent>
             </AccordionItem>
           ))}
         </Accordion>
       ) : (
-        <Alert color="warning" title={`No files found`} />
+        <Alert>No files found</Alert>
       )}
     </div>
   );

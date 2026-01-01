@@ -1,6 +1,16 @@
 'use client';
 
-import { Button, Input } from '@heroui/react';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface AddLinkModalProps {
   isOpen: boolean;
@@ -17,18 +27,17 @@ export default function AddLinkModal({
   onCancel,
   onUpdateLinkData,
 }: Readonly<AddLinkModalProps>) {
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
-        <h3 className="text-lg font-semibold mb-4">Add Header Link</h3>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add Header Link</DialogTitle>
+          <DialogDescription>Add a new link to the header navigation</DialogDescription>
+        </DialogHeader>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2" htmlFor="link-name">
-              Link Name
-            </label>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="link-name">Link Name</Label>
             <Input
               id="link-name"
               placeholder="e.g., github, telegram, discord"
@@ -37,10 +46,8 @@ export default function AddLinkModal({
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2" htmlFor="link-url">
-              URL
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="link-url">URL</Label>
             <Input
               id="link-url"
               placeholder="https://example.com"
@@ -50,19 +57,15 @@ export default function AddLinkModal({
           </div>
         </div>
 
-        <div className="flex gap-2 justify-end mt-6">
-          <Button color="default" onPress={onCancel}>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button
-            color="primary"
-            isDisabled={!newLinkData.name || !newLinkData.url}
-            onPress={onAddLink}
-          >
+          <Button onClick={onAddLink} disabled={!newLinkData.name || !newLinkData.url}>
             Add Link
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

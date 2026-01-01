@@ -1,31 +1,31 @@
-import type { ReactNode } from 'react';
-import { Aside } from './aside';
-import { Navbar } from './navbar';
+import { Outlet } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+import { Navbar } from './layout/navbar';
 
 interface LayoutProps {
-  children: ReactNode;
+  children?: React.ReactNode;
 }
 
 export function Layout({ children }: LayoutProps) {
   return (
-    <div className="min-h-screen bg-background font-sans antialiased">
-      <div className="relative flex flex-col h-screen">
+    <div className="min-h-screen bg-background font-sans">
+      <div className="flex min-h-screen flex-col">
         <Navbar />
-        <div className="flex flex-1 overflow-hidden">
-          <Aside />
-          <main className="flex-1 md:ml-0 ml-0 px-6 py-12 overflow-auto">{children}</main>
-        </div>
-        <footer className="w-full flex items-center justify-center py-4 bg-[#F9FAFB] dark:bg-background border-t border-gray-200 dark:border-gray-800 flex-shrink-0">
-          <a
-            className="flex items-center gap-1 text-current"
-            href="https://github.com/Shelex/playwright-reports-server"
-            target="_blank"
-            rel="noreferrer"
-            title="Source code link"
-          >
-            <span className="text-default-600">Powered by</span>
-            <p className="text-primary">CyborgTests</p>
-          </a>
+
+        <main className={cn('flex-1', 'container', 'py-6 md:py-8')}>{children || <Outlet />}</main>
+
+        <footer className="border-t border-border/40 py-4">
+          <div className="container flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <span>Powered by</span>
+            <a
+              href="https://www.cyborgtest.com/"
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-primary hover:underline"
+            >
+              CyborgTests
+            </a>
+          </div>
         </footer>
       </div>
     </div>

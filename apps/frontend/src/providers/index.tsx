@@ -1,4 +1,3 @@
-import { HeroUIProvider } from '@heroui/system';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import type { ThemeProviderProps } from 'next-themes';
@@ -18,21 +17,19 @@ export const Providers: FC<ThemeProviderProps> = ({ children, ...themeProps }) =
   );
 
   return (
-    <HeroUIProvider>
-      <NextThemesProvider
-        {...themeProps}
-        attribute="class"
-        // additional mapping to handle theme names from playwright trace view
-        value={{
-          'light-mode': 'light',
-          'dark-mode': 'dark',
-        }}
-      >
-        <QueryClientProvider client={queryClient}>
-          {children}
-          <ReactQueryDevtools initialIsOpen={false} />
-        </QueryClientProvider>
-      </NextThemesProvider>
-    </HeroUIProvider>
+    <NextThemesProvider
+      {...themeProps}
+      attribute="class"
+      // additional mapping to handle theme names from playwright trace view
+      value={{
+        'light-mode': 'light',
+        'dark-mode': 'dark',
+      }}
+    >
+      <QueryClientProvider client={queryClient}>
+        {children}
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </NextThemesProvider>
   );
 };

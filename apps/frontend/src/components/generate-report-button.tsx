@@ -1,15 +1,3 @@
-import {
-  Autocomplete,
-  AutocompleteItem,
-  Button,
-  Input,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  useDisclosure,
-} from '@heroui/react';
 import type { Result } from '@playwright-reports/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -17,6 +5,19 @@ import { toast } from 'sonner';
 import useMutation from '../hooks/useMutation';
 import useQuery from '../hooks/useQuery';
 import { invalidateCache } from '../lib/query-cache';
+import { Button } from './ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from './ui/dialog';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Spinner } from './ui/spinner';
 
 interface DeleteProjectButtonProps {
   results: Result[];
@@ -30,6 +31,7 @@ export default function GenerateReportButton({
   onGeneratedReport,
 }: Readonly<DeleteProjectButtonProps>) {
   const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
 
   const { mutate: generateReport, isPending } = useMutation('/api/report/generate', {
@@ -47,7 +49,7 @@ export default function GenerateReportButton({
       setProjectName('');
       setCustomName('');
       setGenerationError(null);
-      onClose();
+      setOpen(false);
       onGeneratedReport?.();
     },
     onError: (err: Error) => {
@@ -68,11 +70,8 @@ export default function GenerateReportButton({
     },
   });
 
-  const {
-    data: resultProjects,
-    error: resultProjectsError,
-    isLoading: isResultProjectsLoading,
-  } = useQuery<string[]>(`/api/result/projects`);
+  const { data: resultProjects, error: resultProjectsError } =
+    useQuery<string[]>(`/api/result/projects`);
 
   const [projectName, setProjectName] = useState('');
   const [customName, setCustomName] = useState('');
@@ -80,13 +79,6 @@ export default function GenerateReportButton({
   useEffect(() => {
     !projectName && setProjectName(projects?.at(0) ?? '');
   }, [projects, projectName]);
-
-  const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
-
-  const handleModalOpen = () => {
-    setGenerationError(null);
-    onOpen();
-  };
 
   const GenerateReport = async () => {
     if (!results?.length) {
@@ -107,91 +99,78 @@ export default function GenerateReportButton({
     });
   };
 
+  const allProjects = Array.from(new Set([...projects, ...(resultProjects ?? [])]));
+
   return (
-    <>
-      <Button
-        color="primary"
-        isDisabled={!results?.length}
-        isLoading={isPending}
-        size="md"
-        onPress={handleModalOpen}
-      >
-        Generate Report
-      </Button>
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-        <ModalContent>
-          {(onClose) => (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button disabled={!results?.length}>
+          {isPending && <Spinner className="mr-2 h-4 w-4" />}
+          Generate Report
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Generate report</DialogTitle>
+          <DialogDescription>Create a new report from selected test results</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          {generationError ? (
+            <div className="flex flex-col gap-2">
+              <p className="font-semibold text-destructive">Report generation failed:</p>
+              <pre className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 text-sm text-destructive font-mono whitespace-pre-wrap break-words overflow-auto max-h-96 select-text">
+                {generationError}
+              </pre>
+            </div>
+          ) : (
             <>
-              <ModalHeader className="flex flex-col gap-1">Generate report</ModalHeader>
-              <ModalBody>
-                {generationError ? (
-                  <div className="flex flex-col gap-2">
-                    <p className="text-danger font-semibold">Report generation failed:</p>
-                    <pre className="bg-danger-50 border border-danger-200 rounded-lg p-4 text-sm text-danger-700 font-mono whitespace-pre-wrap break-words overflow-auto max-h-96 select-text">
-                      {generationError}
-                    </pre>
-                  </div>
-                ) : (
-                  <>
-                    <Autocomplete
-                      allowsCustomValue
-                      errorMessage={resultProjectsError?.message}
-                      inputValue={projectName}
-                      isDisabled={isPending}
-                      isLoading={isResultProjectsLoading}
-                      items={Array.from(new Set([...projects, ...(resultProjects ?? [])])).map(
-                        (project) => ({
-                          label: project,
-                          value: project,
-                        })
-                      )}
-                      label="Project name"
-                      labelPlacement="outside"
-                      placeholder="leave empty if not required"
-                      variant="bordered"
-                      onInputChange={(value) => setProjectName(value)}
-                      onSelectionChange={(value) =>
-                        value && setProjectName(value?.toString() ?? '')
-                      }
-                    >
-                      {(item) => <AutocompleteItem key={item.value}>{item.label}</AutocompleteItem>}
-                    </Autocomplete>
-                    <Input
-                      fullWidth
-                      isClearable
-                      label="Custom report name"
-                      labelPlacement="outside"
-                      maxLength={36}
-                      placeholder="leave empty if not required"
-                      value={customName}
-                      variant="bordered"
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        setCustomName(e.target.value ?? '')
-                      }
-                      onClear={() => setCustomName('')}
-                    />
-                  </>
+              <div className="space-y-2">
+                <Label htmlFor="project">Project name</Label>
+                <Input
+                  id="project"
+                  list="projects-list"
+                  placeholder="leave empty if not required"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  disabled={isPending}
+                />
+                {resultProjectsError && (
+                  <p className="text-sm text-destructive">{resultProjectsError.message}</p>
                 )}
-              </ModalBody>
-              <ModalFooter>
-                <Button color="primary" isDisabled={isPending} variant="light" onPress={onClose}>
-                  Close
-                </Button>
-                {!generationError && (
-                  <Button
-                    color="primary"
-                    isLoading={isPending}
-                    type="submit"
-                    onPress={GenerateReport}
-                  >
-                    Generate
-                  </Button>
-                )}
-              </ModalFooter>
+                <datalist id="projects-list">
+                  {allProjects.map((project) => (
+                    <option key={project} value={project} />
+                  ))}
+                </datalist>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="custom-name">Custom report name</Label>
+                <Input
+                  id="custom-name"
+                  placeholder="leave empty if not required"
+                  value={customName}
+                  onChange={(e) => setCustomName(e.target.value)}
+                  maxLength={36}
+                  disabled={isPending}
+                />
+                <p className="text-xs text-muted-foreground">{customName.length}/36 characters</p>
+              </div>
             </>
           )}
-        </ModalContent>
-      </Modal>
-    </>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
+            Close
+          </Button>
+          {!generationError && (
+            <Button disabled={isPending} onClick={GenerateReport}>
+              {isPending && <Spinner className="mr-2 h-4 w-4" />}
+              Generate
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

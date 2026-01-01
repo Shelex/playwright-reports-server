@@ -36,11 +36,11 @@ export function StatChart({ stats }: Readonly<{ stats: ReportStats }>) {
       status: 'Failed',
       fill: 'hsl(var(--chart-2))',
     },
-    { count: stats.flaky, status: 'Flaky', fill: 'hsl(var(--chart-4))' },
+    { count: stats.flaky, status: 'Flaky', fill: 'hsl(var(--chart-3))' },
     {
       count: stats.skipped,
       status: 'Skipped',
-      fill: 'hsl(var(--chart-3))',
+      fill: 'hsl(var(--chart-4))',
     },
   ];
 

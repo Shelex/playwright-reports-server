@@ -1,70 +1,31 @@
 'use client';
 
-import { type SwitchProps, useSwitch } from '@heroui/react';
-import { useIsSSR } from '@react-aria/ssr';
-import { VisuallyHidden } from '@react-aria/visually-hidden';
-import clsx from 'clsx';
 import { useTheme } from 'next-themes';
 import type { FC } from 'react';
-
 import { MoonFilledIcon, SunFilledIcon } from './icons';
 
 interface ThemeSwitchProps {
   className?: string;
-  classNames?: SwitchProps['classNames'];
 }
 
-export const ThemeSwitch: FC<ThemeSwitchProps> = ({ className, classNames }) => {
-  const { theme: themeName, setTheme } = useTheme();
-  const isSSR = useIsSSR();
+export const ThemeSwitch: FC<ThemeSwitchProps> = ({ className }) => {
+  const { theme, setTheme } = useTheme();
 
   // normalize theme name for compatibility with theme picker from playwright trace view
-  const theme = themeName?.replace('-mode', '');
+  const currentTheme = theme?.replace('-mode', '') ?? 'dark';
 
   const onChange = () => {
-    theme === 'light' ? setTheme('dark-mode') : setTheme('light-mode');
+    currentTheme === 'light' ? setTheme('dark-mode') : setTheme('light-mode');
   };
 
-  const { Component, slots, isSelected, getBaseProps, getInputProps, getWrapperProps } = useSwitch({
-    isSelected: theme === 'light' || isSSR,
-    'aria-label': `Switch to ${theme === 'light' || isSSR ? 'dark' : 'light'} mode`,
-    onChange,
-  });
-
   return (
-    <Component
-      {...getBaseProps({
-        className: clsx(
-          'px-px transition-opacity hover:opacity-80 cursor-pointer',
-          className,
-          classNames?.base
-        ),
-      })}
+    <button
+      type="button"
+      className={`inline-flex items-center justify-center rounded-lg p-2 hover:bg-accent transition-colors ${className || ''}`}
+      onClick={onChange}
+      aria-label={`Switch to ${currentTheme === 'light' ? 'dark' : 'light'} mode`}
     >
-      <VisuallyHidden>
-        <input {...getInputProps()} />
-      </VisuallyHidden>
-      <div
-        {...getWrapperProps()}
-        className={slots.wrapper({
-          class: clsx(
-            [
-              'w-auto h-auto',
-              'bg-transparent',
-              'rounded-lg',
-              'flex items-center justify-center',
-              'group-data-[selected=true]:bg-transparent',
-              '!text-default-500',
-              'pt-px',
-              'px-0',
-              'mx-0',
-            ],
-            classNames?.wrapper
-          ),
-        })}
-      >
-        {!isSelected || isSSR ? <SunFilledIcon /> : <MoonFilledIcon />}
-      </div>
-    </Component>
+      {currentTheme === 'light' ? <MoonFilledIcon size={20} /> : <SunFilledIcon size={20} />}
+    </button>
   );
 };

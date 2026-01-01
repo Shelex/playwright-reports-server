@@ -1,24 +1,27 @@
 'use client';
 
-import {
-  Autocomplete,
-  AutocompleteItem,
-  Button,
-  Input,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  useDisclosure,
-} from '@heroui/react';
 import { useQueryClient } from '@tanstack/react-query';
+import { Upload, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '../hooks/useAuth';
 import useQuery from '../hooks/useQuery';
 import { invalidateCache } from '../lib/query-cache';
 import { buildUrl, withBase } from '../lib/url';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from './ui/dialog';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Spinner } from './ui/spinner';
 
 interface UploadResultsButtonProps {
   onUploadedResult?: () => void;
@@ -31,6 +34,7 @@ export default function UploadResultsButton({
 }: Readonly<UploadResultsButtonProps>) {
   const queryClient = useQueryClient();
   const session = useAuth();
+  const [open, setOpen] = useState(false);
 
   const {
     data: resultProjects,
@@ -38,7 +42,6 @@ export default function UploadResultsButton({
     isLoading: isResultProjectsLoading,
   } = useQuery<string[]>(buildUrl('/api/result/projects'));
 
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const [file, setFile] = useState<File | null>(null);
   const [project, setProject] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -49,7 +52,6 @@ export default function UploadResultsButton({
   const handleUpload = async () => {
     if (!file) {
       toast.error('Please select a file to upload');
-
       return;
     }
 
@@ -66,7 +68,6 @@ export default function UploadResultsButton({
 
       tags.forEach((tag) => {
         const [key, value] = tag.split(': ');
-
         if (key && value) {
           formData.append(key.trim(), value.trim());
         }
@@ -82,9 +83,7 @@ export default function UploadResultsButton({
 
       if (!response.ok) {
         const errorText = await response.text();
-
         toast.error(`Upload failed: ${errorText}`);
-
         return;
       }
 
@@ -95,6 +94,11 @@ export default function UploadResultsButton({
         predicate: '/api/result',
       });
       toast.success('Results uploaded successfully');
+      setOpen(false);
+      setFile(null);
+      setProject('');
+      setTags([]);
+      setCurrentTag('');
       onUploadedResult?.();
     } catch (error) {
       toast.error(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -105,7 +109,6 @@ export default function UploadResultsButton({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-
     if (selectedFile) {
       setFile(selectedFile);
     }
@@ -130,7 +133,6 @@ export default function UploadResultsButton({
     if (value.includes(':') && !value.includes(': ')) {
       const colonIndex = value.indexOf(':');
       const newValue = `${value.slice(0, colonIndex + 1)} ${value.slice(colonIndex + 1)}`;
-
       setCurrentTag(newValue);
     } else {
       setCurrentTag(value);
@@ -148,150 +150,120 @@ export default function UploadResultsButton({
     }
   };
 
+  const handleClose = () => {
+    setFile(null);
+    setProject('');
+    setTags([]);
+    setCurrentTag('');
+    setOpen(false);
+  };
+
   return (
-    <>
-      <Button
-        color="primary"
-        isLoading={isUploading}
-        size="md"
-        title="Upload results"
-        variant="solid"
-        onPress={onOpen}
-      >
-        {label}
-      </Button>
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="flex flex-col gap-1">Upload Results</ModalHeader>
-              <ModalBody>
-                <div className="flex flex-col gap-4">
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium" htmlFor="file-input">
-                      Result File
-                    </label>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          {isUploading && <Spinner className="mr-2 h-4 w-4" />}
+          {label}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Upload Results</DialogTitle>
+          <DialogDescription>Upload test results file (.zip or .json)</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="file-input">Result File</Label>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full justify-start"
+              onClick={handleFileButtonClick}
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              {file ? file.name : 'Choose file (.zip, .json)'}
+            </Button>
+            <input
+              ref={fileInputRef}
+              accept=".zip,.json"
+              className="hidden"
+              id="file-input"
+              type="file"
+              onChange={handleFileChange}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="project-input">Project (optional)</Label>
+            <Input
+              id="project-input"
+              list="projects-list"
+              placeholder="Enter project name"
+              value={project}
+              onChange={(e) => setProject(e.target.value)}
+              disabled={isUploading || isResultProjectsLoading}
+            />
+            {resultProjectsError && (
+              <p className="text-sm text-destructive">{resultProjectsError.message}</p>
+            )}
+            <datalist id="projects-list">
+              {resultProjects?.map((proj) => (
+                <option key={proj} value={proj} />
+              ))}
+            </datalist>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="tag-input">Tags (optional)</Label>
+            <div className="flex gap-2">
+              <Input
+                id="tag-input"
+                className="flex-1"
+                placeholder="Enter tag (e.g., 'key:value' or 'key: value')"
+                value={currentTag}
+                onChange={handleTagInputChange}
+                onKeyDown={handleKeyPress}
+                disabled={isUploading}
+              />
+              <Button
+                type="button"
+                disabled={isUploading || !currentTag.trim()}
+                size="sm"
+                onClick={handleAddTag}
+              >
+                Add
+              </Button>
+            </div>
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {tags.map((tag) => (
+                  <Badge key={`tag-${tag}`} variant="secondary" className="gap-1 pr-1">
+                    <span>{tag}</span>
                     <Button
-                      className="justify-start border-default-200 hover:border-default-400"
-                      color="primary"
-                      variant="bordered"
-                      onPress={handleFileButtonClick}
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-4 w-4 p-0"
+                      onClick={() => handleRemoveTag(tag)}
                     >
-                      {file ? file.name : 'Choose file (.zip, .json)'}
+                      <X className="h-3 w-3" />
                     </Button>
-                    <input
-                      ref={fileInputRef}
-                      accept=".zip,.json"
-                      className="hidden"
-                      id="file-input"
-                      type="file"
-                      onChange={handleFileChange}
-                    />
-                  </div>
-                  <Autocomplete
-                    allowsCustomValue
-                    errorMessage={resultProjectsError?.message}
-                    inputValue={project}
-                    isDisabled={isUploading}
-                    isLoading={isResultProjectsLoading}
-                    items={(resultProjects ?? []).map((project) => ({
-                      label: project,
-                      value: project,
-                    }))}
-                    label="Project (optional)"
-                    labelPlacement="outside"
-                    placeholder="Enter project name"
-                    variant="bordered"
-                    onInputChange={(value) => setProject(value)}
-                    onSelectionChange={(value) => value && setProject(value?.toString() ?? '')}
-                  >
-                    {(item) => <AutocompleteItem key={item.value}>{item.label}</AutocompleteItem>}
-                  </Autocomplete>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium" htmlFor="tag-input">
-                      Tags (optional)
-                    </label>
-                    <div className="flex gap-2">
-                      <Input
-                        className="flex-1"
-                        id="tag-input"
-                        isDisabled={isUploading}
-                        placeholder="Enter tag (e.g., 'key:value' or 'key: value')"
-                        value={currentTag}
-                        variant="bordered"
-                        onChange={handleTagInputChange}
-                        onKeyDown={handleKeyPress}
-                      />
-                      <Button
-                        color="primary"
-                        isDisabled={isUploading || !currentTag.trim()}
-                        size="sm"
-                        style={{ height: '40px' }}
-                        variant="solid"
-                        onPress={handleAddTag}
-                      >
-                        Add
-                      </Button>
-                    </div>
-                    {tags.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {tags.map((tag) => (
-                          <div
-                            key={`tag-${tag}`}
-                            className="flex items-center gap-1 bg-default-100 dark:bg-default-200 px-2 py-1 rounded-md"
-                          >
-                            <span className="text-sm">{tag}</span>
-                            <Button
-                              className="min-w-0 p-0 h-auto w-4"
-                              color="danger"
-                              isDisabled={isUploading}
-                              size="sm"
-                              variant="light"
-                              onPress={() => handleRemoveTag(tag)}
-                            >
-                              ×
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </ModalBody>
-              <ModalFooter>
-                <Button
-                  color="primary"
-                  variant="light"
-                  onPress={() => {
-                    setFile(null);
-                    setProject('');
-                    setTags([]);
-                    setCurrentTag('');
-                    onClose();
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  color="primary"
-                  isDisabled={!file}
-                  isLoading={isUploading}
-                  onPress={() => {
-                    handleUpload();
-                    setFile(null);
-                    setProject('');
-                    setTags([]);
-                    setCurrentTag('');
-                    onClose();
-                  }}
-                >
-                  Upload
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
-    </>
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose} disabled={isUploading}>
+            Cancel
+          </Button>
+          <Button disabled={!file || isUploading} onClick={handleUpload}>
+            {isUploading && <Spinner className="mr-2 h-4 w-4" />}
+            Upload
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

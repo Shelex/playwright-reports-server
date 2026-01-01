@@ -25,7 +25,7 @@ export const defaultLinks: HeaderLinks = {
 export const siteConfig: SiteConfig = {
   name: 'Playwright Reports Server',
   description: 'A server for Playwright Reports',
-  title: 'Playwright Reports Server',
+  title: '', // empty since logo contains text
   logoPath: '/logo.svg',
   navItems: [
     {

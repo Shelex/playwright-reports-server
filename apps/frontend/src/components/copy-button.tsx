@@ -1,17 +1,17 @@
 'use client';
 
-import { Button } from '@heroui/react';
 import { Check, Copy } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { Button } from './ui/button';
 
 interface CopyButtonProps {
   content: string;
-  size?: 'sm' | 'md' | 'lg';
-  variant?: 'solid' | 'bordered' | 'light' | 'flat' | 'faded' | 'shadow' | 'ghost';
+  size?: 'sm' | 'md' | 'lg' | 'icon';
+  variant?: 'default' | 'ghost' | 'outline';
 }
 
-export function CopyButton({ content, size = 'sm', variant = 'light' }: Readonly<CopyButtonProps>) {
+export function CopyButton({ content, size = 'sm', variant = 'ghost' }: Readonly<CopyButtonProps>) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -27,13 +27,12 @@ export function CopyButton({ content, size = 'sm', variant = 'light' }: Readonly
 
   return (
     <Button
-      isIconOnly
-      size={size}
+      size={size === 'sm' ? 'sm' : size === 'icon' ? 'icon' : 'default'}
       variant={variant}
-      onPress={handleCopy}
+      onClick={handleCopy}
       className="opacity-0 group-hover:opacity-100 transition-opacity"
     >
-      {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+      {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
     </Button>
   );
 }

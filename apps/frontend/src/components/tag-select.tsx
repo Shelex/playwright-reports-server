@@ -1,9 +1,10 @@
 'use client';
 
-import { Select, SelectItem, type SharedSelection } from '@heroui/react';
 import { toast } from 'sonner';
 import useQuery from '../hooks/useQuery';
 import { buildUrl } from '../lib/url';
+import { Label } from './ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 interface TagSelectProps {
   onSelect?: (tags: string[]) => void;
@@ -26,31 +27,28 @@ export default function TagSelect({
     dependencies: [refreshId, project],
   });
 
-  const onChange = (keys: SharedSelection) => {
-    if (typeof keys === 'string') {
-      return;
-    }
-
-    const selectedTags = Array.from(keys) as string[];
-
-    onSelect?.(selectedTags);
+  const handleChange = (value: string) => {
+    // For single select, pass as array for compatibility
+    onSelect?.([value]);
   };
 
   error && toast.error(error.message);
 
   return (
-    <Select
-      className="w-48 min-w-48 bg-transparent"
-      isDisabled={!tags?.length}
-      isLoading={isLoading}
-      label="Tags"
-      labelPlacement="outside"
-      placeholder="Select tags"
-      selectionMode="multiple"
-      variant="bordered"
-      onSelectionChange={onChange}
-    >
-      {tags?.map((tag) => <SelectItem key={tag}>{tag}</SelectItem>) ?? []}
-    </Select>
+    <div className="flex flex-col gap-2">
+      <Label htmlFor="tag-select">Filter by tag</Label>
+      <Select onValueChange={handleChange} disabled={!tags?.length || isLoading}>
+        <SelectTrigger id="tag-select" className="w-48">
+          <SelectValue placeholder="Select tag" />
+        </SelectTrigger>
+        <SelectContent>
+          {tags?.map((tag) => (
+            <SelectItem key={tag} value={tag}>
+              {tag}
+            </SelectItem>
+          )) ?? []}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }

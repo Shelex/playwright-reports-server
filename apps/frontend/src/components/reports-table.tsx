@@ -1,30 +1,36 @@
 'use client';
 
-import {
-  Button,
-  Chip,
-  LinkIcon,
-  Pagination,
-  Spinner,
-  Table,
-  TableBody,
-  TableCell,
-  TableColumn,
-  TableHeader,
-  TableRow,
-} from '@heroui/react';
 import type { ReadReportsHistory, ReportHistory } from '@playwright-reports/shared';
 import { keepPreviousData } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import useQuery from '../hooks/useQuery';
-import { defaultProjectName } from '../lib/constants';
-import { withQueryParams } from '../lib/network';
-import { withBase } from '../lib/url';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
+import { Spinner } from '@/components/ui/spinner';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import useQuery from '@/hooks/useQuery';
+import { defaultProjectName } from '@/lib/constants';
+import { withQueryParams } from '@/lib/network';
+import { withBase } from '@/lib/url';
 import FormattedDate from './date-format';
 import DeleteReportButton from './delete-report-button';
-import { BranchIcon, FolderIcon } from './icons';
+import { BranchIcon, FolderIcon, LinkIcon } from './icons';
 import InlineStatsCircle from './inline-stats-circle';
 import TablePaginationOptions from './table-pagination-options';
 
@@ -70,13 +76,17 @@ const getMetadataItems = (item: ReportHistory) => {
   if (itemWithMetadata.workingDir) {
     const dirName = itemWithMetadata.workingDir.split('/').pop() || itemWithMetadata.workingDir;
 
-    metadata.push({ key: 'workingDir', value: dirName, icon: <FolderIcon /> });
+    metadata.push({
+      key: 'workingDir',
+      value: dirName,
+      icon: <FolderIcon width={14} height={14} />,
+    });
   }
   if (itemWithMetadata.branch) {
     metadata.push({
       key: 'branch',
       value: itemWithMetadata.branch,
-      icon: <BranchIcon />,
+      icon: <BranchIcon width={14} height={14} />,
     });
   }
 
@@ -139,8 +149,8 @@ export default function ReportsTable({ onChange }: Readonly<ReportsTableProps>) 
     refetch();
   };
 
-  const onPageChange = useCallback((page: number) => {
-    setPage(page);
+  const onPageChange = useCallback((newPage: number) => {
+    setPage(newPage);
   }, []);
 
   const onProjectChange = useCallback((project: string) => {
@@ -159,6 +169,63 @@ export default function ReportsTable({ onChange }: Readonly<ReportsTableProps>) 
 
   error && toast.error(error.message);
 
+  const renderPagination = () => {
+    if (pages <= 1) return null;
+
+    return (
+      <div className="flex w-full justify-center mt-4">
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={() => page > 1 && onPageChange(page - 1)}
+                className={page === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+              />
+            </PaginationItem>
+            {Array.from({ length: Math.min(pages, 5) }, (_, i) => {
+              let pageNum: number;
+              if (pages <= 5) {
+                pageNum = i + 1;
+              } else if (page <= 3) {
+                pageNum = i + 1;
+              } else if (page >= pages - 2) {
+                pageNum = pages - 4 + i;
+              } else {
+                pageNum = page - 2 + i;
+              }
+
+              return (
+                <PaginationItem key={pageNum}>
+                  <PaginationLink
+                    onClick={() => onPageChange(pageNum)}
+                    isActive={page === pageNum}
+                    className="cursor-pointer"
+                  >
+                    {pageNum}
+                  </PaginationLink>
+                </PaginationItem>
+              );
+            })}
+            <PaginationItem>
+              <PaginationNext
+                onClick={() => page < pages && onPageChange(page + 1)}
+                className={page === pages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </div>
+    );
+  };
+
+  if (isFetching || isPending) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
   return (
     <>
       <TablePaginationOptions
@@ -171,112 +238,98 @@ export default function ReportsTable({ onChange }: Readonly<ReportsTableProps>) 
         onSearchChange={onSearchChange}
         selectedProject={project}
       />
-      <Table
-        aria-label="Reports"
-        bottomContent={
-          pages > 1 ? (
-            <div className="flex w-full justify-center">
-              <Pagination
-                isCompact
-                showControls
-                showShadow
-                color="primary"
-                page={page}
-                total={pages}
-                onChange={onPageChange}
-              />
-            </div>
-          ) : null
-        }
-        classNames={{
-          wrapper: 'p-0 border-none shadow-none',
-          tr: 'border-b-1 rounded-0',
-        }}
-        radius="none"
-      >
-        <TableHeader columns={columns}>
-          {(column) => (
-            <TableColumn
-              key={column.uid}
-              className="px-3 py-6 text-md text-black dark:text-white font-medium"
-            >
-              {column.name}
-            </TableColumn>
-          )}
-        </TableHeader>
-        <TableBody
-          emptyContent="No reports."
-          isLoading={isFetching || isPending}
-          items={reports?.sort((a, b) => (b.displayNumber ?? 0) - (a.displayNumber ?? 0)) ?? []}
-          loadingContent={<Spinner />}
-        >
-          {(item) => (
-            <TableRow key={item.reportID}>
-              <TableCell className="w-1/3">
-                <div className="flex flex-col">
-                  <Link to={withBase(`/report/${item.reportID}`)}>
-                    <div className="flex flex-row items-center">
-                      {item.displayNumber ? `#${item.displayNumber} ` : ''}
-                      {' | '}
-                      {item.title ?? ''}
-                      <LinkIcon />
-                    </div>
-                  </Link>
-
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {getMetadataItems(item).map(({ key, value, icon }) => (
-                      <Chip
-                        key={`${item.reportID}-${key}`}
-                        className="text-xs h-5"
-                        color="default"
-                        size="sm"
-                        startContent={icon}
-                        title={`${key}: ${value}`}
-                        variant="flat"
-                      >
-                        <span className="max-w-[150px] truncate">
-                          {key === 'branch' || key === 'workingDir' ? value : `${key}: ${value}`}
-                        </span>
-                      </Chip>
-                    ))}
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell className="w-1/6">{item.project}</TableCell>
-              <TableCell className="w-1/12">
-                {
-                  <InlineStatsCircle
-                    stats={
-                      item.stats || {
-                        total: 0,
-                        expected: 0,
-                        unexpected: 0,
-                        flaky: 0,
-                        skipped: 0,
-                        ok: false,
-                      }
-                    }
-                  />
-                }
-              </TableCell>
-              <TableCell className="w-1/6">
-                <FormattedDate date={item.createdAt} />
-              </TableCell>
-              <TableCell className="w-1/12">{item.size}</TableCell>
-              <TableCell className="w-1/6">
-                <div className="flex gap-4 justify-end">
-                  <Link to={withBase(item.reportUrl)} target="_blank">
-                    <Button color="primary" size="md">
-                      Open report
-                    </Button>
-                  </Link>
-                  <DeleteReportButton reportId={item.reportID} onDeleted={onDeleted} />
-                </div>
-              </TableCell>
+      <div className="rounded-md border border-border/50">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {columns.map((column) => (
+                <TableHead
+                  key={column.uid}
+                  className="px-4 py-3 text-sm font-medium text-foreground"
+                >
+                  {column.name}
+                </TableHead>
+              ))}
             </TableRow>
-          )}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {reports
+              ?.sort((a, b) => (b.displayNumber ?? 0) - (a.displayNumber ?? 0))
+              .map((item) => (
+                <TableRow key={item.reportID}>
+                  <TableCell className="w-1/3">
+                    <div className="flex flex-col">
+                      <Link to={withBase(`/report/${item.reportID}`)} className="hover:underline">
+                        <div className="flex flex-row items-center gap-1 text-sm">
+                          {item.displayNumber ? `#${item.displayNumber} ` : ''}
+                          {' | '}
+                          {item.title ?? ''}
+                          <LinkIcon width={14} height={14} />
+                        </div>
+                      </Link>
+
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {getMetadataItems(item).map(({ key, value, icon }) => (
+                          <Badge
+                            key={`${item.reportID}-${key}`}
+                            variant="secondary"
+                            className="text-xs h-5 px-2 py-0"
+                            title={`${key}: ${value}`}
+                          >
+                            {icon}
+                            <span className="max-w-[150px] truncate">
+                              {key === 'branch' || key === 'workingDir'
+                                ? value
+                                : `${key}: ${value}`}
+                            </span>
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="w-1/6">{item.project}</TableCell>
+                  <TableCell className="w-1/12">
+                    <InlineStatsCircle
+                      stats={
+                        item.stats || {
+                          total: 0,
+                          expected: 0,
+                          unexpected: 0,
+                          flaky: 0,
+                          skipped: 0,
+                          ok: false,
+                        }
+                      }
+                    />
+                  </TableCell>
+                  <TableCell className="w-1/6">
+                    <FormattedDate date={item.createdAt} />
+                  </TableCell>
+                  <TableCell className="w-1/12">{item.size}</TableCell>
+                  <TableCell className="w-1/6">
+                    <div className="flex gap-2 justify-end">
+                      <Link to={withBase(item.reportUrl)} target="_blank">
+                        <Button size="sm">Open report</Button>
+                      </Link>
+                      <DeleteReportButton reportId={item.reportID} onDeleted={onDeleted} />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            {(!reports || reports.length === 0) && (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="text-center py-8 text-muted-foreground"
+                >
+                  No reports found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      {renderPagination()}
     </>
   );
 }

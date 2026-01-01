@@ -1,7 +1,14 @@
-import { Accordion, AccordionItem, Button, Chip } from '@heroui/react';
 import type { ReportFile, ReportHistory, ReportTest } from '@playwright-reports/shared';
 import { useState } from 'react';
 import JiraTicketModal from '@/components/jira-ticket-modal';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { testStatusToColor } from '@/lib/tailwind';
 import TestInfo from './test-info';
 
@@ -69,55 +76,49 @@ const SuiteNodeComponent = ({
   onCreateJiraTicket,
 }: SuiteNodeComponentProps) => {
   return (
-    <Accordion key={suite.name} aria-label={suite.name} selectionMode="multiple" title={suite.name}>
+    <Accordion type="multiple" className="pl-4">
       {[
         ...suite.children.map((child) => (
-          <AccordionItem
-            key={child.name}
-            aria-label={child.name}
-            className="p-2"
-            title={`${child.name}`}
-          >
-            <SuiteNodeComponent
-              history={history}
-              reportId={reportId}
-              suite={child}
-              onCreateJiraTicket={onCreateJiraTicket}
-            />
+          <AccordionItem key={child.name} value={child.name}>
+            <AccordionTrigger className="hover:no-underline">{child.name}</AccordionTrigger>
+            <AccordionContent>
+              <SuiteNodeComponent
+                history={history}
+                reportId={reportId}
+                suite={child}
+                onCreateJiraTicket={onCreateJiraTicket}
+              />
+            </AccordionContent>
           </AccordionItem>
         )),
         ...suite.tests.map((test) => {
           const status = testStatusToColor(test.outcome || 'passed');
 
           return (
-            <AccordionItem
-              key={test.testId || 'unknown'}
-              aria-label={test.title || 'Unknown test'}
-              className="p-2"
-              title={
-                <span className="flex flex-row gap-4 flex-wrap items-center">
-                  {`· ${test.title}`}
-                  <Chip color={status.colorName as any} size="sm">
-                    {status.title}
-                  </Chip>
-                  <Chip color="default" size="sm">
-                    {test.projectName || 'Unknown'}
-                  </Chip>
-                  <div className="ml-auto flex gap-2">
+            <AccordionItem key={test.testId || 'unknown'} value={test.testId || 'unknown'}>
+              <AccordionTrigger className="hover:no-underline">
+                <span className="flex flex-row gap-4 flex-wrap items-center w-full justify-between pr-4">
+                  <span className="flex items-center gap-2">
+                    {`· ${test.title}`}
+                    <Badge variant="outline" className={status.colorName}>
+                      {status.title}
+                    </Badge>
+                    <Badge variant="secondary">{test.projectName || 'Unknown'}</Badge>
+                  </span>
+                  <div className="flex gap-2">
                     <Button
-                      color="primary"
                       size="sm"
                       title="Create Jira ticket for this failed test"
-                      variant="flat"
-                      onPress={() => onCreateJiraTicket(test)}
+                      onClick={() => onCreateJiraTicket(test)}
                     >
                       Create Jira Ticket
                     </Button>
                   </div>
                 </span>
-              }
-            >
-              <TestInfo history={history} test={test} />
+              </AccordionTrigger>
+              <AccordionContent>
+                <TestInfo history={history} test={test} />
+              </AccordionContent>
             </AccordionItem>
           );
         }),

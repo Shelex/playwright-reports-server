@@ -11,7 +11,7 @@ import {
 } from 'react';
 import * as RechartsPrimitive from 'recharts';
 
-import { cn } from '../../styles/globals';
+import { cn } from '@/lib/utils';
 
 const THEMES = { light: '', dark: '.dark' } as const;
 

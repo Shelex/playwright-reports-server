@@ -1,5 +1,13 @@
-import { Input, Select, SelectItem } from '@heroui/react';
 import type { TestFilters as TestFiltersType } from '@playwright-reports/shared';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface TestFiltersProps {
   filters: TestFiltersType;
@@ -44,37 +52,45 @@ export function TestFilters({ filters, onFiltersChange }: Readonly<TestFiltersPr
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <Select
-        label="Status"
-        selectedKeys={filters.status ? [filters.status] : ['all']}
-        onSelectionChange={(keys) => handleStatusChange(Array.from(keys)[0] as string)}
-      >
-        <SelectItem key="all">All Tests</SelectItem>
-        <SelectItem key="not-quarantined">Not Quarantined</SelectItem>
-        <SelectItem key="quarantined">Quarantined</SelectItem>
-      </Select>
-      <Input
-        type="number"
-        label="Min Flakiness (%)"
-        placeholder="0"
-        min={0}
-        max={Math.min(filters.flakinessMax ?? 100, 100)}
-        step={1}
-        value={String(filters.flakinessMin || 0)}
-        onChange={(e) => handleFlakinessMinChange(e.target.value)}
-        labelPlacement="inside"
-      />
-      <Input
-        type="number"
-        label="Max Flakiness (%)"
-        placeholder="100"
-        min={Math.max(filters.flakinessMin ?? 0, 0)}
-        max={100}
-        step={1}
-        value={String(filters.flakinessMax || 100)}
-        onChange={(e) => handleFlakinessMaxChange(e.target.value)}
-        labelPlacement="inside"
-      />
+      <div className="space-y-2">
+        <Label htmlFor="status-filter">Status</Label>
+        <Select value={filters.status ?? 'all'} onValueChange={handleStatusChange}>
+          <SelectTrigger id="status-filter">
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Tests</SelectItem>
+            <SelectItem value="not-quarantined">Not Quarantined</SelectItem>
+            <SelectItem value="quarantined">Quarantined</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="min-flakiness">Min Flakiness (%)</Label>
+        <Input
+          id="min-flakiness"
+          type="number"
+          placeholder="0"
+          min={0}
+          max={Math.min(filters.flakinessMax ?? 100, 100)}
+          step={1}
+          value={String(filters.flakinessMin || 0)}
+          onChange={(e) => handleFlakinessMinChange(e.target.value)}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="max-flakiness">Max Flakiness (%)</Label>
+        <Input
+          id="max-flakiness"
+          type="number"
+          placeholder="100"
+          min={Math.max(filters.flakinessMin ?? 0, 0)}
+          max={100}
+          step={1}
+          value={String(filters.flakinessMax || 100)}
+          onChange={(e) => handleFlakinessMaxChange(e.target.value)}
+        />
+      </div>
     </div>
   );
 }

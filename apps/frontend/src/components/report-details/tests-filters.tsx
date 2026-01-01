@@ -1,8 +1,16 @@
 'use client';
 
-import { Accordion, AccordionItem, Checkbox, CheckboxGroup, Input } from '@heroui/react';
 import type { ReportHistory, ReportTestOutcome } from '@playwright-reports/shared';
 import { type FC, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { testStatusToColor } from '@/lib/tailwind';
 import { filterReportHistory, pluralize } from '@/lib/transformers';
 
@@ -15,15 +23,15 @@ const testOutcomes: ReportTestOutcome[] = ['expected', 'unexpected', 'skipped', 
 
 const ReportFilters: FC<ReportFiltersProps> = ({ report, onChangeFilters }) => {
   const [byName, setByName] = useState('');
-  const [byOutcomes, setByOutcomes] = useState<ReportTestOutcome[] | undefined>(testOutcomes);
+  const [byOutcomes, setByOutcomes] = useState<ReportTestOutcome[]>(testOutcomes);
   const previousStateRef = useRef<{ testCount: number; totalTestCount: number } | null>(null);
 
   const onNameChange = (name: string) => {
     setByName(name);
   };
 
-  const onOutcomeChange = (outcomes?: ReportTestOutcome[]) => {
-    setByOutcomes(outcomes?.length ? outcomes : []);
+  const onOutcomeChange = (outcomes: ReportTestOutcome[]) => {
+    setByOutcomes(outcomes?.length ? outcomes : testOutcomes);
   };
 
   const currentState = useMemo(() => {
@@ -50,38 +58,60 @@ const ReportFilters: FC<ReportFiltersProps> = ({ report, onChangeFilters }) => {
   }, [currentState.testCount, currentState.totalTestCount, currentState, onChangeFilters]);
 
   return (
-    <Accordion className="mb-5">
-      <AccordionItem
-        key="filter"
-        aria-label="Test Filters"
-        title={
-          <div className="flex flex-row gap-2 justify-between">
+    <Accordion type="single" collapsible className="mb-5">
+      <AccordionItem value="filter">
+        <AccordionTrigger>
+          <div className="flex flex-row gap-2 justify-between w-full pr-4">
             <p>Showing</p>
-            <span className="text-gray-500">
+            <span className="text-muted-foreground">
               {currentState.testCount}/{currentState.totalTestCount}{' '}
               {pluralize(currentState.testCount || 0, 'test')}
             </span>
           </div>
-        }
-      >
-        <CheckboxGroup
-          color="secondary"
-          defaultValue={testOutcomes}
-          label="Status"
-          orientation="horizontal"
-          onValueChange={(values) => onOutcomeChange(values as ReportTestOutcome[])}
-        >
-          {testOutcomes.map((outcome) => {
-            const status = testStatusToColor(outcome);
+        </AccordionTrigger>
+        <AccordionContent>
+          <div className="space-y-4 pt-4">
+            <div>
+              <Label>Status</Label>
+              <div className="flex flex-wrap gap-4 mt-2">
+                {testOutcomes.map((outcome) => {
+                  const status = testStatusToColor(outcome);
 
-            return (
-              <Checkbox key={outcome} className="p-4" color={status.colorName} value={outcome}>
-                {status.title}
-              </Checkbox>
-            );
-          })}
-        </CheckboxGroup>
-        <Input className="mb-3" label="Title" onChange={(e) => onNameChange(e.target.value)} />
+                  return (
+                    <div key={outcome} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={outcome}
+                        checked={byOutcomes.includes(outcome)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            onOutcomeChange([...byOutcomes, outcome]);
+                          } else {
+                            onOutcomeChange(byOutcomes.filter((o) => o !== outcome));
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor={outcome}
+                        className={`text-sm font-medium ${status.colorName}`}
+                      >
+                        {status.title}
+                      </label>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="title-filter">Title</Label>
+              <Input
+                id="title-filter"
+                value={byName}
+                onChange={(e) => onNameChange(e.target.value)}
+                placeholder="Filter by title..."
+              />
+            </div>
+          </div>
+        </AccordionContent>
       </AccordionItem>
     </Accordion>
   );

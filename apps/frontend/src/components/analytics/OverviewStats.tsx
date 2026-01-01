@@ -1,8 +1,8 @@
 'use client';
 
-import { Card, CardBody, CardHeader } from '@heroui/react';
 import type { OverviewStats, TestWithQuarantineInfo } from '@playwright-reports/shared';
 import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { parseMilliseconds } from '@/lib/time';
 
 interface OverviewStatsProps {
@@ -14,20 +14,22 @@ export function OverviewStatsCard({ stats, testStats }: Readonly<OverviewStatsPr
   if (!stats || !testStats) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        {new Array({ length: 5 }).map((_, index) => (
+        {Array.from({ length: 5 }).map((_, index) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: that is just a placeholder for 5 elements
           <Card key={index} className="shadow-sm">
             <CardHeader className="pb-2">
-              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Loading...</h3>
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                Loading...
+              </CardTitle>
             </CardHeader>
-            <CardBody className="pt-0">
+            <CardContent className="pt-0">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-2xl font-bold text-gray-300 dark:text-gray-600">--</p>
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">No data</p>
                 </div>
               </div>
-            </CardBody>
+            </CardContent>
           </Card>
         ))}
       </div>
@@ -103,9 +105,11 @@ export function OverviewStatsCard({ stats, testStats }: Readonly<OverviewStatsPr
       {statsCards.map((card) => (
         <Card key={card.title} className="shadow-sm">
           <CardHeader className="pb-2">
-            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">{card.title}</h3>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              {card.title}
+            </CardTitle>
           </CardHeader>
-          <CardBody className="pt-0">
+          <CardContent className="pt-0">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{card.value}</p>
@@ -113,7 +117,7 @@ export function OverviewStatsCard({ stats, testStats }: Readonly<OverviewStatsPr
               </div>
               {card.icon && <div className={card.iconColor}>{card.icon}</div>}
             </div>
-          </CardBody>
+          </CardContent>
         </Card>
       ))}
     </div>

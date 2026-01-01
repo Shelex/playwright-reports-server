@@ -1,8 +1,8 @@
 'use client';
 
-import { CircularProgress } from '@heroui/react';
 import type { ReportStats } from '@playwright-reports/shared';
 import type { FC } from 'react';
+import { CircularProgress } from './ui/progress';
 
 type ReportFiltersProps = {
   stats: ReportStats;
@@ -16,14 +16,8 @@ const InlineStatsCircle: FC<ReportFiltersProps> = ({ stats }) => {
   return (
     <CircularProgress
       aria-label="Passed Percentage"
-      classNames={{
-        value: 'text-[12px]',
-      }}
-      color="success"
-      disableAnimation={true}
-      formatOptions={{ style: 'unit', unit: 'percent' }}
       showValueLabel={true}
-      size="lg"
+      size={48}
       strokeWidth={3}
       value={Math.round(passedPercentage)}
     />

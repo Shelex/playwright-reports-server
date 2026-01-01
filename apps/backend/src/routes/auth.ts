@@ -14,6 +14,11 @@ const expirationHours = env.UI_AUTH_EXPIRE_HOURS
   : 2;
 const expirationSeconds = expirationHours * 60 * 60;
 
+interface JWTPayload {
+  authorized: boolean;
+  apiToken: string;
+}
+
 interface AuthUser {
   apiToken: string;
   jwtToken: string;
@@ -24,18 +29,20 @@ interface AuthRequest extends Omit<FastifyRequest, 'user'> {
 }
 
 const createAuthTokens = (apiToken: string): AuthUser => {
-  const jwtToken = jwt.sign({ authorized: true }, secret);
+  const payload: JWTPayload = { authorized: true, apiToken };
+  const jwtToken = jwt.sign(payload, secret, { expiresIn: `${expirationHours}h` });
   return { apiToken, jwtToken };
 };
 
 const createNoAuthTokens = (): AuthUser => {
-  const token = jwt.sign({ authorized: true }, secret);
-  return { apiToken: token, jwtToken: token };
+  const payload: JWTPayload = { authorized: true, apiToken: '' };
+  const token = jwt.sign(payload, secret, { expiresIn: `${expirationHours}h` });
+  return { apiToken: '', jwtToken: token };
 };
 
-const verifyToken = (token: string): { authorized: boolean } | null => {
+const verifyToken = (token: string): JWTPayload | null => {
   try {
-    return jwt.verify(token, secret) as { authorized: boolean };
+    return jwt.verify(token, secret) as JWTPayload;
   } catch (_error) {
     return null;
   }
@@ -64,11 +71,11 @@ export const authenticate = async (request: AuthRequest, reply: FastifyReply) =>
 
   const decoded = verifyToken(token);
   if (!decoded) {
-    return reply.status(401).send({ error: 'Unauthorized: Invalid token' });
+    return reply.status(401).send({ error: 'Unauthorized: Invalid or expired token' });
   }
 
   request.user = {
-    apiToken: '', // should not store the original API token in JWT
+    apiToken: decoded.apiToken,
     jwtToken: token,
   };
 };

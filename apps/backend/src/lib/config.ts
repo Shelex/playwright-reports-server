@@ -5,7 +5,7 @@ const defaultReportExpirationDays = '90';
 const defaultResultExpirationDays = '30';
 
 export const defaultConfig: SiteWhiteLabelConfig = {
-  title: 'Cyborg Tests',
+  title: '', // Empty since logo contains text
   headerLinks: defaultLinks,
   logoPath: '/logo.svg',
   faviconPath: '/favicon.ico',

@@ -1,9 +1,14 @@
 'use client';
 
-import { Button, Card, CardBody, CardHeader, Chip, Divider, Input } from '@heroui/react';
 import type { ServerConfig } from '@playwright-reports/shared';
 import { useRef, useState } from 'react';
-import { defaultLinks } from '../../../config/site';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { defaultLinks } from '@/config/site';
 
 interface ServerConfigurationProps {
   config: ServerConfig;
@@ -86,40 +91,38 @@ export default function ServerConfiguration({
   return (
     <Card className="mb-6 p-4">
       <CardHeader
-        className={`flex justify-between items-center ${editingSection === 'server' ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500' : ''}`}
+        className={`flex justify-between items-center flex-row ${editingSection === 'server' ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 -mx-4 px-4' : ''}`}
       >
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-semibold">Server Configuration</h2>
           {editingSection === 'server' && (
-            <Chip color="primary" size="sm" variant="flat">
+            <Badge variant="secondary" className="text-xs">
               Editing
-            </Chip>
+            </Badge>
           )}
         </div>
         {editingSection === 'server' ? (
           <div className="flex gap-2">
-            <Button color="success" isLoading={isUpdating} onPress={onSave}>
-              Save Changes
+            <Button disabled={isUpdating} onClick={onSave}>
+              {isUpdating ? 'Saving...' : 'Save Changes'}
             </Button>
-            <Button color="default" onPress={onCancel}>
+            <Button variant="outline" onClick={onCancel}>
               Cancel
             </Button>
           </div>
         ) : (
-          <Button color="primary" isDisabled={editingSection !== 'none'} onPress={onEdit}>
+          <Button disabled={editingSection !== 'none'} onClick={onEdit}>
             {editingSection === 'none' ? 'Edit Configuration' : 'Section in Use'}
           </Button>
         )}
       </CardHeader>
-      <CardBody>
+      <CardContent>
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2" htmlFor="site-title">
-              Site Title
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="site-title">Site Title</Label>
             <Input
               id="site-title"
-              isDisabled={editingSection !== 'server'}
+              disabled={editingSection !== 'server'}
               placeholder="Enter site title"
               value={editingSection === 'server' ? tempConfig.title || '' : config.title || ''}
               onChange={(e) =>
@@ -128,14 +131,12 @@ export default function ServerConfiguration({
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2" htmlFor="logo-upload">
-              Logo
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="logo-upload">Logo</Label>
             <div className="space-y-3">
               {/* Current logo display */}
               {config.logoPath && (
-                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                   <div className="flex-shrink-0">
                     <img
                       alt="Current logo"
@@ -147,7 +148,7 @@ export default function ServerConfiguration({
                       }
                     />
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                  <div className="text-sm text-muted-foreground">
                     <p>Current: {config.logoPath}</p>
                   </div>
                 </div>
@@ -164,15 +165,13 @@ export default function ServerConfiguration({
                     onChange={handleLogoFileChange}
                   />
                   <div className="flex items-center gap-2">
-                    <Button color="primary" size="sm" onPress={() => logoFileRef.current?.click()}>
+                    <Button size="sm" onClick={() => logoFileRef.current?.click()}>
                       {logoFile ? 'Change Logo' : 'Upload Logo'}
                     </Button>
                     {logoFile && (
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {logoFile.name}
-                      </span>
+                      <span className="text-sm text-muted-foreground">{logoFile.name}</span>
                     )}
-                    <Button color="warning" size="sm" onPress={resetLogo}>
+                    <Button variant="outline" size="sm" onClick={resetLogo}>
                       Reset
                     </Button>
                   </div>
@@ -188,13 +187,11 @@ export default function ServerConfiguration({
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2" htmlFor="favicon-upload">
-              Favicon
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="favicon-upload">Favicon</Label>
             <div className="space-y-3">
               {config.faviconPath && (
-                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                   <div className="flex-shrink-0">
                     <img
                       alt="Current favicon"
@@ -206,7 +203,7 @@ export default function ServerConfiguration({
                       }
                     />
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                  <div className="text-sm text-muted-foreground">
                     <p>Current: {config.faviconPath}</p>
                   </div>
                 </div>
@@ -223,19 +220,13 @@ export default function ServerConfiguration({
                     onChange={handleFaviconFileChange}
                   />
                   <div className="flex items-center gap-2">
-                    <Button
-                      color="primary"
-                      size="sm"
-                      onPress={() => faviconFileRef.current?.click()}
-                    >
+                    <Button size="sm" onClick={() => faviconFileRef.current?.click()}>
                       {faviconFile ? 'Change Favicon' : 'Upload Favicon'}
                     </Button>
                     {faviconFile && (
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {faviconFile.name}
-                      </span>
+                      <span className="text-sm text-muted-foreground">{faviconFile.name}</span>
                     )}
-                    <Button color="warning" size="sm" onPress={resetFavicon}>
+                    <Button variant="outline" size="sm" onClick={resetFavicon}>
                       Reset
                     </Button>
                   </div>
@@ -251,10 +242,8 @@ export default function ServerConfiguration({
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2" htmlFor="reporter-paths">
-              Custom Reporter Paths
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="reporter-paths">Custom Reporter Paths</Label>
             <div className="space-y-2">
               {(editingSection === 'server'
                 ? tempConfig.reporterPaths || []
@@ -262,7 +251,7 @@ export default function ServerConfiguration({
               ).map((path, index) => (
                 <div key={path} className="flex items-center gap-2">
                   <Input
-                    isDisabled={editingSection !== 'server'}
+                    disabled={editingSection !== 'server'}
                     placeholder="./data/reporters/reporter.js"
                     value={path}
                     onChange={(e) => {
@@ -276,9 +265,9 @@ export default function ServerConfiguration({
                   />
                   {editingSection === 'server' && (
                     <Button
-                      color="danger"
+                      variant="destructive"
                       size="sm"
-                      onPress={() => {
+                      onClick={() => {
                         const newPaths = [...(tempConfig.reporterPaths || [])];
 
                         newPaths.splice(index, 1);
@@ -291,42 +280,40 @@ export default function ServerConfiguration({
                 </div>
               ))}
               {editingSection === 'server' && (
-                <Button
-                  className="mr-2"
-                  color="primary"
-                  size="sm"
-                  onPress={() => {
-                    const newPaths = [...(tempConfig.reporterPaths || []), ''];
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      const newPaths = [...(tempConfig.reporterPaths || []), ''];
 
-                    onUpdateTempConfig({ reporterPaths: newPaths });
-                  }}
-                >
-                  Add Path
-                </Button>
-              )}
-              {editingSection === 'server' && (
-                <Button
-                  color="warning"
-                  size="sm"
-                  onPress={() => onUpdateTempConfig({ reporterPaths: [] })}
-                >
-                  Reset
-                </Button>
+                      onUpdateTempConfig({ reporterPaths: newPaths });
+                    }}
+                  >
+                    Add Path
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onUpdateTempConfig({ reporterPaths: [] })}
+                  >
+                    Reset
+                  </Button>
+                </div>
               )}
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground">
               Paths to custom Playwright reporter files (relative to project root)
             </p>
           </div>
 
-          <Divider />
+          <Separator />
 
           <div>
             <div className="flex justify-between items-center mb-2">
               <span className="block text-sm font-medium">Header Links</span>
               {editingSection === 'server' && (
                 <div className="flex gap-2">
-                  <Button color="primary" size="sm" onPress={onAddHeaderLink}>
+                  <Button size="sm" onClick={onAddHeaderLink}>
                     Add Link
                   </Button>
                 </div>
@@ -347,27 +334,31 @@ export default function ServerConfiguration({
                     <div key={key} className="flex gap-2 items-center">
                       <Input
                         className="w-1/3"
-                        isDisabled={true}
+                        disabled={true}
                         placeholder="Link name"
                         value={key}
                       />
                       <Input
                         className="flex-1"
-                        isDisabled={editingSection !== 'server' || isDefaultLink}
+                        disabled={editingSection !== 'server' || isDefaultLink}
                         placeholder="URL"
                         value={value}
                         onChange={(e) => updateHeaderLink(key, e.target.value)}
                       />
                       {editingSection === 'server' && !isDefaultLink && (
-                        <Button color="danger" size="sm" onPress={() => removeHeaderLink(key)}>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => removeHeaderLink(key)}
+                        >
                           Remove
                         </Button>
                       )}
                       {editingSection === 'server' && canReset && (
                         <Button
-                          color="warning"
+                          variant="outline"
                           size="sm"
-                          onPress={() => updateHeaderLink(key, defaultLinks[key] || '')}
+                          onClick={() => updateHeaderLink(key, defaultLinks[key] || '')}
                         >
                           Reset
                         </Button>
@@ -379,11 +370,13 @@ export default function ServerConfiguration({
                 editingSection === 'server'
                   ? tempConfig.headerLinks || {}
                   : config.headerLinks || {}
-              ).length === 0 && <p className="text-gray-500 text-sm">No header links configured</p>}
+              ).length === 0 && (
+                <p className="text-muted-foreground text-sm">No header links configured</p>
+              )}
             </div>
           </div>
         </div>
-      </CardBody>
+      </CardContent>
     </Card>
   );
 }
