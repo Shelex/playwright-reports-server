@@ -104,7 +104,7 @@ export const getSession = async (request: AuthRequest, reply: FastifyReply) => {
         expires: new Date(Date.now() + expirationSeconds * 1000).toISOString(),
       };
     }
-  } catch (error) {
+  } catch (_error) {
     return reply.status(401).send({ error: 'Unauthorized' });
   }
 };
@@ -189,7 +189,7 @@ export async function registerAuthRoutes(fastify: FastifyInstance) {
     try {
       const sessionData = await getSession(request as AuthRequest, reply);
       return sessionData;
-    } catch (error) {
+    } catch (_error) {
       return reply.status(401).send({ error: 'Unauthorized' });
     }
   });

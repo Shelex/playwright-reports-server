@@ -68,11 +68,7 @@ export default function TablePaginationOptions({
           label="Project"
         />
         {entity === 'result' && onTagsChange && (
-          <TagSelect
-            entity={entity}
-            project={selectedProject}
-            onSelect={onTagsChange}
-          />
+          <TagSelect entity={entity} project={selectedProject} onSelect={onTagsChange} />
         )}
       </div>
       <div className="flex flex-row gap-3 w-full sm:w-auto items-center justify-between sm:justify-end">

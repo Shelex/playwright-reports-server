@@ -1,7 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import type { AuthUser } from '../lib/auth';
 import { withBase } from '../lib/url';
-import { useAuthConfig } from './useAuthConfig';
+
+const AUTHENTICATED_SESSION = {
+  status: 'authenticated' as const,
+  data: null,
+};
+
+const LOADING_SESSION = {
+  status: 'loading' as const,
+  data: null,
+};
+
+const UNAUTHENTICATED_SESSION = {
+  status: 'unauthenticated' as const,
+  data: null,
+};
 
 export interface AuthSession {
   status: 'loading' | 'authenticated' | 'unauthenticated';
@@ -9,17 +24,7 @@ export interface AuthSession {
 }
 
 export function useAuth(): AuthSession {
-  const { authRequired } = useAuthConfig();
-
-  if (authRequired === false) {
-    return {
-      status: 'authenticated',
-      data: null,
-    };
-  }
-
-  // biome-ignore lint/correctness/useHookAtTopLevel: could be skipped if auth not required
-  const { data, isLoading } = useQuery<{
+  const { data, isLoading, error } = useQuery<{
     user?: AuthUser;
     expires: string;
   }>({
@@ -27,6 +32,9 @@ export function useAuth(): AuthSession {
     queryFn: async () => {
       const response = await fetch(withBase('/api/auth/session'));
       if (!response.ok) {
+        if (response.status === 401 || response.status === 404) {
+          return { user: undefined, expires: '' };
+        }
         throw new Error('Failed to get session');
       }
       return response.json();
@@ -35,31 +43,28 @@ export function useAuth(): AuthSession {
     staleTime: 60000,
   });
 
-  if (authRequired === null) {
-    return {
-      status: 'loading',
-      data: null,
-    };
-  }
+  return useMemo(() => {
+    if (isLoading) {
+      return LOADING_SESSION;
+    }
 
-  if (isLoading) {
-    return {
-      status: 'loading',
-      data: null,
-    };
-  }
+    if (error) {
+      return UNAUTHENTICATED_SESSION;
+    }
 
-  if (data?.user) {
+    if (!data?.user) {
+      return AUTHENTICATED_SESSION;
+    }
+
+    if (data.user.apiToken === '') {
+      return AUTHENTICATED_SESSION;
+    }
+
     return {
       status: 'authenticated',
       data: {
         user: data.user,
       },
     };
-  }
-
-  return {
-    status: 'unauthenticated',
-    data: null,
-  };
+  }, [data, isLoading, error]);
 }

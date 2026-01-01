@@ -6,7 +6,6 @@ import { toast } from 'sonner';
 import { withQueryParams } from '../config/network';
 import { withBase } from '../lib/url';
 import { useAuth } from './useAuth';
-import { useAuthConfig } from './useAuthConfig';
 
 const useQuery = <ReturnType>(
   path: string,
@@ -19,37 +18,28 @@ const useQuery = <ReturnType>(
 ) => {
   const session = useAuth();
   const navigate = useNavigate();
-  const { authRequired } = useAuthConfig();
+
+  const callback = options?.callback;
 
   useEffect(() => {
-    // Don't redirect if auth is not required
-    if (authRequired === false) {
-      return;
-    }
-
-    // Don't redirect if we haven't determined auth requirements yet
-    if (authRequired === null) {
-      return;
-    }
-
-    if (session.status === 'unauthenticated') {
+    if (session.status === 'unauthenticated' && window.location.pathname !== '/login') {
       toast.warning('Unauthorized');
       navigate(
         withQueryParams(
           withBase('/login'),
-          options?.callback
-            ? { callbackUrl: encodeURI(options.callback) }
-            : { callbackUrl: encodeURI(withBase('/')) }
+          callback
+            ? { callbackUrl: encodeURI(callback) }
+            : { callbackUrl: encodeURI(withBase(window.location.pathname)) }
         )
       );
-
-      return;
     }
+  }, [session.status, navigate, callback]);
 
-    if (session.status === 'loading') {
-      return;
-    }
-  }, [session.status, authRequired, navigate, options?.callback]);
+  const isAuthDisabled = session.status === 'authenticated' && session.data === null;
+  const enabled =
+    options?.enabled === undefined
+      ? isAuthDisabled || session.status === 'authenticated'
+      : options.enabled && (isAuthDisabled || session.status === 'authenticated');
 
   return useTanStackQuery<ReturnType, Error>({
     queryKey: [path, ...(options?.dependencies ?? [])],
@@ -57,7 +47,7 @@ const useQuery = <ReturnType>(
       const headers: HeadersInit = {};
 
       const jwtToken = typeof window !== 'undefined' ? localStorage.getItem('jwtToken') : null;
-      if (jwtToken && session.status === 'authenticated') {
+      if (jwtToken && session.status === 'authenticated' && session.data !== null) {
         headers.Authorization = `Bearer ${jwtToken}`;
       }
 
@@ -75,8 +65,11 @@ const useQuery = <ReturnType>(
 
       return response.json();
     },
-    enabled: authRequired === false || session.status === 'authenticated',
-    ...options,
+    enabled,
+    ...(options?.staleTime !== undefined && { staleTime: options.staleTime }),
+    ...(options?.gcTime !== undefined && { gcTime: options.gcTime }),
+    ...(options?.retry !== undefined && { retry: options.retry }),
+    ...(options?.select !== undefined && { select: options.select }),
   });
 };
 
