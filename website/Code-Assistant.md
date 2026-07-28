@@ -4,7 +4,7 @@ Give a coding agent (Claude Code, Mistral Vibe, Codex, Cursor, Continue, Copilot
 
 Two pieces responsible for this:
 
-- **[`@cyborgtests/pwrs-cli`](https://www.npmjs.com/package/@cyborgtests/pwrs-cli)**: a tiny CLI. Zero runtime dependencies. JSON in, JSON out.
+- **[`@shelex/pwrs-cli`](https://www.npmjs.com/package/@shelex/pwrs-cli)**: a tiny CLI. Zero runtime dependencies. JSON in, JSON out.
 - **`playwright-reports` Claude Code skill** (`packages/skill/`): a plugin plus a `SKILL.md` that tells Claude Code when to call the CLI and how to read what comes back.
 
 > ask your agent "*why is login test failing?*", "*what's flaky this week?*", "*what is the current state of the test project qa:main*" and it fetches the relevant context, and comes back with an answer based on the actual data.
@@ -14,7 +14,7 @@ Two pieces responsible for this:
 ## Step 1: install the CLI
 
 ```bash
-npm install -g @cyborgtests/pwrs-cli
+npm install -g @shelex/pwrs-cli
 pwrs-cli --help
 ```
 
@@ -38,7 +38,7 @@ pwrs-cli config set token <api-token>   # skip if the server runs without API_TO
 ## Step 2a: wire it into Claude Code
 
 ```
-/plugin marketplace add cyborgtests/playwright-reports-server
+/plugin marketplace add shelex/playwright-reports-server
 /plugin install playwright-reports
 ```
 
@@ -74,7 +74,7 @@ sudo ln -sf "$(pwd)/packages/cli/dist/bin.js" /usr/local/bin/pwrs-cli
 
 The CLI is just JSON-over-stdout. Any agent that can shell out can use it. Two options:
 
-1. **Drop the SKILL.md into your assistant's rules.** Copy [`packages/skill/skills/playwright-reports/SKILL.md`](https://github.com/CyborgTests/playwright-reports-server/blob/main/packages/skill/skills/playwright-reports/SKILL.md) into:
+1. **Drop the SKILL.md into your assistant's rules.** Copy [`packages/skill/skills/playwright-reports/SKILL.md`](https://github.com/Shelex/playwright-reports-server/blob/main/packages/skill/skills/playwright-reports/SKILL.md) into:
    - Codex CLI: `AGENTS.md`
    - Cursor: `.cursor/rules`
    - Continue: `config.json` system prompt
@@ -88,7 +88,7 @@ The CLI is just JSON-over-stdout. Any agent that can shell out can use it. Two o
 
 ## What the agent can ask for
 
-The full command reference lives in [`packages/cli/README.md`](https://github.com/CyborgTests/playwright-reports-server/blob/main/packages/cli/README.md). The shape that matters when you're sizing your context budget:
+The full command reference lives in [`packages/cli/README.md`](https://github.com/Shelex/playwright-reports-server/blob/main/packages/cli/README.md). The shape that matters when you're sizing your context budget:
 
 **Drill-down (you already have an ID).** One call per entity:
 

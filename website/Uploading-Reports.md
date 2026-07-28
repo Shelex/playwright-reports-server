@@ -17,7 +17,7 @@ Every way to get Playwright results into the server. Pick the one that matches y
 What you'll see in CI: a `[ReporterPlaywrightReportsServer] 🎭 HTML Report is available at: ...` line at the end of the run, with a link to your report.
 
 ```bash
-npm i -D @cyborgtests/reporter
+npm i -D @shelex/playwright-reporter
 ```
 
 ```ts
@@ -29,7 +29,7 @@ export default defineConfig({
     // blob reporter is required; the zip is what gets uploaded
     ['blob', { outputFile: 'test-results/blob.zip' }],
     [
-      '@cyborgtests/reporter',
+      '@shelex/playwright-reporter',
       {
         url: 'https://reports.example.com',
         token: process.env.PWRS_TOKEN,    // skip if the server runs without API_TOKEN
@@ -49,7 +49,7 @@ export default defineConfig({
 
 Bumping defaults when CI is slow or blobs are large: `requestTimeout` (60s) and `blobUploadTimeout` (10min). Setting `enabled: false` disables the reporter for local runs you don't want cluttering the dashboard.
 
-Full reporter docs: [`packages/reporter/README.md`](https://github.com/CyborgTests/playwright-reports-server/blob/main/packages/reporter/README.md).
+Full reporter docs: [`packages/reporter/README.md`](https://github.com/Shelex/playwright-reports-server/blob/main/packages/reporter/README.md).
 
 ---
 
@@ -82,7 +82,7 @@ For non-sharded runs, leave `shardTotal` empty (or `1`). `triggerReportGeneratio
 What you have: a `playwright-report/` directory built from tests already or you actually have a step to merge blobs on CI.
 
 ```bash
-npx --package=@cyborgtests/reporter playwright-reporter-cli upload ./playwright-report \
+npx --package=@shelex/playwright-reporter playwright-reporter-cli upload ./playwright-report \
   --url https://reports.example.com \
   --token "$PWRS_TOKEN" \
   --project web \

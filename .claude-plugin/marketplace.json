@@ -1,7 +1,7 @@
 {
   "name": "playwright-reports-server",
   "owner": {
-    "name": "CyborgTests"
+    "name": "shelex"
   },
   "plugins": [
     {

@@ -49,12 +49,12 @@ To turn it on, use the extended `test` fixture and add the option:
 
 ```ts
 // playwright.config.ts
-import { test } from '@cyborgtests/reporter';
+import { test } from '@shelex/playwright-reporter';
 
 export default defineConfig({
   reporter: [
     ['blob', { outputFile: 'test-results/blob.zip' }],
-    ['@cyborgtests/reporter', {
+    ['@shelex/playwright-reporter', {
       url: 'https://reports.example.com',
       reportPath: 'test-results/blob.zip',
       resultDetails: { project: 'web' },
@@ -74,7 +74,7 @@ Things to be aware of:
 - **Fails open.** If the reporter can't reach the server at the start of the run (network down, auth wrong, server on fire), it logs a warning and runs everything.
 - **Match your `project` name.** The `project` in `resultDetails` must match what you set up in the server.
 
-Full reporter docs: [`packages/reporter/README.md`](https://github.com/CyborgTests/playwright-reports-server/blob/main/packages/reporter/README.md).
+Full reporter docs: [`packages/reporter/README.md`](https://github.com/Shelex/playwright-reports-server/blob/main/packages/reporter/README.md).
 
 ## The "Tests not running" sort
 
@@ -90,4 +90,4 @@ These won't be auto-quarantined (no runs means no instability events, so no scor
 
 - [Regression tracking](./Regression-Tracking): the other lens on a failing test - was it green before, and is the break still open?
 - [Analytics dashboard](./Analytics-Dashboard): where the tiers, quarantine status, and "Tests not running" sort live in the UI
-- [Reporter docs](https://github.com/CyborgTests/playwright-reports-server/blob/main/packages/reporter/README.md): the `checkQuarantine` fixture in detail
+- [Reporter docs](https://github.com/Shelex/playwright-reports-server/blob/main/packages/reporter/README.md): the `checkQuarantine` fixture in detail

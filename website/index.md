@@ -37,6 +37,6 @@ The stuff that didn't fit in the main README without turning it into a novel. Ju
 - `apps/backend/`: Fastify API server (port 3001)
 - `apps/frontend/`: React SPA (Vite, port 3000 in dev)
 - `packages/shared/`: `@playwright-reports/shared` types and constants
-- `packages/reporter/`: [`@cyborgtests/reporter`](https://www.npmjs.com/package/@cyborgtests/reporter), the reporter plugin
-- `packages/cli/`: [`@cyborgtests/pwrs-cli`](https://www.npmjs.com/package/@cyborgtests/pwrs-cli), the agent CLI
+- `packages/reporter/`: [`@shelex/playwright-reporter`](https://www.npmjs.com/package/@shelex/playwright-reporter), the reporter plugin
+- `packages/cli/`: [`@shelex/pwrs-cli`](https://www.npmjs.com/package/@shelex/pwrs-cli), the agent CLI
 - `packages/skill/`: Claude Code plugin that wraps the CLI

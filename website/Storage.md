@@ -81,7 +81,7 @@ In Docker, mount a host directory at `/app/data/`:
 
 ```bash
 docker run -v /path/on/host:/app/data -p 3001:3001 \
-  ghcr.io/cyborgtests/playwright-reports-server:latest
+  ghcr.io/shelex/playwright-reports-server:latest
 ```
 
 Outside Docker, data is in `apps/backend/data/`. Back it up if you care about it. If you don't - that's also a valid lifestyle choice.

@@ -61,10 +61,10 @@ export default defineConfig({
     ],
     editLink: {
       pattern:
-        'https://github.com/CyborgTests/playwright-reports-server/edit/main/website/:path',
+        'https://github.com/Shelex/playwright-reports-server/edit/main/website/:path',
     },
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/CyborgTests/playwright-reports-server' },
+      { icon: 'github', link: 'https://github.com/Shelex/playwright-reports-server' },
     ],
   },
 })

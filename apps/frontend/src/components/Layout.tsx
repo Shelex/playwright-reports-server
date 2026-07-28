@@ -82,12 +82,12 @@ export function Layout({ children }: LayoutProps) {
           <div className="container flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <span>Powered by</span>
             <a
-              href="https://www.cyborgtest.com/"
+              href="https://shelex.dev"
               target="_blank"
               rel="noreferrer"
               className="font-medium text-primary hover:underline"
             >
-              CyborgTests
+              Shelex
             </a>
           </div>
         </footer>
