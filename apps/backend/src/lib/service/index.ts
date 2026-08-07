@@ -20,12 +20,12 @@ import {
   storage,
 } from '../storage/index.js';
 import { getPresignedUploadUrl, uploadResult } from '../storage/resultUpload.js';
-import type { Report } from '../storage/types.js';
+import type { Report, ReportHistory } from '../storage/types.js';
 import { processWithConcurrency } from '../utils/semaphore.js';
 import { withError } from '../withError.js';
 import { invalidateAnalyticsCache } from './analytics.js';
 import { configCache } from './cache/config.js';
-import { reportDb, reportResultsDb, resultDb, siteConfigDb } from './db/index.js';
+import { reportDb, reportResultsDb, resultDb, siteConfigDb, testQueriesDb } from './db/index.js';
 import { lifecycle } from './lifecycle.js';
 import { dispatchReportUploaded } from './notifications/dispatcher.js';
 import { testManagementService } from './test-management/index.js';
@@ -40,6 +40,33 @@ async function dataDbFileBytes(): Promise<number> {
     }
   }
   return total;
+}
+
+export async function processReportOrRollback(report: ReportHistory): Promise<void> {
+  const { error } = await withError(testManagementService.processReport(report));
+  if (!error) return;
+
+  console.error(
+    `[service] processReport failed for ${report.reportID}, rolling back: ${error.message}`
+  );
+  try {
+    reportDb.onDeleted([report.reportID]);
+  } catch (dbError) {
+    console.error(
+      `[service] DB rollback failed for ${report.reportID}: ${dbError instanceof Error ? dbError.message : String(dbError)}`
+    );
+  }
+  const { error: storageError } = await withError(
+    storage.deleteReports([{ reportID: report.reportID, project: report.project }])
+  );
+  if (storageError) {
+    console.error(
+      `[service] storage rollback failed for ${report.reportID}, objects may be orphaned: ${storageError.message}`
+    );
+  }
+  invalidateFailureClustersCache();
+  invalidateAnalyticsCache();
+  throw error;
 }
 
 class Service {
@@ -71,6 +98,7 @@ class Service {
 
     return {
       ...report,
+      files: testQueriesDb.getReportFileTree(id),
       previousReportId: reportDb.getPreviousReportId(id),
     };
   }
@@ -150,21 +178,7 @@ class Service {
       throw onCreatedErr;
     }
 
-    const { error: testsErr } = await withError(testManagementService.processReport(report));
-    if (testsErr) {
-      console.error(
-        `[service] generateReport - failed to process report tests: ${testsErr instanceof Error ? testsErr?.message : String(testsErr)}`
-      );
-      try {
-        reportDb.onDeleted([reportId]);
-      } catch (dbErr) {
-        console.error(
-          `[service] generateReport - DB rollback failed for ${reportId}: ${dbErr instanceof Error ? dbErr.message : String(dbErr)}`
-        );
-      }
-      await rollbackStorage(`processReport failed: ${testsErr.message}`);
-      throw testsErr;
-    }
+    await processReportOrRollback(report);
 
     this.dispatchNotificationsForReport(report).catch((err) => {
       console.error(
@@ -205,7 +219,8 @@ class Service {
     const entries: ReportPath[] = [];
 
     for (const id of reportIDs) {
-      const report = await this.getReport(id);
+      const report = reportDb.getByID(id);
+      if (!report) throw new Error(`report ${id} not found`);
 
       entries.push({ reportID: id, project: report.project });
     }
