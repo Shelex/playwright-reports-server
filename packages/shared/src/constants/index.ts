@@ -81,6 +81,7 @@ export const RESERVED_REPORT_FIELDS: ReadonlySet<string> = new Set([
   'projectNames',
   'options',
   'playwrightVersion',
+  'storagePath',
 ]);
 
 /**
